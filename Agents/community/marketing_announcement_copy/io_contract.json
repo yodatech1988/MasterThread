@@ -1,0 +1,38 @@
+{
+  "agent_name": "Marketing Announcement Copy Agent",
+  "domain": "community",
+  "version": "0.1.0",
+  "inputs": [
+    {
+      "name": "event",
+      "type": "object",
+      "description": "Primary input object for the Marketing Announcement Copy Agent.",
+      "required": true
+    },
+    {
+      "name": "context",
+      "type": "object",
+      "description": "Optional contextual data (identity, environment, linked resources).",
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "actions",
+      "type": "object",
+      "description": "Structured output describing what the Marketing Announcement Copy Agent decided or performed."
+    },
+    {
+      "name": "logs",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Human-readable log lines explaining key decisions."
+    }
+  ],
+  "error_handling": {
+    "on_invalid_input": "Return a validation error with an explanation; do not attempt to proceed.",
+    "on_missing_context": "Proceed conservatively, explicitly stating assumptions and limitations."
+  }
+}
