@@ -1,0 +1,17 @@
+{
+  "agent": "Ops Automation Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Ops Automation Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Ops Automation Agent received example input.",
+    "Ops Automation Agent performed validation and produced this example output."
+  ]
+}

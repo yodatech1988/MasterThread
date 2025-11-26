@@ -1,0 +1,17 @@
+{
+  "agent": "Discord Governance Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Discord Governance Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Discord Governance Agent received example input.",
+    "Discord Governance Agent performed validation and produced this example output."
+  ]
+}
