@@ -132,3 +132,270 @@ flowchart TD
 
     %% Endpoints
     Executor -->|Run| Workflows
+
+Component Breakdown
+1. DayZ Game Layer
+
+Runs locally (your home PC) and produces all runtime data.
+
+Components
+
+DayZServer – Game engine runtime
+
+Logs – scripts.log, killfeed, economy events, server log
+
+LogTailerAgent – Reads logs, transforms them into JSON events
+
+Purpose
+
+Turn raw game activity into machine-readable events for automation and AI.
+
+2. Infrastructure Layer (OVH VPS + Local)
+Components
+
+WireGuard Tunnel – Secure pipeline for logs → OVH
+
+Reverse Proxy – TLS termination, routing
+
+AutoGPT Platform – UI and execution engine
+
+Executor – Runs workflows, chains, tool calls
+
+Purpose
+
+Create the secure execution environment for AI + microservices.
+
+3. Automation Microservices
+Discord Automation Agent
+
+AI moderation
+
+Player support
+
+Slash commands
+
+GitHub issue/PR creation
+
+Workflow triggers
+
+DayZ Server Automations
+
+Processes log events
+
+Detects anomalies
+
+Runs game/economy tuning logic
+
+Applies AI recommendations
+
+Opens PRs to config repo
+
+Patreon Automation System
+
+Syncs Patreon tiers
+
+Applies entitlements
+
+Opens PRs for reward configs
+
+Audits supporter status
+
+4. AI Workflow Engine
+Components
+
+AutoGPT Workflows Repository
+
+Software Development Automation
+
+Purpose
+
+Houses:
+
+All workflows
+
+All prompts
+
+Evaluation loops
+
+Tool definitions
+
+Shared CI pipelines
+
+This is the brain of the system.
+
+5. Source of Truth Repository
+DayZ Config & State Repository
+
+Contains:
+
+All DayZ XML/JSON config files
+
+Mod configs
+
+Economy definitions
+
+State snapshots
+
+AI and microservices write PRs here.
+
+This repo feeds live configs back into the DayZ server.
+
+6. User-Facing Integrations
+Discord
+
+Community interaction
+
+Moderation
+
+Admin commands
+
+Patreon
+
+Subscription logic
+
+Entitlements
+
+Revenue → gameplay loop
+
+DayZ Players
+
+Game activity
+
+Economy impact
+
+Events that feed the automation layer
+
+Dataflow Explanation
+1. Log ingestion
+
+DayZ logs update locally
+
+LogTailer converts logs → JSON events
+
+Events sent securely via WireGuard
+
+OVH Reverse Proxy forwards them to DayZ Automations
+
+2. Workflow execution
+
+Microservices detect conditions
+
+Trigger AutoGPT workflow
+
+AutoGPT Executor runs multistep chain
+
+Workflows return:
+
+recommendations
+
+PR creation
+
+Discord alerts
+
+entitlement changes
+
+3. Config deployment
+
+AI proposes config changes
+
+PR created in Config Repo
+
+You (or auto-approver) merge
+
+Deployment pipeline syncs configs to DayZ server
+
+Restart triggered if needed
+
+4. Discord integration
+
+Player commands → Discord Agent → AutoGPT
+
+Moderation alerts → AutoGPT → recommended actions
+
+Killfeed → DayZ Automations → Discord
+
+5. Patreon entitlement flow
+
+Patreon webhook → Patreon Service
+
+Service validates pledge
+
+Determines entitlements
+
+Opens PR or applies in-game change
+
+Logs the action for auditing
+
+Repository Reference Map
+Repository	Purpose
+MasterThread	Global architecture, documentation, roadmaps
+Discord Automation Agent	Discord bot + moderation AI
+DayZ Server Automations	Ingestion → logic → config updates
+Patreon Automation System	Supporter → entitlement automation
+AutoGPT Workflows Repository	All AI workflows, prompts, tools
+DayZ Config & State Repo	Source of truth configs + snapshots
+Software Development Automation	Shared CI/CD + templates
+SDLC & CI/CD Integration
+
+All repos use shared CI from Software Development Automation
+
+All changes must go through PR reviews
+
+Config repo uses:
+
+XML/JSON validation
+
+Schema checks
+
+Economy consistency tests
+
+Workflows follow:
+
+Propose
+
+Validate
+
+Review
+
+Merge
+
+Deploy
+
+Monitor
+
+Extensibility & Future Growth
+
+This architecture supports:
+
+Multi-server clusters
+
+Full AI-driven NPC behavior
+
+Realtime analytics dashboards
+
+Market economy simulation
+
+Multi-game expansion
+
+Dedicated “AI Admin” with voice recognition
+
+Multi-tenant monetization platform
+
+The structure is deliberately scalable and future-proof.
+
+End of Document
+
+---
+
+# Want more?
+
+I can generate:
+
+🔥 `docs/OVERVIEW.md`  
+🔥 `docs/ROADMAP.md`  
+🔥 `docs/REPOS.md`  
+🔥 `docs/WORKSTREAMS.md`  
+🔥 A full **onboarding guide**  
+🔥 Or diagrams for each microservice separately
+
+Just tell me which document you want next.
