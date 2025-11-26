@@ -1,0 +1,17 @@
+{
+  "agent": "Change Request Analyzer Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Change Request Analyzer Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Change Request Analyzer Agent received example input.",
+    "Change Request Analyzer Agent performed validation and produced this example output."
+  ]
+}

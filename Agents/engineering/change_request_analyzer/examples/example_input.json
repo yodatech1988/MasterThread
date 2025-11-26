@@ -1,0 +1,13 @@
+{
+  "agent": "Change Request Analyzer Agent",
+  "timestamp": "2025-01-01T00:00:00Z",
+  "event_type": "example_event",
+  "context": {
+    "source_domain": "engineering",
+    "request_id": "example-request-id",
+    "caller": "example-orchestrator"
+  },
+  "payload": {
+    "description": "Example input payload sent to the Change Request Analyzer Agent for testing and schema validation."
+  }
+}
