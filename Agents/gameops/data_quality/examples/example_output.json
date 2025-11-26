@@ -1,0 +1,17 @@
+{
+  "agent": "Data Quality Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Data Quality Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Data Quality Agent received example input.",
+    "Data Quality Agent performed validation and produced this example output."
+  ]
+}
