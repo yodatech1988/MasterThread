@@ -1,0 +1,17 @@
+{
+  "agent": "Invoicing Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Invoicing Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Invoicing Agent received example input.",
+    "Invoicing Agent performed validation and produced this example output."
+  ]
+}
