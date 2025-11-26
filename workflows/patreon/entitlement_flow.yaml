@@ -1,0 +1,63 @@
+name: patreon_entitlement_flow
+description: Process Patreon membership events into DayZ and Discord entitlements.
+trigger:
+  type: webhook
+  source: patreon
+  events:
+  - member:created
+  - member:updated
+  - member:deleted
+orchestrator: Patreon Orchestrator Agent
+stages:
+- name: ingest
+  agents:
+  - Patreon Ingest Agent
+  - Normalizer Agent
+  inputs:
+  - patreon_webhook_payload
+  outputs:
+  - normalized_membership_event
+- name: sync_state
+  agents:
+  - Patron Sync Agent
+  inputs:
+  - normalized_membership_event
+  outputs:
+  - patron_record
+  - subscription_record
+- name: compute_entitlements
+  agents:
+  - Entitlement Policy Agent
+  inputs:
+  - patron_record
+  - subscription_record
+  outputs:
+  - entitlement_actions
+- name: apply_entitlements
+  agents:
+  - DayZ Perk Applier Agent
+  - Role Sync Agent
+  inputs:
+  - entitlement_actions
+  outputs:
+  - dayz_changes
+  - discord_role_changes
+- name: notify
+  agents:
+  - Patron Comms Agent
+  inputs:
+  - entitlement_actions
+  outputs:
+  - user_notifications
+- name: analytics
+  agents:
+  - Revenue Agent
+  - Cohort Analytics Agent
+  - Customer Success Agent
+  inputs:
+  - patron_record
+  - subscription_record
+  - entitlement_actions
+  outputs:
+  - revenue_metrics
+  - cohort_updates

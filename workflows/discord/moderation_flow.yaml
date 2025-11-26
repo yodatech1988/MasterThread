@@ -1,0 +1,40 @@
+name: discord_moderation_flow
+description: Moderate messages in Discord according to moderation policy.
+trigger:
+  type: discord_event
+  events:
+  - message_create
+  - message_update
+orchestrator: Discord Orchestrator Agent
+stages:
+- name: screen_message
+  agents:
+  - Auto-Moderation Agent
+  inputs:
+  - discord_message
+  outputs:
+  - moderation_assessment
+- name: decide_action
+  agents:
+  - Discord Governance Agent
+  inputs:
+  - moderation_assessment
+  - user_history
+  outputs:
+  - moderation_action
+- name: apply_action
+  agents:
+  - Auto-Moderation Agent
+  inputs:
+  - moderation_action
+  outputs:
+  - enforcement_result
+- name: log_incident
+  agents:
+  - Moderation Log Agent
+  inputs:
+  - moderation_assessment
+  - moderation_action
+  - enforcement_result
+  outputs:
+  - moderation_log_record
