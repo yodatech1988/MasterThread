@@ -11,14 +11,18 @@ tracks *plans and sessions*, and links there rather than duplicating it.
 *(This page previously listed five planned repos that were never created. It was replaced with
 the real inventory on 2026-09-12.)*
 
+*(Audit note, 2026-09-12: verified against GitHub, these PRs named below as pending are merged —
+core #35 #39 #41 #42 #43, services #10, website #16, repo-template #4, site-chernarus #43. Rows not
+otherwise rewritten; the next session on each repo should refresh its row.)*
+
 ## Do first: cross-cutting
 
 | # | Action | Where | Why |
 |---|---|---|---|
-| 1 | Review and merge **core PR #43**, "Stop re-reviewing on every push; cap per-run spend" | core | In the 3 days to 2026-09-12, 82 Claude review runs across core (49), site-chernarus (25), services (5) and website (3). This is the largest avoidable API spend. |
-| 2 | Work down the **site-chernarus PR backlog** (15 open) before new sessions there | site-chernarus | Standard rule 4: each unmerged PR makes later sessions pay to re-read and rebase. |
+| 1 | ~~Review and merge **core PR #43**, "Stop re-reviewing on every push; cap per-run spend"~~ — merged | core | In the 3 days to 2026-09-12, 82 Claude review runs across core (49), site-chernarus (25), services (5) and website (3). This is the largest avoidable API spend. |
+| 2 | ~~Work down the **site-chernarus PR backlog** (15 open) before new sessions there~~ — 0 open as of the 2026-09-12 audit | site-chernarus | Standard rule 4: each unmerged PR makes later sessions pay to re-read and rebase. |
 | 3 | Rotate the Anthropic key before it expires **2026-10-03** | core #5 | Owner-only; every Claude-backed agent and CI review stops otherwise. |
-| 4 | Create **aegis-mods** and import the `P:\AEGIS_*` sources (Session 1 of its plan) | aegis-mods | That mod source has no git history or backup. All future gameplay work ships as Workshop modules: [`standards/dayz/workshop_mod_standard.md`](../standards/dayz/workshop_mod_standard.md). |
+| 4 | ~~Create **aegis-mods**~~ (created 2026-09-12, private; PRs #1 AEGIS_Metrics and #2 AEGIS_TeddyBear merged) and import the remaining `P:\AEGIS_*` sources | aegis-mods | That mod source has no git history or backup. All future gameplay work ships as Workshop modules: [`standards/dayz/workshop_mod_standard.md`](../standards/dayz/workshop_mod_standard.md). |
 | 5 | ~~Review and merge core PR #47 and site-chernarus PR #49~~ — both merged 2026-09-12 | core, site-chernarus | See "Standing decision" below for the canon change they landed. |
 
 ## Standing decision: map parity, no cross-map reputation gating
@@ -116,7 +120,7 @@ opening a session there spends tokens without a target.
 | Repo | Note |
 |---|---|
 | [AEGIS-Directive](https://github.com/yodatech1988/AEGIS-Directive) | Archived; superseded by core and site repos. |
-| [Business-development](https://github.com/yodatech1988/Business-development) | README only, 2023. |
+| [Business-development](https://github.com/yodatech1988/Business-development) | 2023 README, plus `game-server-email-and-paypal-setup.md` (contact email + PayPal + Bohemia contact setup, added 2026-09-12). |
 | [Finance-business](https://github.com/yodatech1988/Finance-business) | Generated code, 2023. Superseded by quickbooks-business. |
 | [Google-Cloud-AGI](https://github.com/yodatech1988/Google-Cloud-AGI) | Generated code, 2023. |
 | [jeremybergerai](https://github.com/yodatech1988/jeremybergerai) | Demo app, 2023. |

@@ -1,8 +1,8 @@
 # AEGIS Directive — Server Operating Donations Plan
 
-**Status:** draft for Jeremy's approval · 2026-09-12 · Sessions 2 and 3 drafted and in review
+**Status:** draft for Jeremy's approval · 2026-09-12 · Sessions 2 and 3 merged with placeholders
 (website PR [#16](https://github.com/yodatech1988/website/pull/16), services PR
-[#10](https://github.com/yodatech1988/services/pull/10)) — both blocked on the PayPal handle,
+[#10](https://github.com/yodatech1988/services/pull/10); status verified in the 2026-09-12 audit) — real values still blocked on the PayPal handle,
 the hosting funded-through date, and the `#fund-the-server` channel/webhook, all §3.
 **Scope:** one-time donations of **$5 / $10 / $20 / Other**, shown on aegisdirective.net and the AEGIS Discord.
 **What the money is for:** only (1) the game-server hosting contract and (2) Claude API tokens that run the network's agents.
@@ -32,7 +32,7 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 | D1 | Platform | **PayPal** (business account), via four `paypal.me/<handle>/<amount>` links — `/5`, `/10`, `/20`, and a bare `/<handle>` link for "Other" (blank amount, donor enters their own) | **Changed 2026-09-12, Jeremy's call, superseding the pre-pause Ko-fi decision.** Reason: the same account can also pay mod-pack purchases and paid services for the server, instead of collecting on Ko-fi and moving funds elsewhere before spending. Needs no button generator, no backend, no Ko-fi/Discord bot. **Trade-off:** standard PayPal commercial transaction fees apply to every donation (no 0%-fee donation path — PayPal's fee-free donate button requires 501(c)(3) nonprofit status, which doesn't apply here). Use the standard "goods and services"-rate flow, not Friends & Family — F&F fee waivers are for personal transfers and don't fit an account that also pays vendors/invoices. **Fallback:** four Stripe Payment Links, if PayPal.me link amounts ever need to change per-currency or per-region. |
 | D2 | Recurring monthly option | **Off at launch** | A monthly option reads like a subscription, and subscribers expect something back. It can be added later as "monthly, still no benefit." |
 | D3 | "Other" minimum | **$3** | PayPal's fee has a fixed-cents component on top of the percentage; below about $3 it eats too much of the gift. |
-| D4 | Discord role / donor wall | **None** | This keeps the "no counter-value" position clean. A private thank-you DM or email from Ko-fi is fine. |
+| D4 | Discord role / donor wall | **None** | This keeps the "no counter-value" position clean. A private thank-you DM or email is fine. |
 | D5 | Where the money is shown | A **"Server funded through: <Month YYYY>"** line, plus a monthly costs-vs-donations post | This makes "server duration" concrete and honest, and needs no payment API. |
 | D6 | Surplus | Rolls forward into future months of hosting and API costs only | The page says this up front. |
 | D7 | Shutdown | If the network shuts down, any unspent balance goes to the final hosting bills. No refunds after 30 days. | The page says this up front. PayPal/Stripe refunds within 30 days are handled on request. |
