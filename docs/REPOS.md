@@ -72,11 +72,14 @@ placeholders for the PayPal handle and the "funded through" date; only Jeremy ca
 
 ## Building rule: modules, not site edits
 
-All AEGIS gameplay code is built as a Workshop module in `aegis-mods`, per the
-[Workshop mod standard](../standards/dayz/workshop_mod_standard.md). Site repos only install modules
-(Workshop ID + version) and commit their `settings.json` overrides. A site-repo PR that adds Enforce
-Script (`mods/`, mission `init.c` logic) is redirected to `aegis-mods`. site-chernarus PR #43
-(`AEGIS_PvPGuard`) is the first such PR.
+All AEGIS gameplay code is built as a Workshop module, per the
+[Workshop mod standard](../standards/dayz/workshop_mod_standard.md): gameplay modules in
+`aegis-mods`, prebuilt points of interest (`AEGIS_POI*`) in `aegis-poi` (owner decision 2026-09-12,
+standard rule 1). Site repos only install modules (Workshop ID, version or tag) and commit their
+`settings.json` overrides. A site-repo PR that adds Enforce Script (`mods/`, mission `init.c` logic)
+is redirected to the module repo. site-chernarus PR #43 (`AEGIS_PvPGuard`) merged before the rule
+existed, so its code sits in the site repo until the migration in the standard's "Where existing
+work goes" table happens.
 
 ## Active
 
@@ -84,12 +87,13 @@ Script (`mods/`, mission `init.c` logic) is redirected to `aegis-mods`. site-che
 |---|---|---|---|---|
 | [jarvis](https://github.com/yodatech1988/jarvis) | Personal assistant | `docs/PLAN.md` (merged in PR #1) | Session 1: live-test `npm run cli` with the three prompts (PR #1 merged; blocked only on the key) | Paste `ANTHROPIC_API_KEY` into the local `.env` (already created); choose escalation consent (default `ask`) |
 | [core](https://github.com/yodatech1988/core) | AEGIS shared tooling, canon, reusable CI | none | [PR #47](https://github.com/yodatech1988/core/pull/47) (map-parity canon rewrite) merged; next is [Session 0 (#44)](https://github.com/yodatech1988/core/issues/44) | Merge/close PRs #35 #39 #41 #42 #43 |
-| aegis-mods *(to create)* | Every AEGIS Workshop module: Core, Skills, PvPGuard, Vehicles, Aircraft, Skins | none | Session 0: create repo, write `docs/PLAN.md` from the standard's "Where existing work goes" table. Session 1: import `P:\AEGIS_*` with junctions, `build.ps1`, HelloWorld boot test. Its plan should account for packaging annual Theme Season mod bundles (see "Standing decision" above) once that's scoped | Generate and back up the `AEGIS` signing key; confirm Workshop publisher account |
+| [aegis-mods](https://github.com/yodatech1988/aegis-mods) | Every AEGIS gameplay module (Metrics and TeddyBear merged; Core, Skills, PvPGuard, Vehicles, Aircraft, Skins to come) | stub only | Session 0: write `docs/PLAN.md` from the standard's "Where existing work goes" table (PRs #1–#3 already landed `build.ps1`, `boot-test.ps1`, the public key and two modules). Session 1: import `P:\AEGIS_*` with junctions and migrate `AEGIS_PvPGuard` out of site-chernarus. The plan should account for packaging annual Theme Season mod bundles (see "Standing decision" above) once that's scoped | Write the one-paragraph goal in `docs/PLAN.md`; back up `AEGIS_Directive.biprivatekey` offline; confirm Workshop publisher account; delete `P:\AEGIS_HelloWorld` |
+| [aegis-poi](https://github.com/yodatech1988/aegis-poi) | Prebuilt POI modules: `AEGIS_POI` framework, `_Trader`, `_BlackMarket`, `_Vault` | `docs/PLAN.md` (Session 0 merged in PR #1; API research merged in PRs #2, #3) | Session 1: `tools/check_module.py`, fixtures, CI that fails when it checks nothing | Signing key at `P:\Keys\AEGIS_Directive.biprivatekey` for Session 2 onward |
 | [site-chernarus](https://github.com/yodatech1988/site-chernarus) | AEGIS Chernarus server config | none | [PR #49](https://github.com/yodatech1988/site-chernarus/pull/49) (map-parity doc updates) merged; next is [Session 0 (#44)](https://github.com/yodatech1988/site-chernarus/issues/44), whose first job is the 15-PR backlog | Production instance decision (#5); market sign-off (#6) |
 | [services](https://github.com/yodatech1988/services) | admin-bot (the only live agent), RCON client | none | [Session 0 (#9)](https://github.com/yodatech1988/services/issues/9) | Review/merge [PR #10](https://github.com/yodatech1988/services/pull/10) (donations plan Session 3: `#fund-the-server` embed script); create that channel + webhook, `gh secret set DISCORD_WEBHOOK_FUND` |
 | [claude-agents](https://github.com/yodatech1988/claude-agents) | Community, Patreon, chat and economy agents | none | [Session 0 (#5)](https://github.com/yodatech1988/claude-agents/issues/5) | — |
 | [website](https://github.com/yodatech1988/website) | aegisdirective.net (never deployed) | none | [Session 0 (#15)](https://github.com/yodatech1988/website/issues/15) | Review/merge [PR #16](https://github.com/yodatech1988/website/pull/16) (donations plan Session 2: `/fund/` page); confirm PayPal Business account + `paypal.me` handle; Cloudflare connector auth when deploying (#3) |
-| [MasterThread](https://github.com/yodatech1988/MasterThread) | This ledger and org standards | this page | Keep rows current. No open issues (#3, a 2023 env-var list for AutoGPT/DayZ automation, was closed as obsolete: nothing uses those vars, and each repo's `.env.example` is the source) | — |
+| [MasterThread](https://github.com/yodatech1988/MasterThread) | This ledger and org standards | this page | Keep rows current. Standards refreshed 2026-09-12 evening (worktree, verify-before-merge, cost and rounds rules; two module homes; map parity). Issues #1 and #2 (2025 folder-structure and log-tailer notes) are still open and belong to the housekeeping lane; #3 was closed as obsolete | Close #1 and #2 or state what they still ask for |
 | [repo-template](https://github.com/yodatech1988/repo-template) | Standard for new repos | n/a | Merge [PR #4](https://github.com/yodatech1988/repo-template/pull/4) (`CLAUDE.md` + `docs/PLAN.md` stubs) | — |
 
 ## Stable: no plan until work is planned
@@ -126,6 +130,7 @@ opening a session there spends tokens without a target.
 | [jeremybergerai](https://github.com/yodatech1988/jeremybergerai) | Demo app, 2023. |
 | Smol-Dev | Local clone only, 2023. |
 
-Local folders without a GitHub repo: `dayz-skin-library` (core PR #39 proposes moving it into
-core; the Workshop mod standard sends it to `aegis-mods` as `AEGIS_Skins` instead), `dayz-vehicle-sources` (staged third-party assets), `TrulyFreeAssets_Various` (someone
-else's fork).
+Local folders without a GitHub repo: `dayz-skin-library` (core PR #39 merged it into core as
+staging; the Workshop mod standard sends it on to `aegis-mods` as `AEGIS_Skins` once each texture's
+permission is checked), `dayz-vehicle-sources` (staged third-party assets), `TrulyFreeAssets_Various`
+(someone else's fork).

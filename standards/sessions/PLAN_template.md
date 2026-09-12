@@ -1,7 +1,7 @@
 # Plan: <goal in a few words>
 
 Follows MasterThread `standards/sessions/session_plan_standard.md`. Do one session per fresh
-conversation, opened in this repo's folder.
+conversation, opened in its own worktree of this repo (standard rule 9).
 
 ## Target (settled)
 
@@ -28,6 +28,7 @@ conversation, opened in this repo's folder.
 - **Do:** <concrete change>
 - **Out of scope:** <deferred items>
 - **Done when:** <checkable condition>
+- **Model:** <Sonnet 5 unless the session triages or designs; omit for the default>
 - **Starter prompt:** `Read docs/PLAN.md Session 1 only. <instruction>`
 
 ## Session 2: <name>
