@@ -18,6 +18,15 @@ the real inventory on 2026-09-12.)*
 | 1 | Review and merge **core PR #43**, "Stop re-reviewing on every push; cap per-run spend" | core | In the 3 days to 2026-09-12, 82 Claude review runs across core (49), site-chernarus (25), services (5) and website (3). This is the largest avoidable API spend. |
 | 2 | Work down the **site-chernarus PR backlog** (15 open) before new sessions there | site-chernarus | Standard rule 4: each unmerged PR makes later sessions pay to re-read and rebase. |
 | 3 | Rotate the Anthropic key before it expires **2026-10-03** | core #5 | Owner-only; every Claude-backed agent and CI review stops otherwise. |
+| 4 | Create **aegis-mods** and import the `P:\AEGIS_*` sources (Session 1 of its plan) | aegis-mods | That mod source has no git history or backup. All future gameplay work ships as Workshop modules: [`standards/dayz/workshop_mod_standard.md`](../standards/dayz/workshop_mod_standard.md). |
+
+## Building rule: modules, not site edits
+
+All AEGIS gameplay code is built as a Workshop module in `aegis-mods`, per the
+[Workshop mod standard](../standards/dayz/workshop_mod_standard.md). Site repos only install modules
+(Workshop ID + version) and commit their `settings.json` overrides. A site-repo PR that adds Enforce
+Script (`mods/`, mission `init.c` logic) is redirected to `aegis-mods`. site-chernarus PR #43
+(`AEGIS_PvPGuard`) is the first such PR.
 
 ## Active
 
@@ -25,6 +34,7 @@ the real inventory on 2026-09-12.)*
 |---|---|---|---|---|
 | [jarvis](https://github.com/yodatech1988/jarvis) | Personal assistant | `docs/PLAN.md` (PR #1) | Session 1: live-test and merge PR #1 | Create `.env`; choose escalation consent (default `ask`) |
 | [core](https://github.com/yodatech1988/core) | AEGIS shared tooling, canon, reusable CI | none | [Session 0 (#44)](https://github.com/yodatech1988/core/issues/44) | Merge/close PRs #35 #39 #41 #42 #43 |
+| aegis-mods *(to create)* | Every AEGIS Workshop module: Core, Skills, PvPGuard, Vehicles, Aircraft, Skins | none | Session 0: create repo, write `docs/PLAN.md` from the standard's "Where existing work goes" table. Session 1: import `P:\AEGIS_*` with junctions, `build.ps1`, HelloWorld boot test | Generate and back up the `AEGIS` signing key; confirm Workshop publisher account |
 | [site-chernarus](https://github.com/yodatech1988/site-chernarus) | AEGIS Chernarus server config | none | [Session 0 (#44)](https://github.com/yodatech1988/site-chernarus/issues/44), whose first job is the 15-PR backlog | Production instance decision (#5); market sign-off (#6) |
 | [services](https://github.com/yodatech1988/services) | admin-bot (the only live agent), RCON client | none | [Session 0 (#9)](https://github.com/yodatech1988/services/issues/9) | — |
 | [claude-agents](https://github.com/yodatech1988/claude-agents) | Community, Patreon, chat and economy agents | none | [Session 0 (#5)](https://github.com/yodatech1988/claude-agents/issues/5) | — |
@@ -67,5 +77,5 @@ opening a session there spends tokens without a target.
 | Smol-Dev | Local clone only, 2023. |
 
 Local folders without a GitHub repo: `dayz-skin-library` (core PR #39 proposes moving it into
-core), `dayz-vehicle-sources` (staged third-party assets), `TrulyFreeAssets_Various` (someone
+core; the Workshop mod standard sends it to `aegis-mods` as `AEGIS_Skins` instead), `dayz-vehicle-sources` (staged third-party assets), `TrulyFreeAssets_Various` (someone
 else's fork).
