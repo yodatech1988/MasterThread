@@ -1,6 +1,9 @@
 # AEGIS Directive — Server Operating Donations Plan
 
-**Status:** draft for Jeremy's approval · 2026-09-12
+**Status:** draft for Jeremy's approval · 2026-09-12 · Sessions 2 and 3 drafted and in review
+(website PR [#16](https://github.com/yodatech1988/website/pull/16), services PR
+[#10](https://github.com/yodatech1988/services/pull/10)) — both blocked on the PayPal handle,
+the hosting funded-through date, and the `#fund-the-server` channel/webhook, all §3.
 **Scope:** one-time donations of **$5 / $10 / $20 / Other**, shown on aegisdirective.net and the AEGIS Discord.
 **What the money is for:** only (1) the game-server hosting contract and (2) Claude API tokens that run the network's agents.
 **What a donation gets you:** nothing. No in-game item, no perk, no priority queue, no Discord role, no badge.
@@ -55,19 +58,36 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 - Check installed-mod licences for donation wording and record the result in `docs/mods/README.md` §4.
 - **Done when:** the policy is merged and the mod-licence check is recorded, with a verdict for each installed mod.
 
-### Session 2 — Website page (repo: `website`)
-- Add a new page, `public/fund/index.html`. Per `aegis-website-build.md`, monetization comes back only "as its own page and its own decision," and this is that page.
-- The page has four buttons ($5, $10, $20, Other) linking to the `paypal.me/<handle>/5`, `/10`, `/20` and bare-handle links, or to the Stripe Payment Links if the fallback was chosen. It is plain HTML with no embedded third-party widget, so the Content Security Policy stays simple and there's no tracking.
-- The "Server funded through" line reads from a static `public/fund/status.json` (`{ "fundedThrough": "2026-12", "updated": "2026-09-12" }`) that is edited by hand monthly.
-- Add a quiet "Fund the server" footer link on every page. No pop-ups, and nothing on the join/start flow that suggests paying.
-- Update `aegis-website-build.md` so it no longer says "no monetization page exists."
-- **Done when:** `wrangler dev` renders the page, all four links resolve, the disclaimer is in the footer, and the page passes the phone-width check.
-- *Blocked on:* the website has never been deployed (REPOS.md: Cloudflare connector auth, #3). The page can merge before deploy.
+### Session 2 — Website page (repo: `website`) — drafted, [PR #16](https://github.com/yodatech1988/website/pull/16) open
+- Add a new page at `/fund/` (`src/pages/fund.html`, built via the site's existing `build.py`
+  pipeline rather than a hand-written `public/fund/index.html` — the site has a static generator
+  now, unlike when this plan was first written). Per `aegis-website-build.md`, monetization comes
+  back only "as its own page and its own decision," and this is that page.
+- The page lists $5/$10/$20/Other, each a `.tbc` placeholder (`data-placeholder="paypal-handle"`)
+  until the real `paypal.me/<handle>` links are confirmed. Plain HTML, no embedded widget.
+- The "Server funded through" line is also `.tbc` (`data-placeholder="funded-through"`) pending
+  the hosting renewal date/cost (§3 item 1). The `public/fund/status.json` file described below is
+  **deferred** until that figure is real — no point shipping a status file with no real data.
+- Not yet done: a quiet footer link (the page currently lives in the top nav instead, consistent
+  with every other page on the site — revisit if that reads as too prominent once real values are
+  in).
+- `aegis-website-build.md` updated so it no longer says "no monetization page exists."
+- **Done when:** merged, `.tbc` placeholders replaced with real values, and deployed. *Blocked on:*
+  the PayPal handle/funded-through date (Jeremy), and separately the website has never been
+  deployed at all (REPOS.md: Cloudflare connector auth, #3) — the page can merge before deploy.
 
-### Session 3 — Discord (repo: `services`)
-- Add a one-shot script, `scripts/post-fund-embed`, that posts and updates the pinned embed in `#fund-the-server` using the `DISCORD_WEBHOOK_FUND` secret. This reuses the existing incoming-webhook pattern, so it adds no bot and no Ko-fi bot.
-- Optional: an admin-bot `/fund` slash command that replies only to the person who ran it, with the same four links. admin-bot is the only live agent, so this is low risk.
-- **Done when:** the embed is posted and pinned, and the links match the website.
+### Session 3 — Discord (repo: `services`) — drafted, [PR #10](https://github.com/yodatech1988/services/pull/10) open
+- Added `scripts/post-fund-embed.mjs`, a one-shot script that posts and updates a pinned embed in
+  `#fund-the-server` using the `DISCORD_WEBHOOK_FUND` secret — reuses the existing incoming-webhook
+  pattern from CI notifications, no bot invite needed. PayPal handle / funded-through are optional
+  env vars; unset ones render "TBC" so this can ship before either value is real.
+- **Correction to this plan:** pinning is not automatic. An incoming webhook cannot pin a message —
+  only a bot with Manage Messages can. `docs/ops/FUND-EMBED.md` (in `services`) documents pinning
+  by hand once, after the first post.
+- Optional admin-bot `/fund` slash command noted in the doc, not built yet.
+- **Done when:** merged, and Jeremy has created `#fund-the-server` + its webhook and set
+  `DISCORD_WEBHOOK_FUND` (`gh secret set --repo yodatech1988/services`), then the embed is posted,
+  pinned by hand, and its links match the website.
 
 ### Session 4 — Monthly transparency routine (repo: `MasterThread`, checklist doc)
 - A 5-minute monthly checklist: pull the PayPal donation total (per the labeling/tagging convention from §3 item 3, kept separate from vendor payments on the same account), subtract the hosting and API bills, update `status.json`, re-run the embed script, and post a one-line summary in `#fund-the-server` ("Sept: $X in, $Y hosting, $Z API → funded through Dec").

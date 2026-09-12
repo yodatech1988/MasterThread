@@ -37,6 +37,12 @@ trigger, currently only a lore/website placeholder with no repo yet. Concretely:
 - Re-verify Bohemia's rules haven't changed and the approval-window deadline (Jan 31, 2027, if
   registration is ever completed) is still tracked, each time this is revisited.
 
+**Progress (2026-09-12 evening):** Sessions 2 and 3 of `docs/DONATIONS_PLAN.md` are drafted and
+in review — website PR #16 and services PR #10 (see their rows above). Both ship with `.tbc`
+placeholders for the PayPal handle and the "funded through" date; only Jeremy can supply those
+(plan §3) and the `#fund-the-server` channel/webhook. Session 1 (policy doc updates) and Session 4
+(monthly routine) haven't been started.
+
 ## Building rule: modules, not site edits
 
 All AEGIS gameplay code is built as a Workshop module in `aegis-mods`, per the
@@ -53,9 +59,9 @@ Script (`mods/`, mission `init.c` logic) is redirected to `aegis-mods`. site-che
 | [core](https://github.com/yodatech1988/core) | AEGIS shared tooling, canon, reusable CI | none | [Session 0 (#44)](https://github.com/yodatech1988/core/issues/44) | Merge/close PRs #35 #39 #41 #42 #43 |
 | aegis-mods *(to create)* | Every AEGIS Workshop module: Core, Skills, PvPGuard, Vehicles, Aircraft, Skins | none | Session 0: create repo, write `docs/PLAN.md` from the standard's "Where existing work goes" table. Session 1: import `P:\AEGIS_*` with junctions, `build.ps1`, HelloWorld boot test | Generate and back up the `AEGIS` signing key; confirm Workshop publisher account |
 | [site-chernarus](https://github.com/yodatech1988/site-chernarus) | AEGIS Chernarus server config | none | [Session 0 (#44)](https://github.com/yodatech1988/site-chernarus/issues/44), whose first job is the 15-PR backlog | Production instance decision (#5); market sign-off (#6) |
-| [services](https://github.com/yodatech1988/services) | admin-bot (the only live agent), RCON client | none | [Session 0 (#9)](https://github.com/yodatech1988/services/issues/9) | — |
+| [services](https://github.com/yodatech1988/services) | admin-bot (the only live agent), RCON client | none | [Session 0 (#9)](https://github.com/yodatech1988/services/issues/9) | Review/merge [PR #10](https://github.com/yodatech1988/services/pull/10) (donations plan Session 3: `#fund-the-server` embed script); create that channel + webhook, `gh secret set DISCORD_WEBHOOK_FUND` |
 | [claude-agents](https://github.com/yodatech1988/claude-agents) | Community, Patreon, chat and economy agents | none | [Session 0 (#5)](https://github.com/yodatech1988/claude-agents/issues/5) | — |
-| [website](https://github.com/yodatech1988/website) | aegisdirective.net (never deployed) | none | [Session 0 (#15)](https://github.com/yodatech1988/website/issues/15) | Cloudflare connector auth when deploying (#3) |
+| [website](https://github.com/yodatech1988/website) | aegisdirective.net (never deployed) | none | [Session 0 (#15)](https://github.com/yodatech1988/website/issues/15) | Review/merge [PR #16](https://github.com/yodatech1988/website/pull/16) (donations plan Session 2: `/fund/` page); confirm PayPal Business account + `paypal.me` handle; Cloudflare connector auth when deploying (#3) |
 | [MasterThread](https://github.com/yodatech1988/MasterThread) | This ledger and org standards | this page | Keep rows current. No open issues (#3, a 2023 env-var list for AutoGPT/DayZ automation, was closed as obsolete: nothing uses those vars, and each repo's `.env.example` is the source) | — |
 | [repo-template](https://github.com/yodatech1988/repo-template) | Standard for new repos | n/a | Merge [PR #4](https://github.com/yodatech1988/repo-template/pull/4) (`CLAUDE.md` + `docs/PLAN.md` stubs) | — |
 
