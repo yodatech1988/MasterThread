@@ -58,7 +58,7 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 - Check installed-mod licences for donation wording and record the result in `docs/mods/README.md` §4.
 - **Done when:** the policy is merged and the mod-licence check is recorded, with a verdict for each installed mod.
 
-### Session 2 — Website page (repo: `website`) — drafted, [PR #16](https://github.com/yodatech1988/website/pull/16) open
+### Session 2 — Website page (repo: `website`) — merged, [PR #16](https://github.com/yodatech1988/website/pull/16) (2026-09-12; not yet deployed, see REPOS.md "Do first" #7)
 - Add a new page at `/fund/` (`src/pages/fund.html`, built via the site's existing `build.py`
   pipeline rather than a hand-written `public/fund/index.html` — the site has a static generator
   now, unlike when this plan was first written). Per `aegis-website-build.md`, monetization comes
@@ -76,7 +76,7 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
   the PayPal handle/funded-through date (Jeremy), and separately the website has never been
   deployed at all (REPOS.md: Cloudflare connector auth, #3) — the page can merge before deploy.
 
-### Session 3 — Discord (repo: `services`) — drafted, [PR #10](https://github.com/yodatech1988/services/pull/10) open
+### Session 3 — Discord (repo: `services`) — merged, [PR #10](https://github.com/yodatech1988/services/pull/10) (2026-09-12; embed not posted until the channel, webhook and secret exist)
 - Added `scripts/post-fund-embed.mjs`, a one-shot script that posts and updates a pinned embed in
   `#fund-the-server` using the `DISCORD_WEBHOOK_FUND` secret — reuses the existing incoming-webhook
   pattern from CI notifications, no bot invite needed. PayPal handle / funded-through are optional

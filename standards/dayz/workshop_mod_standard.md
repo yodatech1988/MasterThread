@@ -15,8 +15,12 @@ As of 2026-09-12, AEGIS mod source lives in three places, and none of them can s
 | Where | What | Problem |
 |---|---|---|
 | `P:\AEGIS_Core`, `AEGIS_Vehicles`, `AEGIS_Aircraft`, `AEGIS_HelloWorld` | Skills/perks, vehicle, aircraft, pipeline test | Not in git. One disk failure loses it. |
-| `site-chernarus` `mods/AEGIS_PvPGuard` (PR #43) | PvP damage → reputation | Mod code inside a site repo. A second site would have to copy it. |
-| `core/mods/` (empty) and the skin library (core PR #39) | Reserved for mod source | Core is sync CLI + reusable CI. Mod releases would be tied to CI tags. |
+| `site-chernarus` `mods/AEGIS_PvPGuard` (PR #43, merged) | PvP damage → reputation | Mod code inside a site repo. A second site would have to copy it. |
+| `core/mods/` (empty) and the skin library (core `assets/dayz-skin-library/`, PR #39 merged) | Reserved for mod source | Core is sync CLI + reusable CI. Mod releases would be tied to CI tags. |
+
+Since then (2026-09-12): `aegis-mods` exists and holds `AEGIS_Metrics` and `AEGIS_TeddyBear`;
+`aegis-poi` exists for the POI modules (rules 1 and 4 exceptions). The `P:\` sources and
+`AEGIS_PvPGuard` are still where the table says.
 
 Gameplay written as site config (Expansion JSON, `types.xml`, mission `init.c` script) only works
 on the server it was written for. A module built as a Workshop mod works on every AEGIS site and can
@@ -27,6 +31,9 @@ be published.
 1. **One home: the `aegis-mods` repo.** Every AEGIS mod lives there under `mods/AEGIS_<Name>/`.
    Site repos and core hold no Enforce Script. `P:\AEGIS_<Name>` is a directory junction into the
    repo checkout, so DayZ Tools keeps working and git keeps the history.
+   - *Scoped exception (owner-approved 2026-09-12):* prebuilt point-of-interest modules
+     (`AEGIS_POI` and `AEGIS_POI_*`) live in the `aegis-poi` repo, with the same layout,
+     `module.json` contract, tooling and signing key as `aegis-mods`. Nothing else goes there.
 2. **One module = one feature = one Workshop item.** Each module has one PBO prefix `AEGIS_<Name>`,
    one `CfgPatches` class of the same name, and one `@AEGIS_<Name>` package. Features that can be
    switched on independently are separate modules.
@@ -41,6 +48,11 @@ be published.
 4. **`AEGIS_Core` is the only shared layer:** logging, settings loading, RPC helpers and player
    data. If two modules need the same helper, it moves into Core. A module never reaches into another
    feature module's classes.
+   - *Scoped exception (owner-approved 2026-09-12):* `AEGIS_POI` is the shared layer *for POI
+     modules only*. `AEGIS_POI_*` modules may require it and register marker roles with it.
+     Non-POI modules never depend on it. Until `AEGIS_Core` exists in `aegis-mods`, `AEGIS_POI`
+     carries its own minimal logging and settings loading under `AEGIS_POI_*` names; when Core
+     ships, a session moves those helpers onto Core and adds the dependency.
 5. **No site data in a module.** Coordinates, prices, trader stock, quest text and tuning numbers
    live in `$profile:AEGIS/<Name>/settings.json`.
    - The module writes a file with working defaults on first run if none exists.
@@ -124,15 +136,19 @@ aegis-mods/
 |---|---|---|
 | `P:\AEGIS_HelloWorld` | Import as the pipeline test, then delete after Core boots | Proves build + sign + load |
 | `P:\AEGIS_Core` (skills/perks) | `AEGIS_Core` (shared layer) + `AEGIS_Skills` | Split the skill system out of Core (rule 4) |
-| `site-chernarus` PR #43 `AEGIS_PvPGuard` | `aegis-mods/mods/AEGIS_PvPGuard` | The site PR keeps only `profiles/AEGIS/PvPGuard/settings.json` |
+| `site-chernarus/mods/AEGIS_PvPGuard` (PR #43 merged before this standard) | `aegis-mods/mods/AEGIS_PvPGuard` | An aegis-mods session moves it; the site keeps only `profiles/AEGIS/PvPGuard/settings.json` |
 | `P:\AEGIS_Vehicles`, `P:\AEGIS_Aircraft` | `AEGIS_Vehicles`, `AEGIS_Aircraft` | Aircraft keeps `DESIGN.md` as its plan |
-| Skin library (core PR #39) | `AEGIS_Skins` (asset module) | Only after rule 9 is checked per texture |
+| Skin library (core `assets/dayz-skin-library/`, PR #39 merged) | `AEGIS_Skins` (asset module) | Only after rule 9 is checked per texture |
+| `AEGIS_Metrics`, `AEGIS_TeddyBear` | Already in `aegis-mods` (PRs #1, #2) | Metrics is loaded on site-chernarus production via `serverMods` (site #50); the upload is tracked in site #48 |
+| Vaults, black markets, traders as prefabs | `aegis-poi`: `AEGIS_POI`, `_Trader`, `_BlackMarket`, `_Vault` | Rule 1/4 exception; plan in aegis-poi `docs/PLAN.md` |
 | Faction quests, market, reputation bands | Stay Expansion config in the site repo for now | A future `AEGIS_Factions` module owns the standing ledger if Expansion config can't express it |
 
 ## Relationship to other repos
 
 - **core:** sync CLI, validators and reusable CI. It may host a reusable `validate-mod.yml`, but not
   mod source. `core/mods/README.md` is superseded by this standard.
+- **aegis-poi:** the POI modules only, under the rule 1 and rule 4 exceptions. Same layout, tooling
+  and signing key as `aegis-mods`; sites place its prefabs through `$profile:AEGIS/POI/settings.json`.
 - **site repos:** server config, mod tracker (Workshop IDs + versions), and module `settings.json`
   overrides.
 - **services / claude-agents:** talk to modules only through documented settings files, logs or
