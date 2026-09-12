@@ -11,9 +11,9 @@ tracks *plans and sessions*, and links there rather than duplicating it.
 *(This page previously listed five planned repos that were never created. It was replaced with
 the real inventory on 2026-09-12.)*
 
-*(Audit note, 2026-09-12: verified against GitHub, these PRs named below as pending are merged —
-core #35 #39 #41 #42 #43, services #10, website #16, repo-template #4, site-chernarus #43. Rows not
-otherwise rewritten; the next session on each repo should refresh its row.)*
+*(Refreshed 2026-09-12 ~22:10 UTC against GitHub. Every Round 1 "Session 0" plan is merged, so
+each active row now points at its `docs/PLAN.md` and its next numbered session. The only open
+agent PRs anywhere are claude-agents #7 and #8.)*
 
 ## Do first: cross-cutting
 
@@ -21,9 +21,12 @@ otherwise rewritten; the next session on each repo should refresh its row.)*
 |---|---|---|---|
 | 1 | ~~Review and merge **core PR #43**, "Stop re-reviewing on every push; cap per-run spend"~~ — merged | core | In the 3 days to 2026-09-12, 82 Claude review runs across core (49), site-chernarus (25), services (5) and website (3). This is the largest avoidable API spend. |
 | 2 | ~~Work down the **site-chernarus PR backlog** (15 open) before new sessions there~~ — 0 open as of the 2026-09-12 audit | site-chernarus | Standard rule 4: each unmerged PR makes later sessions pay to re-read and rebase. |
-| 3 | Rotate the Anthropic key before it expires **2026-10-03** | core #5 | Owner-only; every Claude-backed agent and CI review stops otherwise. |
-| 4 | ~~Create **aegis-mods**~~ (created 2026-09-12, private; PRs #1 AEGIS_Metrics and #2 AEGIS_TeddyBear merged) and import the remaining `P:\AEGIS_*` sources | aegis-mods | That mod source has no git history or backup. All future gameplay work ships as Workshop modules: [`standards/dayz/workshop_mod_standard.md`](../standards/dayz/workshop_mod_standard.md). |
+| 3 | Rotate the Anthropic key before it expires **2026-10-03** | core #5 | Owner-only; every Claude-backed agent and CI review stops otherwise. core Session 3 turns the issue into a written procedure, but the rotation itself stays with Jeremy. |
+| 4 | ~~Create **aegis-mods**~~ (created 2026-09-12, private; PRs #1 AEGIS_Metrics, #2 AEGIS_TeddyBear and #3 audit fixes merged). Still open: write its one-paragraph goal and run Session 0, then import the remaining `P:\AEGIS_*` sources | aegis-mods | That mod source has no git history or backup. All future gameplay work ships as Workshop modules: [`standards/dayz/workshop_mod_standard.md`](../standards/dayz/workshop_mod_standard.md). Note core #8: no `P:` drive is mounted on the current machine, so locating the source is a Jeremy step. |
 | 5 | ~~Review and merge core PR #47 and site-chernarus PR #49~~ — both merged 2026-09-12 | core, site-chernarus | See "Standing decision" below for the canon change they landed. |
+| 6 | Review and merge **claude-agents PR #7** (audit fixes) and **PR #8** (ticket button + form) | claude-agents | The only open agent PRs in the org. Two at once breaks standard rule 4, so merge #7 first and rebase #8 on it before any Session 1 there. |
+| 7 | Deploy **website** with `wrangler deploy` (Cloudflare connector auth, website #3) | website | Merging never deploys aegisdirective.net. `/fund/` (PR #16) and every fix since are live in git only; the site still 404s on `/fund/` as of 2026-09-12. |
+| 8 | Upload `@AEGIS_Metrics` to production over SFTP and restart | site-chernarus #48 | site-chernarus PR #50 sets `serverMods` and keeps player data out of git; the zip is built (`GitHub\AEGIS_Metrics_server_upload.zip`). Only the upload and restart remain, and both need Jeremy's credentials. |
 
 ## Standing decision: map parity, no cross-map reputation gating
 
@@ -42,10 +45,10 @@ season boundary are open questions, not yet decided.
 Recorded in `core` `docs/canon/aegis-cross-map-progression.md` (canonical, [core#47](https://github.com/yodatech1988/core/pull/47))
 and mirrored in `site-chernarus` `docs/aegis-cross-map-progression.md` ([site-chernarus#49](https://github.com/yodatech1988/site-chernarus/pull/49),
 a stale full duplicate that should eventually become a pointer stub — the earlier canon migration
-that was supposed to leave stubs in site-chernarus never fully took effect; `aegis-network-canon-bible.md`
-there had already drifted from core's copy before this session touched anything, unrelated cleanup
-still needed). `site-chernarus`'s canon bible, technical requirements, both site dossiers, the go-live
-plan, the questlines doc, and the site-dossier template were all updated to match, in the same PR.
+that was supposed to leave stubs in site-chernarus never fully took effect). core's own canon bible
+and site-dossier template were synced to the decision in [core#49](https://github.com/yodatech1988/core/pull/49).
+`site-chernarus`'s canon bible, technical requirements, both site dossiers, the go-live plan, the
+questlines doc, and the site-dossier template were all updated to match in site-chernarus#49.
 
 ## Standing rule: always carry a live monetization plan
 
@@ -57,47 +60,57 @@ trigger, currently only a lore/website placeholder with no repo yet. Concretely:
 
 - Any new site repo's **Session 0** must read `nasdara-monetization-plan.md` and re-decide, in that
   repo's own `docs/PLAN.md`, whether donations and/or the paused tiered perks apply to it.
-- Every site's go-live plan (modeled on site-chernarus's, currently at
-  `_wt-chernarus-golive-plan/docs/aegis-chernarus-golive-plan.md`) should carry a Phase 4/5 line item:
-  "Revisit `nasdara-monetization-plan.md` and `docs/DONATIONS_PLAN.md`; confirm Bohemia
-  registration/renewal state before any paid perk goes live."
+- Every site's go-live plan (modeled on site-chernarus's `docs/aegis-chernarus-golive-plan.md`)
+  carries a Phase 5.6 line item: "Revisit `nasdara-monetization-plan.md` and `docs/DONATIONS_PLAN.md`;
+  confirm Bohemia registration/renewal state before any paid perk goes live." (site-chernarus #46
+  and #47, merged 2026-09-12.)
 - Re-verify Bohemia's rules haven't changed and the approval-window deadline (Jan 31, 2027, if
   registration is ever completed) is still tracked, each time this is revisited.
 
-**Progress (2026-09-12 evening):** Sessions 2 and 3 of `docs/DONATIONS_PLAN.md` are drafted and
-in review — website PR #16 and services PR #10 (see their rows above). Both ship with `.tbc`
-placeholders for the PayPal handle and the "funded through" date; only Jeremy can supply those
-(plan §3) and the `#fund-the-server` channel/webhook. Session 1 (policy doc updates) and Session 4
-(monthly routine) haven't been started.
+**Progress (2026-09-12 late):** Sessions 2 and 3 of `docs/DONATIONS_PLAN.md` are **merged** —
+website PR #16 (`/fund/` page) and services PR #10 (`#fund-the-server` embed script). Both ship
+with `.tbc` placeholders for the PayPal handle and the "funded through" date; only Jeremy can supply
+those (plan §3) and the `#fund-the-server` channel/webhook. Session 1 (policy doc updates in core and
+site-chernarus) and Session 4 (monthly routine, this repo) haven't been started. website Session 2
+re-verifies `/fund/` once real values exist.
 
 ## Building rule: modules, not site edits
 
 All AEGIS gameplay code is built as a Workshop module in `aegis-mods`, per the
 [Workshop mod standard](../standards/dayz/workshop_mod_standard.md). Site repos only install modules
 (Workshop ID + version) and commit their `settings.json` overrides. A site-repo PR that adds Enforce
-Script (`mods/`, mission `init.c` logic) is redirected to `aegis-mods`. site-chernarus PR #43
-(`AEGIS_PvPGuard`) is the first such PR.
+Script (`mods/`, mission `init.c` logic) is redirected to `aegis-mods`.
+
+**One scoped exception (Jeremy, 2026-09-12):** prebuilt point-of-interest modules (`AEGIS_POI*`:
+framework, trader, black market, vault) live in their own repo, `aegis-poi`, with the same layout,
+tooling and signing key. The standard's rules 1 and 4 record the exception.
+
+**Known debt:** site-chernarus PR #43 (`AEGIS_PvPGuard`) merged *before* the standard existed, so
+its Enforce Script currently sits in `site-chernarus/mods/`. Moving it to `aegis-mods` is an
+aegis-mods session; the site keeps only `profiles/AEGIS/PvPGuard/settings.json`.
 
 ## Active
 
 | Repo | Area | Plan | Next session | Owner action |
 |---|---|---|---|---|
-| [jarvis](https://github.com/yodatech1988/jarvis) | Personal assistant | `docs/PLAN.md` (merged in PR #1) | Session 1: live-test `npm run cli` with the three prompts (PR #1 merged; blocked only on the key) | Paste `ANTHROPIC_API_KEY` into the local `.env` (already created); choose escalation consent (default `ask`) |
-| [core](https://github.com/yodatech1988/core) | AEGIS shared tooling, canon, reusable CI | none | [PR #47](https://github.com/yodatech1988/core/pull/47) (map-parity canon rewrite) merged; next is [Session 0 (#44)](https://github.com/yodatech1988/core/issues/44) | Merge/close PRs #35 #39 #41 #42 #43 |
-| aegis-mods *(to create)* | Every AEGIS Workshop module: Core, Skills, PvPGuard, Vehicles, Aircraft, Skins | none | Session 0: create repo, write `docs/PLAN.md` from the standard's "Where existing work goes" table. Session 1: import `P:\AEGIS_*` with junctions, `build.ps1`, HelloWorld boot test. Its plan should account for packaging annual Theme Season mod bundles (see "Standing decision" above) once that's scoped | Generate and back up the `AEGIS` signing key; confirm Workshop publisher account |
-| [site-chernarus](https://github.com/yodatech1988/site-chernarus) | AEGIS Chernarus server config | none | [PR #49](https://github.com/yodatech1988/site-chernarus/pull/49) (map-parity doc updates) merged; next is [Session 0 (#44)](https://github.com/yodatech1988/site-chernarus/issues/44), whose first job is the 15-PR backlog | Production instance decision (#5); market sign-off (#6) |
-| [services](https://github.com/yodatech1988/services) | admin-bot (the only live agent), RCON client | none | [Session 0 (#9)](https://github.com/yodatech1988/services/issues/9) | Review/merge [PR #10](https://github.com/yodatech1988/services/pull/10) (donations plan Session 3: `#fund-the-server` embed script); create that channel + webhook, `gh secret set DISCORD_WEBHOOK_FUND` |
-| [claude-agents](https://github.com/yodatech1988/claude-agents) | Community, Patreon, chat and economy agents | none | [Session 0 (#5)](https://github.com/yodatech1988/claude-agents/issues/5) | — |
-| [website](https://github.com/yodatech1988/website) | aegisdirective.net (never deployed) | none | [Session 0 (#15)](https://github.com/yodatech1988/website/issues/15) | Review/merge [PR #16](https://github.com/yodatech1988/website/pull/16) (donations plan Session 2: `/fund/` page); confirm PayPal Business account + `paypal.me` handle; Cloudflare connector auth when deploying (#3) |
-| [MasterThread](https://github.com/yodatech1988/MasterThread) | This ledger and org standards | this page | Keep rows current. No open issues (#3, a 2023 env-var list for AutoGPT/DayZ automation, was closed as obsolete: nothing uses those vars, and each repo's `.env.example` is the source) | — |
-| [repo-template](https://github.com/yodatech1988/repo-template) | Standard for new repos | n/a | Merge [PR #4](https://github.com/yodatech1988/repo-template/pull/4) (`CLAUDE.md` + `docs/PLAN.md` stubs) | — |
+| [jarvis](https://github.com/yodatech1988/jarvis) | Personal assistant | `docs/PLAN.md` (PR #1; #2 model fallback and #3 audit fixes also merged) | Session 1: live-test `npm run cli` with the three prompts. Blocked only on the key | Paste `ANTHROPIC_API_KEY` into the local `.env` (already created); choose escalation consent (default `ask`) |
+| [core](https://github.com/yodatech1988/core) | AEGIS shared tooling, canon, reusable CI | `docs/PLAN.md` ([#50](https://github.com/yodatech1988/core/pull/50), 5 sessions) | Session 1: tell the truth about the review pipeline (workflow comments, how-to-read-the-check). #51 audit fixes merged after the plan | Rotate the key (#5; becomes a procedure in Session 3). #7 RFFS folder name and #8 `P:\` source location are still yours |
+| [aegis-mods](https://github.com/yodatech1988/aegis-mods) | Every AEGIS Workshop module: Metrics, TeddyBear live; Core, Skills, PvPGuard, Vehicles, Aircraft, Skins to come | stub only (`docs/PLAN.md` says "not written yet") | Session 0: write `docs/PLAN.md` from the standard's "Where existing work goes" table, including how annual Theme Season bundles get packaged. Then Session 1: import `P:\AEGIS_*` with junctions and move `AEGIS_PvPGuard` out of site-chernarus | Write the one-paragraph goal; generate and back up the `AEGIS` signing key; confirm Workshop publisher account |
+| [aegis-poi](https://github.com/yodatech1988/aegis-poi) | Prebuilt POI modules: `AEGIS_POI` framework, `_Trader`, `_BlackMarket`, `_Vault` | `docs/PLAN.md` ([#1](https://github.com/yodatech1988/aegis-poi/pull/1), 6 sessions; #2 API research and #3 audit fixes merged) | Session 1: repo tooling and CI that actually checks (`check_module.py` + prefab/settings schema) | Workshop publishing defaults to *unpublished*; confirm or override. Economy numbers wait on site-chernarus #6 |
+| [site-chernarus](https://github.com/yodatech1988/site-chernarus) | AEGIS Chernarus server config | `docs/PLAN.md` ([#53](https://github.com/yodatech1988/site-chernarus/pull/53), 5 sessions). `validate` now runs for real (#51); #54 audit fixes merged | Session 1: reconcile README/STATUS/go-live plan with the verified 2026-09-12 state. Session 2 then posts the Phase 2 decision brief on #41 | Production instance (#5); market sign-off (#6); the four Phase 2 answers on #41 (everything after Session 5 waits on them); SFTP upload + restart for `@AEGIS_Metrics` (#48) |
+| [services](https://github.com/yodatech1988/services) | admin-bot (the only live agent), RCON client | `docs/PLAN.md` ([#12](https://github.com/yodatech1988/services/pull/12), 3 sessions). #13 audit fixes (RCon framing, SFTP allow-list, real CI) merged | Session 1: refresh admin-bot's "Blocked on Jeremy" list. Session 2 waits on a live RCON capture; Session 3 on a VPS | Create `#fund-the-server` + webhook, `gh secret set DISCORD_WEBHOOK_FUND`; VPS and Discord app for Session 3 |
+| [claude-agents](https://github.com/yodatech1988/claude-agents) | Community, Patreon, chat and economy agents | `docs/PLAN.md` ([#6](https://github.com/yodatech1988/claude-agents/pull/6), 5 sessions) | Merge #7 then #8 first (rule 4). Then Session 1: live-confirmation checklist for chat-ai and economy-worker | Review/merge [#7](https://github.com/yodatech1988/claude-agents/pull/7) and [#8](https://github.com/yodatech1988/claude-agents/pull/8) |
+| [website](https://github.com/yodatech1988/website) | aegisdirective.net (built, never deployed) | `docs/PLAN.md` ([#18](https://github.com/yodatech1988/website/pull/18), 3 sessions). Session 1 ([#19](https://github.com/yodatech1988/website/pull/19)) done | Session 2: verify `/fund/` still matches the PayPal/no-perks policy, once real values exist | `wrangler deploy` (Cloudflare auth, #3); PayPal Business account + `paypal.me` handle; hosting funded-through date |
+| [handymansfield](https://github.com/yodatech1988/handymansfield) | Agent back-office: job intake, invoicing, payments, expenses, month-end | `docs/PLAN.md` ([#3](https://github.com/yodatech1988/handymansfield/pull/3), 5 sessions; goal drafted from Drive/Gmail/QuickBooks). #4 audit fixes merged | Session 1: framework and job intake (drafts only, no client data in git) | Confirm or edit the drafted goal paragraph in `docs/PLAN.md` |
+| [MasterThread](https://github.com/yodatech1988/MasterThread) | This ledger and org standards | this page | Keep rows current. Donations plan Session 4 (monthly routine checklist) lives here and is not started. Issues #1 and #2 (2025-11 sketches for log-tailer agents and a Discord bot layout, superseded by services and claude-agents) closed 2026-09-12 | — |
 
 ## Stable: no plan until work is planned
 
 | Repo | Area | Note |
 |---|---|---|
-| [be-rcon](https://github.com/yodatech1988/be-rcon) | BattlEye RCON client (a submodule of services) | Changes arrive through services sessions. |
-| [DayZServer](https://github.com/yodatech1988/DayZServer) | Earlier server config dump | Superseded by site-chernarus. Candidate to archive. |
+| [repo-template](https://github.com/yodatech1988/repo-template) | Standard for new repos | PRs #4 (`CLAUDE.md` + `docs/PLAN.md` stubs) and #5 (.gitignore, protection script) merged 2026-09-12. |
+| [be-rcon](https://github.com/yodatech1988/be-rcon) | BattlEye RCON client (a submodule of services) | Changes arrive through services sessions (#2 login-phase fix merged 2026-09-12). |
+| [DayZServer](https://github.com/yodatech1988/DayZServer) | Earlier server config dump | Superseded by site-chernarus; its README now says it is not the live deploy source (#3, #4). Candidate to archive. |
 
 ## Scaffolds: repo-template files only, no goal written yet
 
@@ -107,7 +120,6 @@ opening a session there spends tokens without a target.
 | Repo | Area |
 |---|---|
 | [get-wired-solutions](https://github.com/yodatech1988/get-wired-solutions) | Get Wired Solutions LLC operations |
-| [handymansfield](https://github.com/yodatech1988/handymansfield) | HandyMansfield handyman business |
 | [quickbooks-business](https://github.com/yodatech1988/quickbooks-business) | Business finance automation (no real data committed) |
 | [quickbooks-family](https://github.com/yodatech1988/quickbooks-family) | Family finance automation (no real data committed) |
 | [family-support](https://github.com/yodatech1988/family-support) | Family goals, checklists, resources |
@@ -126,6 +138,7 @@ opening a session there spends tokens without a target.
 | [jeremybergerai](https://github.com/yodatech1988/jeremybergerai) | Demo app, 2023. |
 | Smol-Dev | Local clone only, 2023. |
 
-Local folders without a GitHub repo: `dayz-skin-library` (core PR #39 proposes moving it into
-core; the Workshop mod standard sends it to `aegis-mods` as `AEGIS_Skins` instead), `dayz-vehicle-sources` (staged third-party assets), `TrulyFreeAssets_Various` (someone
-else's fork).
+Local folders without a GitHub repo: `dayz-vehicle-sources` (staged third-party assets) and
+`TrulyFreeAssets_Various` (someone else's fork). `dayz-skin-library` is now in git as core
+`assets/dayz-skin-library/` (core #39, merged 2026-09-12); the Workshop mod standard still expects a
+shippable `AEGIS_Skins` module in `aegis-mods` once rule 9 is checked per texture.
