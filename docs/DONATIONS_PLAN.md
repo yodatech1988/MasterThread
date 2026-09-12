@@ -26,13 +26,13 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 
 | # | Decision | Default | Why |
 |---|---|---|---|
-| D1 | Platform | **Ko-fi, one-time donations only** (memberships/tiers off) | This was the platform already chosen before the pause. Ko-fi takes 0% on donations; Stripe/PayPal processing fees still apply. It needs no backend and supports custom amounts. **Fallback:** four Stripe Payment Links (three fixed amounts plus one "customer chooses"), if Ko-fi can't show $5/$10/$20 presets cleanly. |
+| D1 | Platform | **PayPal** (business account), via four `paypal.me/<handle>/<amount>` links — `/5`, `/10`, `/20`, and a bare `/<handle>` link for "Other" (blank amount, donor enters their own) | **Changed 2026-09-12, Jeremy's call, superseding the pre-pause Ko-fi decision.** Reason: the same account can also pay mod-pack purchases and paid services for the server, instead of collecting on Ko-fi and moving funds elsewhere before spending. Needs no button generator, no backend, no Ko-fi/Discord bot. **Trade-off:** standard PayPal commercial transaction fees apply to every donation (no 0%-fee donation path — PayPal's fee-free donate button requires 501(c)(3) nonprofit status, which doesn't apply here). Use the standard "goods and services"-rate flow, not Friends & Family — F&F fee waivers are for personal transfers and don't fit an account that also pays vendors/invoices. **Fallback:** four Stripe Payment Links, if PayPal.me link amounts ever need to change per-currency or per-region. |
 | D2 | Recurring monthly option | **Off at launch** | A monthly option reads like a subscription, and subscribers expect something back. It can be added later as "monthly, still no benefit." |
-| D3 | "Other" minimum | **$2** | Below about $2, the ~$0.30 processing fee eats too much of the gift. |
+| D3 | "Other" minimum | **$3** | PayPal's fee has a fixed-cents component on top of the percentage; below about $3 it eats too much of the gift. |
 | D4 | Discord role / donor wall | **None** | This keeps the "no counter-value" position clean. A private thank-you DM or email from Ko-fi is fine. |
 | D5 | Where the money is shown | A **"Server funded through: <Month YYYY>"** line, plus a monthly costs-vs-donations post | This makes "server duration" concrete and honest, and needs no payment API. |
 | D6 | Surplus | Rolls forward into future months of hosting and API costs only | The page says this up front. |
-| D7 | Shutdown | If the network shuts down, any unspent balance goes to the final hosting bills. No refunds after 30 days. | The page says this up front. Ko-fi/Stripe refunds within 30 days are handled on request. |
+| D7 | Shutdown | If the network shuts down, any unspent balance goes to the final hosting bills. No refunds after 30 days. | The page says this up front. PayPal/Stripe refunds within 30 days are handled on request. |
 | D8 | Claude API spend | Donations **do not raise** the zero-cost-first spend cap on their own. Any cap increase is still Jeremy's call. | Matches the cost rule in core `docs/_project-context.md`. |
 
 ---
@@ -40,8 +40,8 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 ## 3. Only Jeremy can do these
 
 1. **Monthly cost figures:** the hosting contract amount and renewal date, and the Claude API monthly cap. These feed the "funded through" line.
-2. **Create the Ko-fi account:** turn off memberships and shop, set a $5 coffee price so presets are 1/2/4 coffees, and turn on custom amounts.
-3. **Connect the payout** (Stripe or PayPal) in Jeremy's name.
+2. **Create/confirm a PayPal Business account** in Jeremy's name (needed for the standard commercial-rate flow, and to pay mod-pack/service vendors from the same balance) and set the `paypal.me` handle used in the four links.
+3. **Decide whether donations and vendor payments share one balance or get separated by a labeled "Donations" tag/note in PayPal's transaction records** — needed so the monthly transparency post (Session 4) can tell donation income apart from other business activity on the same account.
 4. **Approve the page and Discord copy** below.
 5. **Discord:** create the `#fund-the-server` channel and a channel webhook. The plan uses a webhook, not an OAuth bot invite.
 
@@ -57,7 +57,7 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 
 ### Session 2 — Website page (repo: `website`)
 - Add a new page, `public/fund/index.html`. Per `aegis-website-build.md`, monetization comes back only "as its own page and its own decision," and this is that page.
-- The page has four buttons ($5, $10, $20, Other) linking to Ko-fi, or to the Stripe Payment Links if the fallback was chosen. It is plain HTML with no embedded third-party widget, so the Content Security Policy stays simple and there's no tracking.
+- The page has four buttons ($5, $10, $20, Other) linking to the `paypal.me/<handle>/5`, `/10`, `/20` and bare-handle links, or to the Stripe Payment Links if the fallback was chosen. It is plain HTML with no embedded third-party widget, so the Content Security Policy stays simple and there's no tracking.
 - The "Server funded through" line reads from a static `public/fund/status.json` (`{ "fundedThrough": "2026-12", "updated": "2026-09-12" }`) that is edited by hand monthly.
 - Add a quiet "Fund the server" footer link on every page. No pop-ups, and nothing on the join/start flow that suggests paying.
 - Update `aegis-website-build.md` so it no longer says "no monetization page exists."
@@ -70,8 +70,8 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 - **Done when:** the embed is posted and pinned, and the links match the website.
 
 ### Session 4 — Monthly transparency routine (repo: `MasterThread`, checklist doc)
-- A 5-minute monthly checklist: pull the Ko-fi total, subtract the hosting and API bills, update `status.json`, re-run the embed script, and post a one-line summary in `#fund-the-server` ("Sept: $X in, $Y hosting, $Z API → funded through Dec").
-- **Later, not now:** a Ko-fi webhook sent to a free Cloudflare Worker that updates `status.json` automatically. Build it only if the manual step gets skipped.
+- A 5-minute monthly checklist: pull the PayPal donation total (per the labeling/tagging convention from §3 item 3, kept separate from vendor payments on the same account), subtract the hosting and API bills, update `status.json`, re-run the embed script, and post a one-line summary in `#fund-the-server` ("Sept: $X in, $Y hosting, $Z API → funded through Dec").
+- **Later, not now:** PayPal IPN/webhook sent to a free Cloudflare Worker that updates `status.json` automatically. Build it only if the manual step gets skipped.
 
 ---
 

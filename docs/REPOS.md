@@ -20,6 +20,23 @@ the real inventory on 2026-09-12.)*
 | 3 | Rotate the Anthropic key before it expires **2026-10-03** | core #5 | Owner-only; every Claude-backed agent and CI review stops otherwise. |
 | 4 | Create **aegis-mods** and import the `P:\AEGIS_*` sources (Session 1 of its plan) | aegis-mods | That mod source has no git history or backup. All future gameplay work ships as Workshop modules: [`standards/dayz/workshop_mod_standard.md`](../standards/dayz/workshop_mod_standard.md). |
 
+## Standing rule: always carry a live monetization plan
+
+Monetization (`site-chernarus/docs/nasdara-monetization-plan.md`) is **paused, not abandoned**, and
+the no-counter-value donations plan (`docs/DONATIONS_PLAN.md`, this repo) runs independently of that
+pause. Jeremy's standing instruction (2026-09-12): keep a monetization plan current at all times, and
+explicitly revisit it whenever a **new AEGIS site/map goes live** — Deer Isle (map two) is the next
+trigger, currently only a lore/website placeholder with no repo yet. Concretely:
+
+- Any new site repo's **Session 0** must read `nasdara-monetization-plan.md` and re-decide, in that
+  repo's own `docs/PLAN.md`, whether donations and/or the paused tiered perks apply to it.
+- Every site's go-live plan (modeled on site-chernarus's, currently at
+  `_wt-chernarus-golive-plan/docs/aegis-chernarus-golive-plan.md`) should carry a Phase 4/5 line item:
+  "Revisit `nasdara-monetization-plan.md` and `docs/DONATIONS_PLAN.md`; confirm Bohemia
+  registration/renewal state before any paid perk goes live."
+- Re-verify Bohemia's rules haven't changed and the approval-window deadline (Jan 31, 2027, if
+  registration is ever completed) is still tracked, each time this is revisited.
+
 ## Building rule: modules, not site edits
 
 All AEGIS gameplay code is built as a Workshop module in `aegis-mods`, per the
