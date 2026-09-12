@@ -32,14 +32,14 @@ Script (`mods/`, mission `init.c` logic) is redirected to `aegis-mods`. site-che
 
 | Repo | Area | Plan | Next session | Owner action |
 |---|---|---|---|---|
-| [jarvis](https://github.com/yodatech1988/jarvis) | Personal assistant | `docs/PLAN.md` (PR #1) | Session 1: live-test and merge PR #1 | Create `.env`; choose escalation consent (default `ask`) |
+| [jarvis](https://github.com/yodatech1988/jarvis) | Personal assistant | `docs/PLAN.md` (PR #1) | Session 1: live-test and merge PR #1 (tests and CI green; blocked only on the key) | Paste `ANTHROPIC_API_KEY` into the local `.env` (already created); choose escalation consent (default `ask`) |
 | [core](https://github.com/yodatech1988/core) | AEGIS shared tooling, canon, reusable CI | none | [Session 0 (#44)](https://github.com/yodatech1988/core/issues/44) | Merge/close PRs #35 #39 #41 #42 #43 |
 | aegis-mods *(to create)* | Every AEGIS Workshop module: Core, Skills, PvPGuard, Vehicles, Aircraft, Skins | none | Session 0: create repo, write `docs/PLAN.md` from the standard's "Where existing work goes" table. Session 1: import `P:\AEGIS_*` with junctions, `build.ps1`, HelloWorld boot test | Generate and back up the `AEGIS` signing key; confirm Workshop publisher account |
 | [site-chernarus](https://github.com/yodatech1988/site-chernarus) | AEGIS Chernarus server config | none | [Session 0 (#44)](https://github.com/yodatech1988/site-chernarus/issues/44), whose first job is the 15-PR backlog | Production instance decision (#5); market sign-off (#6) |
 | [services](https://github.com/yodatech1988/services) | admin-bot (the only live agent), RCON client | none | [Session 0 (#9)](https://github.com/yodatech1988/services/issues/9) | — |
 | [claude-agents](https://github.com/yodatech1988/claude-agents) | Community, Patreon, chat and economy agents | none | [Session 0 (#5)](https://github.com/yodatech1988/claude-agents/issues/5) | — |
 | [website](https://github.com/yodatech1988/website) | aegisdirective.net (never deployed) | none | [Session 0 (#15)](https://github.com/yodatech1988/website/issues/15) | Cloudflare connector auth when deploying (#3) |
-| [MasterThread](https://github.com/yodatech1988/MasterThread) | This ledger and org standards | this page | Keep rows current; open issue #3 is a malformed title and needs triage | — |
+| [MasterThread](https://github.com/yodatech1988/MasterThread) | This ledger and org standards | this page | Keep rows current. No open issues (#3, a 2023 env-var list for AutoGPT/DayZ automation, was closed as obsolete: nothing uses those vars, and each repo's `.env.example` is the source) | — |
 | [repo-template](https://github.com/yodatech1988/repo-template) | Standard for new repos | n/a | Merge [PR #4](https://github.com/yodatech1988/repo-template/pull/4) (`CLAUDE.md` + `docs/PLAN.md` stubs) | — |
 
 ## Stable: no plan until work is planned
