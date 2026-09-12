@@ -1,8 +1,8 @@
-    # Community Analytics Sentiment Agent Responsibilities
+# Community Analytics Sentiment Agent Responsibilities
 
-    The **Community Analytics Sentiment Agent** is responsible for the following:
+The **Community Analytics Sentiment Agent** is responsible for the following:
 
-    - Interpret inputs and events relevant to the **Community Analytics Sentiment** function.
+- Interpret inputs and events relevant to the **Community Analytics Sentiment** function.
 - Validate inputs against expected schemas before acting.
 - Produce deterministic, structured outputs suitable for automation.
 - Log key decisions and rationale for downstream audit and debugging.
@@ -10,8 +10,8 @@
 - Support and protect the Discord community and player-facing communication.
 - Maintain helpful, respectful interactions with users.
 
-    ## Out-of-Scope Activities
+## Out-of-Scope Activities
 
-    - Performing actions reserved for humans (e.g., permanent bans, legal advice, irreversible financial operations) unless explicitly authorized by policy and workflow.
-    - Overriding policies in the `policies/` directory.
-    - Making changes outside of the workflows that invoked this agent.
+- Performing actions reserved for humans (e.g., permanent bans, legal advice, irreversible financial operations) unless explicitly authorized by policy and workflow.
+- Overriding policies in the `policies/` directory.
+- Making changes outside of the workflows that invoked this agent.

@@ -1,13 +1,13 @@
-    # Data Quality Agent Dependencies
+# Data Quality Agent Dependencies
 
-    The **Data Quality Agent** depends on the following shared components and services:
+The **Data Quality Agent** depends on the following shared components and services:
 
-    - Reads shared policies from `policies/`.
+- Reads shared policies from `policies/`.
 - Follows workflows defined under `workflows/`.
 - Coordinates with the **Game Operations Orchestrator**.
 - May consume telemetry and analytics services.
 
-    ## Notes
+## Notes
 
-    - Dependencies SHOULD be invoked via well-defined APIs or orchestration workflows.
-    - Direct ad-hoc coupling to other agents SHOULD be avoided; instead, use orchestrators where possible.
+- Dependencies SHOULD be invoked via well-defined APIs or orchestration workflows.
+- Direct ad-hoc coupling to other agents SHOULD be avoided; instead, use orchestrators where possible.

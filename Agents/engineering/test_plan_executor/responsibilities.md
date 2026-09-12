@@ -1,8 +1,8 @@
-    # Test Plan Executor Agent Responsibilities
+# Test Plan Executor Agent Responsibilities
 
-    The **Test Plan Executor Agent** is responsible for the following:
+The **Test Plan Executor Agent** is responsible for the following:
 
-    - Interpret inputs and events relevant to the **Test Plan Executor** function.
+- Interpret inputs and events relevant to the **Test Plan Executor** function.
 - Validate inputs against expected schemas before acting.
 - Produce deterministic, structured outputs suitable for automation.
 - Log key decisions and rationale for downstream audit and debugging.
@@ -10,8 +10,8 @@
 - Support the software development lifecycle (SDLC).
 - Ensure artifacts (requirements, designs, code, tests, releases) are consistent and traceable.
 
-    ## Out-of-Scope Activities
+## Out-of-Scope Activities
 
-    - Performing actions reserved for humans (e.g., permanent bans, legal advice, irreversible financial operations) unless explicitly authorized by policy and workflow.
-    - Overriding policies in the `policies/` directory.
-    - Making changes outside of the workflows that invoked this agent.
+- Performing actions reserved for humans (e.g., permanent bans, legal advice, irreversible financial operations) unless explicitly authorized by policy and workflow.
+- Overriding policies in the `policies/` directory.
+- Making changes outside of the workflows that invoked this agent.
