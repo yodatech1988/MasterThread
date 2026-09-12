@@ -19,6 +19,29 @@ the real inventory on 2026-09-12.)*
 | 2 | Work down the **site-chernarus PR backlog** (15 open) before new sessions there | site-chernarus | Standard rule 4: each unmerged PR makes later sessions pay to re-read and rebase. |
 | 3 | Rotate the Anthropic key before it expires **2026-10-03** | core #5 | Owner-only; every Claude-backed agent and CI review stops otherwise. |
 | 4 | Create **aegis-mods** and import the `P:\AEGIS_*` sources (Session 1 of its plan) | aegis-mods | That mod source has no git history or backup. All future gameplay work ships as Workshop modules: [`standards/dayz/workshop_mod_standard.md`](../standards/dayz/workshop_mod_standard.md). |
+| 5 | ~~Review and merge core PR #47 and site-chernarus PR #49~~ — both merged 2026-09-12 | core, site-chernarus | See "Standing decision" below for the canon change they landed. |
+
+## Standing decision: map parity, no cross-map reputation gating
+
+Jeremy's decision (2026-09-12): **every AEGIS site starts equal.** No map inherits a floor set by
+another map's ceiling, and no site's reputation/standing gates whether a player can reach or compete
+on any other site — reputation is local to the site it was earned on, always. This withdraws the old
+"Chernarus T4 becomes map two's T2" tier-overlap model and the cross-server reputation store it would
+have needed (which was never built and was a hard blocker on launching a second server — it no longer
+is one).
+
+In its place: an **annual Theme Season** rotates the mod bundle and fictional framing network-wide
+(all sites at once), which is now where long-term content escalation lives instead of a later map
+being harder to start. Season length, packaging (`aegis-mods`), and whether player state resets at a
+season boundary are open questions, not yet decided.
+
+Recorded in `core` `docs/canon/aegis-cross-map-progression.md` (canonical, [core#47](https://github.com/yodatech1988/core/pull/47))
+and mirrored in `site-chernarus` `docs/aegis-cross-map-progression.md` ([site-chernarus#49](https://github.com/yodatech1988/site-chernarus/pull/49),
+a stale full duplicate that should eventually become a pointer stub — the earlier canon migration
+that was supposed to leave stubs in site-chernarus never fully took effect; `aegis-network-canon-bible.md`
+there had already drifted from core's copy before this session touched anything, unrelated cleanup
+still needed). `site-chernarus`'s canon bible, technical requirements, both site dossiers, the go-live
+plan, the questlines doc, and the site-dossier template were all updated to match, in the same PR.
 
 ## Standing rule: always carry a live monetization plan
 
@@ -56,9 +79,9 @@ Script (`mods/`, mission `init.c` logic) is redirected to `aegis-mods`. site-che
 | Repo | Area | Plan | Next session | Owner action |
 |---|---|---|---|---|
 | [jarvis](https://github.com/yodatech1988/jarvis) | Personal assistant | `docs/PLAN.md` (merged in PR #1) | Session 1: live-test `npm run cli` with the three prompts (PR #1 merged; blocked only on the key) | Paste `ANTHROPIC_API_KEY` into the local `.env` (already created); choose escalation consent (default `ask`) |
-| [core](https://github.com/yodatech1988/core) | AEGIS shared tooling, canon, reusable CI | none | [Session 0 (#44)](https://github.com/yodatech1988/core/issues/44) | Merge/close PRs #35 #39 #41 #42 #43 |
-| aegis-mods *(to create)* | Every AEGIS Workshop module: Core, Skills, PvPGuard, Vehicles, Aircraft, Skins | none | Session 0: create repo, write `docs/PLAN.md` from the standard's "Where existing work goes" table. Session 1: import `P:\AEGIS_*` with junctions, `build.ps1`, HelloWorld boot test | Generate and back up the `AEGIS` signing key; confirm Workshop publisher account |
-| [site-chernarus](https://github.com/yodatech1988/site-chernarus) | AEGIS Chernarus server config | none | [Session 0 (#44)](https://github.com/yodatech1988/site-chernarus/issues/44), whose first job is the 15-PR backlog | Production instance decision (#5); market sign-off (#6) |
+| [core](https://github.com/yodatech1988/core) | AEGIS shared tooling, canon, reusable CI | none | [PR #47](https://github.com/yodatech1988/core/pull/47) (map-parity canon rewrite) merged; next is [Session 0 (#44)](https://github.com/yodatech1988/core/issues/44) | Merge/close PRs #35 #39 #41 #42 #43 |
+| aegis-mods *(to create)* | Every AEGIS Workshop module: Core, Skills, PvPGuard, Vehicles, Aircraft, Skins | none | Session 0: create repo, write `docs/PLAN.md` from the standard's "Where existing work goes" table. Session 1: import `P:\AEGIS_*` with junctions, `build.ps1`, HelloWorld boot test. Its plan should account for packaging annual Theme Season mod bundles (see "Standing decision" above) once that's scoped | Generate and back up the `AEGIS` signing key; confirm Workshop publisher account |
+| [site-chernarus](https://github.com/yodatech1988/site-chernarus) | AEGIS Chernarus server config | none | [PR #49](https://github.com/yodatech1988/site-chernarus/pull/49) (map-parity doc updates) merged; next is [Session 0 (#44)](https://github.com/yodatech1988/site-chernarus/issues/44), whose first job is the 15-PR backlog | Production instance decision (#5); market sign-off (#6) |
 | [services](https://github.com/yodatech1988/services) | admin-bot (the only live agent), RCON client | none | [Session 0 (#9)](https://github.com/yodatech1988/services/issues/9) | Review/merge [PR #10](https://github.com/yodatech1988/services/pull/10) (donations plan Session 3: `#fund-the-server` embed script); create that channel + webhook, `gh secret set DISCORD_WEBHOOK_FUND` |
 | [claude-agents](https://github.com/yodatech1988/claude-agents) | Community, Patreon, chat and economy agents | none | [Session 0 (#5)](https://github.com/yodatech1988/claude-agents/issues/5) | — |
 | [website](https://github.com/yodatech1988/website) | aegisdirective.net (never deployed) | none | [Session 0 (#15)](https://github.com/yodatech1988/website/issues/15) | Review/merge [PR #16](https://github.com/yodatech1988/website/pull/16) (donations plan Session 2: `/fund/` page); confirm PayPal Business account + `paypal.me` handle; Cloudflare connector auth when deploying (#3) |
