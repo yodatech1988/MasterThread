@@ -21,7 +21,13 @@ PRs hid three real defects because the checks that were green had not actually r
 
 ## Rules
 
-1. **One session = one conversation = one PR.** Start fresh each time; never continue a finished session.
+1. **One session = one conversation = one PR.** Start fresh each time; never continue a finished
+   session. A session's title is the PR it works on, not a paraphrase of the request: check the
+   repo's open PRs first; if one already covers the task, that's the session's PR and title. If
+   none does, scope the task to the repo it belongs to (search that repo's issues/PRs, and other
+   repos if it's unclear which one owns the work) before opening a new PR there. A session with no
+   PR yet — because there's nothing to commit until some research or a decision lands first — opens
+   a draft PR to hold that title rather than staying untitled.
 2. **Open Claude Code in the repo folder or worktree**, not the `GitHub/` root, so only that repo's
    context loads.
 3. **A session reads only its Read list.** If it needs more, it records why in the PR, so the plan improves.
