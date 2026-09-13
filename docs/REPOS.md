@@ -98,6 +98,8 @@ work goes" table happens.
 | [claude-agents](https://github.com/yodatech1988/claude-agents) | Community, Patreon, chat and economy agents | `docs/PLAN.md` ([#6](https://github.com/yodatech1988/claude-agents/pull/6), 5 sessions) | Merge #7 then #8 first (rule 4). Then Session 1: live-confirmation checklist for chat-ai and economy-worker | Review/merge [#7](https://github.com/yodatech1988/claude-agents/pull/7) and [#8](https://github.com/yodatech1988/claude-agents/pull/8) |
 | [website](https://github.com/yodatech1988/website) | aegisdirective.net (built, never deployed) | `docs/PLAN.md` ([#18](https://github.com/yodatech1988/website/pull/18), 3 sessions). Session 1 ([#19](https://github.com/yodatech1988/website/pull/19)) done | Session 2: verify `/fund/` still matches the PayPal/no-perks policy, once real values exist | `wrangler deploy` (Cloudflare auth, #3); PayPal Business account + `paypal.me` handle; hosting funded-through date |
 | [handymansfield](https://github.com/yodatech1988/handymansfield) | Agent back-office: job intake, invoicing, payments, expenses, month-end | `docs/PLAN.md` ([#3](https://github.com/yodatech1988/handymansfield/pull/3), 5 sessions; goal drafted from Drive/Gmail/QuickBooks). #4 audit fixes merged | Session 1: framework and job intake (drafts only, no client data in git) | Confirm or edit the drafted goal paragraph in `docs/PLAN.md` |
+| [business-finance](https://github.com/yodatech1988/business-finance) | HandyMansfield inbound-mail verification + QuickBooks receipt/invoice routing (Cloudflare Worker, R2, Intuit API) | `docs/PLAN.md` ([#1](https://github.com/yodatech1988/business-finance/pull/1), 4 sessions) | Session 1: confirm the business domain, delegate DNS to Cloudflare, stub the receiving Worker | Confirm exact business domain name; Namecheap DNS delegation/records; later, Intuit OAuth app registration (Session 3) |
+| [personal-finance](https://github.com/yodatech1988/personal-finance) | Local-first personal/household finance automation — no cloud storage, encrypted at rest and in transit | `docs/PLAN.md` ([#1](https://github.com/yodatech1988/personal-finance/pull/1), 4 sessions) | Session 1: design and scaffold the local encrypted vault | Sessions 3-4 are blocked until you buy a personal domain and create a personal QuickBooks company |
 | [MasterThread](https://github.com/yodatech1988/MasterThread) | This ledger and org standards | this page | Keep rows current. Donations plan Session 4 (monthly routine checklist) lives here and is not started. Issues #1 and #2 (2025-11 sketches for log-tailer agents and a Discord bot layout, superseded by services and claude-agents) closed 2026-09-12 | — |
 | [repo-template](https://github.com/yodatech1988/repo-template) | Standard for new repos | n/a | Merge [PR #4](https://github.com/yodatech1988/repo-template/pull/4) (`CLAUDE.md` + `docs/PLAN.md` stubs) | — |
 
@@ -117,8 +119,6 @@ opening a session there spends tokens without a target.
 | Repo | Area |
 |---|---|
 | [get-wired-solutions](https://github.com/yodatech1988/get-wired-solutions) | Get Wired Solutions LLC operations |
-| [quickbooks-business](https://github.com/yodatech1988/quickbooks-business) | Business finance automation (no real data committed) |
-| [quickbooks-family](https://github.com/yodatech1988/quickbooks-family) | Family finance automation (no real data committed) |
 | [family-support](https://github.com/yodatech1988/family-support) | Family goals, checklists, resources |
 | [personal-growth](https://github.com/yodatech1988/personal-growth) | Personal growth tracking |
 | [3d-printing](https://github.com/yodatech1988/3d-printing) | Prints and slicer profiles |
@@ -130,7 +130,9 @@ opening a session there spends tokens without a target.
 |---|---|
 | [AEGIS-Directive](https://github.com/yodatech1988/AEGIS-Directive) | Archived; superseded by core and site repos. |
 | [Business-development](https://github.com/yodatech1988/Business-development) | 2023 README, plus `game-server-email-and-paypal-setup.md` (contact email + PayPal + Bohemia contact setup, added 2026-09-12). |
-| [Finance-business](https://github.com/yodatech1988/Finance-business) | Generated code, 2023. Superseded by quickbooks-business. |
+| [Finance-business](https://github.com/yodatech1988/Finance-business) | Generated code, 2023. Superseded by business-finance. |
+| [quickbooks-business](https://github.com/yodatech1988/quickbooks-business) | Archived 2026-09-13; was an empty repo-template placeholder, never used. Superseded by business-finance. |
+| [quickbooks-family](https://github.com/yodatech1988/quickbooks-family) | Archived 2026-09-13; was an empty repo-template placeholder, never used. Superseded by personal-finance. |
 | [Google-Cloud-AGI](https://github.com/yodatech1988/Google-Cloud-AGI) | Generated code, 2023. |
 | [jeremybergerai](https://github.com/yodatech1988/jeremybergerai) | Demo app, 2023. |
 | Smol-Dev | Local clone only, 2023. |
