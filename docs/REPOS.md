@@ -102,7 +102,6 @@ work goes" table happens.
 | [personal-finance](https://github.com/yodatech1988/personal-finance) | Local-first personal/household finance automation — no cloud, no email/domain anywhere, encrypted at rest and in transit | `docs/PLAN.md` ([#1](https://github.com/yodatech1988/personal-finance/pull/1) plan, [#2](https://github.com/yodatech1988/personal-finance/pull/2) Session 1, [#3](https://github.com/yodatech1988/personal-finance/pull/3) Session 2, [#4](https://github.com/yodatech1988/personal-finance/pull/4) Session 3 — all merged, 4 sessions total) | Sessions 1-3 done (local `age`-encrypted vault, one-file ingestion, and a local folder-watcher — owner decided against any email-based intake, which also dropped the domain prerequisite entirely). Session 4 is next but blocked | Session 4 is blocked until you create a personal QuickBooks company |
 | [MasterThread](https://github.com/yodatech1988/MasterThread) | This ledger and org standards | this page | Keep rows current. Donations plan Session 4 (monthly routine checklist) lives here and is not started. Issues #1 and #2 (2025-11 sketches for log-tailer agents and a Discord bot layout, superseded by services and claude-agents) closed 2026-09-12 | — |
 | [repo-template](https://github.com/yodatech1988/repo-template) | Standard for new repos | n/a | Merge [PR #4](https://github.com/yodatech1988/repo-template/pull/4) (`CLAUDE.md` + `docs/PLAN.md` stubs) | — |
-| [get-wired-solutions](https://github.com/yodatech1988/get-wired-solutions) | Get Wired Solutions LLC operations. First line of business: Ohio HCV (HQS/NSPIRE) landlord inspection service, contracted through PHAs | `docs/PLAN.md` ([#3](https://github.com/yodatech1988/get-wired-solutions/pull/3), Session 0 done pending merge; Sessions 1-2 queued) | Merge #3, then Session 1: close the two insurance gaps found reviewing the COI (owned-auto liability, Professional Liability/E&O — both currently unpriced) | Call biBERK (844-472-0967) for the two insurance quotes; call CMHA Cincinnati (513-721-4580) before the RFP 2026-2002 question deadline 2026-02-18; identify small Ohio county PHA targets by direct call (small-panel scope, not high-volume) |
 
 ## Stable: no plan until work is planned
 
@@ -119,6 +118,7 @@ opening a session there spends tokens without a target.
 
 | Repo | Area |
 |---|---|
+| [get-wired-solutions](https://github.com/yodatech1988/get-wired-solutions) | Get Wired Solutions LLC operations |
 | [family-support](https://github.com/yodatech1988/family-support) | Family goals, checklists, resources |
 | [personal-growth](https://github.com/yodatech1988/personal-growth) | Personal growth tracking |
 | [3d-printing](https://github.com/yodatech1988/3d-printing) | Prints and slicer profiles |
