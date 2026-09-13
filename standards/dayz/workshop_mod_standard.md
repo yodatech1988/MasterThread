@@ -19,9 +19,12 @@ none of them could ship:
 
 | Where | What | Problem |
 |---|---|---|
-| `P:\AEGIS_Core`, `AEGIS_Vehicles`, `AEGIS_Aircraft`, `AEGIS_HelloWorld` | Skills/perks, vehicle, aircraft, pipeline test | Not in git. One disk failure loses it. |
-| `site-chernarus` `mods/AEGIS_PvPGuard` | PvP damage → reputation | Mod code inside a site repo. A second site would have to copy it. |
-| `core/mods/` (empty) and the skin library | Reserved for mod source | Core is sync CLI + reusable CI. Mod releases would be tied to CI tags. |
+| `site-chernarus` `mods/AEGIS_PvPGuard` (PR #43, merged) | PvP damage → reputation | Mod code inside a site repo. A second site would have to copy it. |
+| `core/mods/` (empty) and the skin library (core `assets/dayz-skin-library/`, PR #39 merged) | Reserved for mod source | Core is sync CLI + reusable CI. Mod releases would be tied to CI tags. |
+
+Since then (2026-09-12): `aegis-mods` exists and holds `AEGIS_Metrics` and `AEGIS_TeddyBear`;
+`aegis-poi` exists for the POI modules (rule 1, its own module home). The `P:\` sources and
+`AEGIS_PvPGuard` are still where the table says.
 
 Gameplay written as site config (Expansion JSON, `types.xml`, mission `init.c` script) only works
 on the server it was written for. A module built as a Workshop mod works on every AEGIS site and can
@@ -181,11 +184,11 @@ aegis-mods/
 |---|---|---|
 | `P:\AEGIS_HelloWorld` | Delete | `AEGIS_Metrics` proved build + sign + load; HelloWorld has no further use |
 | `P:\AEGIS_Core` (skills/perks) | `aegis-mods` `AEGIS_Core` (shared layer) + `AEGIS_Skills` | Not imported. Split the skill system out of Core (rule 4) |
-| `P:\AEGIS_Metrics` | `aegis-mods` `AEGIS_Metrics` | Done (PRs #1, #3); junction in place. Site override `server/profiles/AEGIS/Metrics/settings.json`; production install tracked in site-chernarus #48 |
+| `P:\AEGIS_Metrics` | `aegis-mods` `AEGIS_Metrics` | Done (PRs #1, #3); junction in place. Site override `server/profiles/AEGIS/Metrics/settings.json`; production install tracked in site-chernarus #48, loaded via `serverMods` (site #50) |
 | `site-chernarus` `mods/AEGIS_PvPGuard` (site PR #43, merged) | `aegis-mods` `AEGIS_PvPGuard` | Not migrated. The site keeps only the override, renamed from `server/profiles/AEGIS/PvPGuardSettings.json` to `AEGIS/PvPGuard/settings.json` (rule 5) |
 | `site-chernarus` `mods/AEGIS_TeddyBear` (draft) | Delete | Superseded by `aegis-mods` `AEGIS_TeddyBear` (PR #2). Go-live checklist: site-chernarus #52 |
 | `P:\AEGIS_Vehicles`, `P:\AEGIS_Aircraft` | `aegis-mods` `AEGIS_Vehicles`, `AEGIS_Aircraft` | Not imported. Aircraft keeps `DESIGN.md` as its plan |
-| Skin library (core PR #39, merged into `core`) | `aegis-mods` `AEGIS_Skins` (asset module) | Staged in core; moves only after rule 9 is checked per texture |
+| Skin library (core PR #39, merged into `core` as `assets/dayz-skin-library/`) | `aegis-mods` `AEGIS_Skins` (asset module) | Staged in core; moves only after rule 9 is checked per texture |
 | Traders, black markets, vaults as site config | `aegis-poi` `AEGIS_POI`, `_Trader`, `_BlackMarket`, `_Vault` | Plan merged (aegis-poi PR #1, Sessions 1–6); no code yet |
 | Faction quests, market, reputation bands | Stay Expansion config in the site repo for now | A future `AEGIS_Factions` module owns the standing ledger if Expansion config can't express it |
 
@@ -197,7 +200,8 @@ aegis-mods/
 - **site repos:** server config, mod tracker (Workshop IDs, versions or tags), and module
   `settings.json` overrides. A site PR that adds Enforce Script is redirected to `aegis-mods` or
   `aegis-poi`.
-- **aegis-poi:** POI modules only. Shares this standard, the `module.json` contract, the tools and
-  the signing key with `aegis-mods`; nothing else is duplicated between them.
+- **aegis-poi:** POI modules only, under rule 1 (its own module home) and the rule 4 shared-layer
+  exception. Shares this standard, the `module.json` contract, the tools and the signing key with
+  `aegis-mods`; sites place its prefabs through `$profile:AEGIS/POI/settings.json`.
 - **services / claude-agents:** talk to modules only through documented settings files, logs or
   RPC, never by editing mod code.
