@@ -76,18 +76,14 @@ re-verifies `/fund/` once real values exist.
 
 ## Building rule: modules, not site edits
 
-All AEGIS gameplay code is built as a Workshop module in `aegis-mods`, per the
-[Workshop mod standard](../standards/dayz/workshop_mod_standard.md). Site repos only install modules
-(Workshop ID + version) and commit their `settings.json` overrides. A site-repo PR that adds Enforce
-Script (`mods/`, mission `init.c` logic) is redirected to `aegis-mods`.
-
-**One scoped exception (Jeremy, 2026-09-12):** prebuilt point-of-interest modules (`AEGIS_POI*`:
-framework, trader, black market, vault) live in their own repo, `aegis-poi`, with the same layout,
-tooling and signing key. The standard's rules 1 and 4 record the exception.
-
-**Known debt:** site-chernarus PR #43 (`AEGIS_PvPGuard`) merged *before* the standard existed, so
-its Enforce Script currently sits in `site-chernarus/mods/`. Moving it to `aegis-mods` is an
-aegis-mods session; the site keeps only `profiles/AEGIS/PvPGuard/settings.json`.
+All AEGIS gameplay code is built as a Workshop module, per the
+[Workshop mod standard](../standards/dayz/workshop_mod_standard.md): gameplay modules in
+`aegis-mods`, prebuilt points of interest (`AEGIS_POI*`) in `aegis-poi` (owner decision 2026-09-12,
+standard rule 1). Site repos only install modules (Workshop ID, version or tag) and commit their
+`settings.json` overrides. A site-repo PR that adds Enforce Script (`mods/`, mission `init.c` logic)
+is redirected to the module repo. site-chernarus PR #43 (`AEGIS_PvPGuard`) merged before the rule
+existed, so its code sits in the site repo until the migration in the standard's "Where existing
+work goes" table happens.
 
 ## Active
 
@@ -103,6 +99,7 @@ aegis-mods session; the site keeps only `profiles/AEGIS/PvPGuard/settings.json`.
 | [website](https://github.com/yodatech1988/website) | aegisdirective.net (built, never deployed) | `docs/PLAN.md` ([#18](https://github.com/yodatech1988/website/pull/18), 3 sessions). Session 1 ([#19](https://github.com/yodatech1988/website/pull/19)) done | Session 2: verify `/fund/` still matches the PayPal/no-perks policy, once real values exist | `wrangler deploy` (Cloudflare auth, #3); PayPal Business account + `paypal.me` handle; hosting funded-through date |
 | [handymansfield](https://github.com/yodatech1988/handymansfield) | Agent back-office: job intake, invoicing, payments, expenses, month-end | `docs/PLAN.md` ([#3](https://github.com/yodatech1988/handymansfield/pull/3), 5 sessions; goal drafted from Drive/Gmail/QuickBooks). #4 audit fixes merged | Session 1: framework and job intake (drafts only, no client data in git) | Confirm or edit the drafted goal paragraph in `docs/PLAN.md` |
 | [MasterThread](https://github.com/yodatech1988/MasterThread) | This ledger and org standards | this page | Keep rows current. Donations plan Session 4 (monthly routine checklist) lives here and is not started. Issues #1 and #2 (2025-11 sketches for log-tailer agents and a Discord bot layout, superseded by services and claude-agents) closed 2026-09-12 | — |
+| [repo-template](https://github.com/yodatech1988/repo-template) | Standard for new repos | n/a | Merge [PR #4](https://github.com/yodatech1988/repo-template/pull/4) (`CLAUDE.md` + `docs/PLAN.md` stubs) | — |
 
 ## Stable: no plan until work is planned
 
