@@ -61,27 +61,30 @@ How to apply it:
 1. **Start from the handoff file**, not a re-survey. Read the newest `GitHub\SESSION_HANDOFF_*.md`
    and MasterThread `docs/REPOS.md`. Verify each lane's "waits on" against live `gh pr list` /
    `gh pr view`; docs go stale within hours.
-2. **Pre-create worktrees** with `GitHub\New-ParallelWorktrees.ps1 -Repo <folder> -Slugs <slug>`.
+2. **Triage the backlog into priority tiers** per `priority_classification.md` before dispatching
+   anything, and check `tools/usage-monitor/check-usage.ps1` for the window's remaining budget. Tier
+   decides which items get a lane this round and which pause first if usage runs out.
+3. **Pre-create worktrees** with `GitHub\New-ParallelWorktrees.ps1 -Repo <folder> -Slugs <slug>`.
    Hand each worker its exact path, and never let a worker choose its own folder. One open agent PR
    per repo.
-3. **Dispatch with a card, not a long prompt.**
+4. **Dispatch with a card, not a long prompt.**
    - Builders get a **lane card** that points at `worker_role.md`.
    - Read-only questions get a **research card** that points at `researcher_role.md`.
    - The role files already carry the never-list, attribution, the pause protocol, the one-PR rule
      and the report format. The card only adds what's specific to the lane: worktree, read list,
      scope, out of scope, done-when, and constraints such as "owner is in game".
-4. **Review before merge**, every time:
+5. **Review before merge**, every time:
    - `gh pr view --json files,statusCheckRollup,mergeable`
    - read the diff (grep for known crash patterns, secrets, removed-mod names)
    - confirm checks are green
    - aegis-mods and aegis-poi have no Claude review; the orchestrator is the reviewer there
    - never `--admin`; never self-approve around a stale CHANGES_REQUESTED (Jeremy clicks)
-5. **Live changes are Jeremy's click.** The auto-mode classifier blocks Claude from production deploys
+6. **Live changes are Jeremy's click.** The auto-mode classifier blocks Claude from production deploys
    and from "blind apply". Write a double-click `GitHub\AEGIS-*.cmd` that shows the diff and needs
    him to type YES, open it for him, then read the result (push log + newest live RPT, read-only).
-6. **Collisions.** Before dispatching into a repo, check `ListAgents` and open PRs. Stop the
+7. **Collisions.** Before dispatching into a repo, check `ListAgents` and open PRs. Stop the
    orchestrator's own background tasks that overlap a newly started session.
-7. **Close out.**
+8. **Close out.**
    - Update the handoff file: merged, in flight, paused states, owner questions.
    - Refresh memory.
    - Give Jeremy one prompt per next session, each headed with its model and effort from the table
