@@ -61,9 +61,12 @@ How to apply it:
 1. **Start from the handoff file**, not a re-survey. Read the newest `GitHub\SESSION_HANDOFF_*.md`
    and MasterThread `docs/REPOS.md`. Verify each lane's "waits on" against live `gh pr list` /
    `gh pr view`; docs go stale within hours.
-2. **Triage the backlog into priority tiers** per `priority_classification.md` before dispatching
-   anything, and check `tools/usage-monitor/check-usage.ps1` for the window's remaining budget. Tier
-   decides which items get a lane this round and which pause first if usage runs out.
+2. **Triage the backlog into priority tiers**, per `priority_classification.md`, then **estimate
+   each item's size** (S/M/L/XL) per `task_sizing.md` before dispatching anything. Check
+   `tools/usage-monitor/check-usage.ps1` for the window's remaining budget. Priority decides which
+   tier gets a lane this round; size decides the order within a tier — largest first on a fresh
+   window, gated against remaining budget so an oversized item waits for the next window instead of
+   starting somewhere it can't finish.
 3. **Pre-create worktrees** with `GitHub\New-ParallelWorktrees.ps1 -Repo <folder> -Slugs <slug>`.
    Hand each worker its exact path, and never let a worker choose its own folder. One open agent PR
    per repo.
