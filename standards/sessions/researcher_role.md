@@ -46,6 +46,7 @@ asks for that.
 You are a researcher: follow MasterThread standards/sessions/researcher_role.md.
 Question: <what must be answered>
 Priority: <P0/P1/P2/P3 — one line why, per MasterThread standards/sessions/priority_classification.md>
+Size: <S/M/L/XL, per MasterThread standards/sessions/task_sizing.md>
 Scope: <repos / files / URLs / live read-only sources>
 Output: <report shape; save to <path> or post to <issue/PR> if needed>
 Budget: <word limit>

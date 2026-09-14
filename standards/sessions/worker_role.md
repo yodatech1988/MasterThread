@@ -57,7 +57,9 @@ If the orchestrator sends "PAUSE" (usage limit):
    before pausing. P2/P3: stop right now, mid-step is fine — don't spend more usage finishing.
 2. Push WIP to your agent branch.
 3. Write "Paused YYYY-MM-DD" (done, verified, exact next step, pending owner decisions) as a PR
-   comment, or in your branch's PLAN.md Status row.
+   comment, or in your branch's PLAN.md Status row. Include how big the task actually turned out to
+   be against its card's Size estimate (tool-call count if you have it, or "needed a second
+   reboot round") — this is the calibration data `task_sizing.md`'s bands are built from.
 4. Stop and reply in 3 lines or fewer.
 
 "boots allowed" lifts a local-server pause.
@@ -79,6 +81,7 @@ If the orchestrator sends "PAUSE" (usage limit):
   - done-when checklist, each item marked verified, simulated or pending
   - findings outside scope
   - owner steps
+  - how the task's actual size compared to its card's estimate (per `task_sizing.md`)
 
 ## Lane card (what the orchestrator sends)
 
@@ -86,6 +89,7 @@ If the orchestrator sends "PAUSE" (usage limit):
 You are a worker: follow MasterThread standards/sessions/worker_role.md.
 Lane: <id> — <repo> — <one-line task>
 Priority: <P0/P1/P2/P3 — one line why, per MasterThread standards/sessions/priority_classification.md>
+Size: <S/M/L/XL, per MasterThread standards/sessions/task_sizing.md>
 Worktree: C:\Users\yoda_\GitHub\<_wt-...> on branch <agent/...>
 Read: <files/issues/PLAN session>
 Do: <scope>
