@@ -5,9 +5,10 @@ feature, one package, explicit dependencies, defaults that work on any server. A
 (`site-chernarus`, future sites such as Deer Isle) *installs and tunes* modules. It never contains
 their code.
 
-Modules have two homes, and only two: [`aegis-mods`](https://github.com/yodatech1988/aegis-mods)
-for gameplay modules, and [`aegis-poi`](https://github.com/yodatech1988/aegis-poi) for prebuilt
-points of interest (rule 1).
+Modules have three homes, and only three: [`aegis-mods`](https://github.com/yodatech1988/aegis-mods)
+for gameplay modules, [`aegis-poi`](https://github.com/yodatech1988/aegis-poi) for prebuilt
+points of interest, and [`aegis-pricing`](https://github.com/yodatech1988/aegis-pricing) for
+reputation-based trader pricing (rule 1).
 
 The general principle behind this applies to every repo: build in self-contained packages with a
 manifest and declared dependencies. For DayZ, that package is a Workshop mod.
@@ -40,12 +41,15 @@ table under "Where existing work goes" is the migration list.
 
 ## Rules
 
-1. **Two homes, by kind of module.**
+1. **Three homes, by kind of module.**
    - Every gameplay module lives in the `aegis-mods` repo under `mods/AEGIS_<Name>/`.
    - Prebuilt points of interest (`AEGIS_POI` and every `AEGIS_POI_<Name>`: traders, black
      markets, vaults) live in the `aegis-poi` repo, with the same layout, `module.json` contract,
      tooling and signing key. The owner chose a separate repo on 2026-09-12 (aegis-poi PR #1).
-   - Site repos and core hold no Enforce Script. A third module repo needs an owner decision,
+   - Reputation-based trader pricing (`AEGIS_Pricing`) lives in the `aegis-pricing` repo, same
+     layout, `module.json` contract, tooling and signing key. The owner chose a separate repo on
+     2026-09-13 (aegis-pricing PR #1), the same call as `aegis-poi`.
+   - Site repos and core hold no Enforce Script. A fourth module repo needs an owner decision,
      recorded here.
    - `P:\AEGIS_<Name>` is a directory junction into the repo checkout, so DayZ Tools keeps working
      and git keeps the history.
@@ -203,5 +207,9 @@ aegis-mods/
 - **aegis-poi:** POI modules only, under rule 1 (its own module home) and the rule 4 shared-layer
   exception. Shares this standard, the `module.json` contract, the tools and the signing key with
   `aegis-mods`; sites place its prefabs through `$profile:AEGIS/POI/settings.json`.
+- **aegis-pricing:** `AEGIS_Pricing*` modules only, under rule 1 (its own module home). Shares
+  this standard, the `module.json` contract, the tools and the signing key with `aegis-mods`; no
+  rule 4 exception, since `AEGIS_Pricing` is not a shared layer for other modules. Sites tune it
+  through `$profile:AEGIS/Pricing/settings.json`.
 - **services / claude-agents:** talk to modules only through documented settings files, logs or
   RPC, never by editing mod code.
