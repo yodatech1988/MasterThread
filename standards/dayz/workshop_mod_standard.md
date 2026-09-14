@@ -183,7 +183,7 @@ aegis-mods/
 | Today | Becomes | State (2026-09-12) |
 |---|---|---|
 | `P:\AEGIS_HelloWorld` | Delete | `AEGIS_Metrics` proved build + sign + load; HelloWorld has no further use |
-| `P:\AEGIS_Core` (skills/perks) | `aegis-mods` `AEGIS_Core` (shared layer) + `AEGIS_Skills` | Not imported. Split the skill system out of Core (rule 4) |
+| `P:\AEGIS_Core` (skills/perks) | `aegis-mods` `AEGIS_Core` (shared layer) + `AEGIS_Skills`, `AEGIS_Medicine`, `AEGIS_StartScreen` | Not imported and won't be: 4 of its 8 files are zeroed on disk (checked 2026-09-13). Rebuilt clean-room from the design, aegis-mods `docs/PLAN.md` Sessions 1–11 (aegis-mods #15) |
 | `P:\AEGIS_Metrics` | `aegis-mods` `AEGIS_Metrics` | Done (PRs #1, #3); junction in place. Site override `server/profiles/AEGIS/Metrics/settings.json`; production install tracked in site-chernarus #48, loaded via `serverMods` (site #50) |
 | `site-chernarus` `mods/AEGIS_PvPGuard` (site PR #43, merged) | `aegis-mods` `AEGIS_PvPGuard` | Not migrated. The site keeps only the override, renamed from `server/profiles/AEGIS/PvPGuardSettings.json` to `AEGIS/PvPGuard/settings.json` (rule 5) |
 | `site-chernarus` `mods/AEGIS_TeddyBear` (draft) | Delete | Superseded by `aegis-mods` `AEGIS_TeddyBear` (PR #2). Go-live checklist: site-chernarus #52 |
