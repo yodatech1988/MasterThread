@@ -121,4 +121,67 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 - Bohemia changes its donation wording → re-check §1.
 - Donations routinely exceed costs → decide publicly what surplus funds (for example, a second site's hosting) before accepting more. Don't let it build up quietly.
 
+---
+
+## 7. Backlog — Venmo and Cash App (PARKED until there's a real player base)
+
+**Status:** parked 2026-09-14, Jeremy's call. **Priority: P3 (deferred)** per
+`standards/sessions/priority_classification.md`. No sessions get dispatched, no accounts get created,
+and no placeholder links get added to `/fund/` or the Discord embed until the unpark trigger below is
+met. Do not let this silently drop — carry it in handoffs as parked, not forgotten.
+
+### Goal
+Let donors who don't use PayPal give through **Venmo** and/or **Cash App**, with every public-facing
+name showing **"AEGIS Directive"**, not Jeremy's personal name. Same rules as the rest of this plan:
+one-time, zero counter-value, same $5/$10/$20/Other amounts.
+
+### Unpark trigger
+Revisit when there's a real player base. Default measurable version (Jeremy can change it):
+- **PayPal donations are actually coming in** (the `/fund/` page is deployed with real links), **and**
+- either a sustained active player base (roughly 20+ unique players a week for a month), **or** at
+  least two players ask for a non-PayPal way to donate.
+
+The monthly transparency routine (Session 4) and every new site/map launch (the REPOS.md monetization
+standing rule) are the two points where someone checks this trigger.
+
+### What "anonymous" means here (set expectations up front)
+- **Operator side:** public-facing names can be "AEGIS Directive" on all three platforms. Each platform
+  still holds Jeremy's legal name/SSN for identity checks and tax reporting, and donations remain
+  taxable income (§1 Taxes). Hidden from the public, not from the platforms or the IRS.
+- **Donor side:** there is no truly anonymous path. Jeremy sees the donor's account name, and donors can
+  use a nickname display name and keep payments private. Never publish donor names (D4).
+
+### Decisions (defaulted)
+| # | Decision | Default | Why |
+|---|---|---|---|
+| V1 | PayPal public name | Set PayPal's business display name to **"AEGIS Directive"** — do this even before unparking, when the PayPal Business account is set up (§3 item 2) | Cheap, and the same "no personal name" goal applies to PayPal today |
+| V2 | First extra platform | **Venmo Business profile** named "AEGIS Directive" (~1.9% + $0.10 per payment) | Cheapest, widely used, and owned by PayPal. **Never** take donations on a personal Venmo (against Venmo's rules, shows the real name, payments can default to public) |
+| V3 | Cash App | **Only if players ask for it.** Cash App for Business, `$AEGISDirective`-style cashtag (2.75% per payment) | Highest fee, and a third balance to reconcile |
+| V4 | Where the money lands | **PayPal stays the main account** — it pays hosting/API and is the only balance the "funded through" line counts | One place to pay bills from and one number to report |
+| V5 | Moving money | Once a month, move the Venmo/Cash App balances to the linked bank, then into PayPal, as part of the Session 4 routine. Tag each transfer "Donations" | Venmo and Cash App can't transfer into PayPal directly |
+| V6 | Minimum | Same **$3** "Other" minimum on every platform | Consistency with D3 |
+| V7 | Re-check fees | Confirm current Venmo Business / Cash App for Business fees and ToS on the day this unparks — the figures above are as of 2026-09-14 | Fees and rules change |
+
+### Owner-only steps (when unparked)
+1. Create the Venmo Business profile (and Cash App for Business, if V3 applies), named "AEGIS Directive".
+2. Link the same bank account used by PayPal, and send me the Venmo handle / cashtag. Handles aren't secrets, so they can go in a plain message.
+3. Approve the updated `/fund/` and Discord embed copy.
+
+### Sessions (when unparked — one PR each)
+- **V-Session 1 (this repo):** amend this plan — lift the parked status, record the handles and
+  confirmed fees, and extend the Session 4 monthly checklist with the Venmo/Cash App totals and the
+  bank → PayPal transfer step. *Done when:* merged.
+- **V-Session 2 (`website`):** add Venmo (and Cash App if V3) buttons to `/fund/` under the PayPal
+  buttons, same amounts, with a one-line fee note. *Done when:* merged and deployed, and the links open
+  the right profiles.
+- **V-Session 3 (`services`):** add optional `VENMO_HANDLE` / `CASHAPP_TAG` env vars to
+  `scripts/post-fund-embed.mjs` (unset renders nothing, not "TBC"), and update `docs/ops/FUND-EMBED.md`.
+  *Done when:* merged, embed re-posted and re-pinned, links match the website.
+
+### Risks
+- **Reconciliation drift:** three balances make the monthly post easy to get wrong. If the monthly routine
+  starts getting skipped, drop Cash App first.
+- **Counter-value creep:** the same §6 triggers apply. A "thanks for the Venmo!" shout-out naming the
+  donor is fine privately, never publicly.
+
 *Not legal or tax advice.*

@@ -91,6 +91,11 @@ through" date; only Jeremy can supply those (plan §3) and the `#fund-the-server
 Session 1 (policy doc updates in core and site-chernarus) and Session 4 (monthly routine, this repo)
 haven't been started.
 
+**Parked (P3, since 2026-09-14): Venmo and Cash App donation options** — `docs/DONATIONS_PLAN.md` §7.
+No active work until there's a real player base (the unpark trigger is defined in §7). Check it at each
+monthly transparency run and at every new site/map launch. The one exception: set PayPal's public
+display name to "AEGIS Directive" whenever the PayPal Business account gets set up.
+
 ## Building rule: modules, not site edits
 
 All AEGIS gameplay code is built as a Workshop module, per the
