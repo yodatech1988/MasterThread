@@ -59,16 +59,12 @@ How to apply it:
 2. **Pre-create worktrees** with `GitHub\New-ParallelWorktrees.ps1 -Repo <folder> -Slugs <slug>`.
    Hand each worker its exact path, and never let a worker choose its own folder. One open agent PR
    per repo.
-3. **Dispatch** with a self-contained prompt that covers:
-   - the worktree
-   - scope
-   - out-of-scope items
-   - done-when
-   - the "never" list: no live actions, no bare `git stash`, no `--force` worktree removal,
-     no local DayZServer while Jeremy is in game
-   - the commit and PR attribution lines
-   - "open ONE PR, do not merge"
-   - what to report
+3. **Dispatch with a card, not a long prompt.**
+   - Builders get a **lane card** that points at `worker_role.md`.
+   - Read-only questions get a **research card** that points at `researcher_role.md`.
+   - The role files already carry the never-list, attribution, the pause protocol, the one-PR rule
+     and the report format. The card only adds what's specific to the lane: worktree, read list,
+     scope, out of scope, done-when, and constraints such as "owner is in game".
 4. **Review before merge**, every time:
    - `gh pr view --json files,statusCheckRollup,mergeable`
    - read the diff (grep for known crash patterns, secrets, removed-mod names)
