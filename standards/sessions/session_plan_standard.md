@@ -54,7 +54,16 @@ PRs hid three real defects because the checks that were green had not actually r
    ```
 
    Prune the worktree when the PR merges. Parallel sessions run across repos, never two in one repo
-   (rule 4 makes that a collision by definition).
+   (rule 4 makes that a collision by definition) -- **except** an orchestrating session running
+   several in-process research/review lanes against the *same* repo at once (e.g. one lane per
+   Steam Workshop mod-type category). That's still allowed, but only when the orchestrator creates
+   every lane's worktree itself *before* dispatching any of them, via
+   `GitHub/New-ParallelWorktrees.ps1 -Repo <repo> -Slugs <slug1>,<slug2>,...`, and hands each lane
+   its own already-created path as an explicit instruction ("work ONLY at `<path>`, never the
+   shared checkout or another lane's worktree"). Never leave a dispatched lane to decide for
+   itself whether or where to create a worktree -- the 2026-09-14 aegis-mods research round did
+   exactly that, and a lane's PR ended up carrying two other lanes' commits because it worked in
+   the shared checkout while another lane was also using it.
 10. **Verify before merge.** A PR body, a commit message, an issue comment and a committed doc are
     claims, not evidence. Before merging:
     - Read the diff. Diff "identical to X" claims against `origin/<default>` of X, not a local checkout.
