@@ -25,9 +25,14 @@ hands it to a one-off **Opus 5 / high** reviewer instead of upgrading itself:
   usage.
 - **No token-burning loops.** Don't poll long-running work; wait for notifications. A worker that has
   to wait on another PR stops and reports, and the orchestrator re-dispatches it later.
-- **Watch Jeremy's usage.** Past ~80% of the subscription window, send every session a pause order:
-  finish the current step, push WIP to the agent branch, write a "Paused" note (PR comment or
-  PLAN.md Status row), stop, and reply in 3 lines. Record the states in the handoff file.
+- **Watch Jeremy's usage.** Run `tools/usage-monitor/check-usage.ps1` (this repo) at the start of a
+  round and periodically during a long one — it reads the subscription's 5-hour/weekly percentage
+  from a file `tools/usage-monitor/statusline.ps1` keeps current (see that tool's README for why
+  this is the only machine-readable source for an individual Pro/Max seat; the Admin API doesn't
+  cover it). When it reports the threshold crossed (~80%), send every session a pause order: finish
+  the current step, push WIP to the agent branch, write a "Paused" note (PR comment or PLAN.md
+  Status row), stop, and reply in 3 lines. Record the states in the handoff file, then run
+  `check-usage.ps1 -Acknowledge`.
 
 ## Assigning model and effort to each task
 
