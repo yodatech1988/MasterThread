@@ -53,7 +53,8 @@ file. `session_plan_standard.md` still applies. The orchestrator's prompt only n
 ## Pause order
 
 If the orchestrator sends "PAUSE" (usage limit):
-1. Finish the step you're on.
+1. Check your lane card's Priority. P0/P1: finish the step you're on and land the fix if you can
+   before pausing. P2/P3: stop right now, mid-step is fine — don't spend more usage finishing.
 2. Push WIP to your agent branch.
 3. Write "Paused YYYY-MM-DD" (done, verified, exact next step, pending owner decisions) as a PR
    comment, or in your branch's PLAN.md Status row.
@@ -84,6 +85,7 @@ If the orchestrator sends "PAUSE" (usage limit):
 ```
 You are a worker: follow MasterThread standards/sessions/worker_role.md.
 Lane: <id> — <repo> — <one-line task>
+Priority: <P0/P1/P2/P3 — one line why, per MasterThread standards/sessions/priority_classification.md>
 Worktree: C:\Users\yoda_\GitHub\<_wt-...> on branch <agent/...>
 Read: <files/issues/PLAN session>
 Do: <scope>
