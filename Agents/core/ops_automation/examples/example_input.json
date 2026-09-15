@@ -1,0 +1,13 @@
+{
+  "agent": "Ops Automation Agent",
+  "timestamp": "2025-01-01T00:00:00Z",
+  "event_type": "example_event",
+  "context": {
+    "source_domain": "core",
+    "request_id": "example-request-id",
+    "caller": "example-orchestrator"
+  },
+  "payload": {
+    "description": "Example input payload sent to the Ops Automation Agent for testing and schema validation."
+  }
+}

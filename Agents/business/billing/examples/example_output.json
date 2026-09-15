@@ -1,0 +1,17 @@
+{
+  "agent": "Billing Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Billing Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Billing Agent received example input.",
+    "Billing Agent performed validation and produced this example output."
+  ]
+}

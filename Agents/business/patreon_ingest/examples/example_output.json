@@ -1,0 +1,17 @@
+{
+  "agent": "Patreon Ingest Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Patreon Ingest Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Patreon Ingest Agent received example input.",
+    "Patreon Ingest Agent performed validation and produced this example output."
+  ]
+}

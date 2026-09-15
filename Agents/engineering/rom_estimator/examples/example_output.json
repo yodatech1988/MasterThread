@@ -1,0 +1,17 @@
+{
+  "agent": "Rom Estimator Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Rom Estimator Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Rom Estimator Agent received example input.",
+    "Rom Estimator Agent performed validation and produced this example output."
+  ]
+}

@@ -1,0 +1,31 @@
+name: dayz_patron_perk_flow
+description: Apply DayZ-side patron perks and ensure they remain within economy constraints.
+trigger:
+  type: internal_event
+  source: patreon_entitlement_flow
+  events:
+  - entitlement_actions_created
+orchestrator: Game Operations Orchestrator Agent
+stages:
+- name: validate_perks
+  agents:
+  - Economy DayZ Agent
+  inputs:
+  - entitlement_actions
+  outputs:
+  - validated_perk_actions
+- name: apply_perks
+  agents:
+  - DayZ Perk Applier Agent
+  inputs:
+  - validated_perk_actions
+  outputs:
+  - perk_application_result
+- name: record_impact
+  agents:
+  - Telemetry Agent
+  - Game Analytics Agent
+  inputs:
+  - perk_application_result
+  outputs:
+  - perk_impact_metrics

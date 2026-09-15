@@ -1,0 +1,43 @@
+name: discord_support_ticket_flow
+description: Handle user support requests initiated in Discord.
+trigger:
+  type: discord_command
+  commands:
+  - /ticket
+  - /support
+orchestrator: Discord Orchestrator Agent
+stages:
+- name: open_ticket
+  agents:
+  - Support Ticket Agent
+  - Context & Identity Agent
+  inputs:
+  - discord_user
+  - support_message
+  outputs:
+  - ticket_record
+- name: triage_ticket
+  agents:
+  - Support Triage Agent
+  inputs:
+  - ticket_record
+  outputs:
+  - priority
+  - assigned_domain
+- name: link_to_github
+  agents:
+  - GitHub Integration Agent
+  inputs:
+  - ticket_record
+  - priority
+  - assigned_domain
+  outputs:
+  - github_issue
+- name: user_updates
+  agents:
+  - Support Ticket Agent
+  inputs:
+  - ticket_record
+  - github_issue_status
+  outputs:
+  - discord_status_updates
