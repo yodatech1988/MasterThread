@@ -54,15 +54,15 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 
 ## 3. Only Jeremy can do these
 
-**How the money actually flows (clarified 2026-09-15, Jeremy noticed the gap):** PayPal collects
-donations, but it doesn't pay any vendor directly — Shockbyte's payment method on file is
-**Stripe (card)**, not PayPal, and the OVH VPS is also card-billed. So this is not a
-PayPal-pays-Shockbyte pipeline: Jeremy periodically withdraws the PayPal balance to his linked
-bank/card and uses that to cover whatever's charging there, the same manual pattern already
-documented for the parked Venmo/Cash App plan (§7 V5, "move the balances to the linked bank, then
-into PayPal"). This doesn't change any decision above — D1's "same account can also pay
-vendors/invoices" language was about the *balance*, not a direct pay-Shockbyte-from-PayPal
-integration, which doesn't exist and isn't needed.
+**How the money actually flows (clarified 2026-09-15, Jeremy noticed the gap then closed it):**
+Shockbyte's payment method was Stripe (card), not PayPal, so donations couldn't reach it directly.
+**Fixed same day:** Jeremy switched Shockbyte's payment method to his **PayPal Debit Mastercard**,
+which draws straight from the PayPal balance — so donations now flow directly into paying
+Shockbyte, no manual bank-transfer step for that leg. This is exactly the "same account can also
+pay vendors/invoices" property D1 was chosen for, now literally true for Shockbyte specifically.
+The OVH VPS is still card-billed separately (not yet switched); until/unless that changes too,
+covering it still means withdrawing PayPal balance to a bank/card, the same manual pattern
+documented for the parked Venmo/Cash App plan (§7 V5).
 
 1. **Monthly cost figures — resolved 2026-09-15:**
    - Game-server hosting (Shockbyte): **$24.99/mo, confirmed from the panel** (registered
