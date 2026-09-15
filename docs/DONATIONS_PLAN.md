@@ -1,10 +1,11 @@
 # AEGIS Directive — Server Operating Donations Plan
 
-**Status:** draft for Jeremy's approval · updated 2026-09-15 · the real PayPal link and a real
-monthly-cost breakdown are wired in (website PR [#27](https://github.com/yodatech1988/website/pull/27),
-blocked on a pre-existing CI bug, not the content — see below; services branch
-`agent/services/fund-embed-donate-link` queued behind services #93) — still blocked on the hosting
-renewal date and the `#fund-the-server` channel/webhook, both §3.
+**Status:** draft for Jeremy's approval · updated 2026-09-15 · every real value is now known and
+wired in — PayPal link, monthly costs, and the funded-through date (website PR
+[#27](https://github.com/yodatech1988/website/pull/27), blocked on a pre-existing CI bug, not the
+content — see below; services branch `agent/services/fund-embed-donate-link` queued behind
+services #93) — still needs the `#fund-the-server` channel/webhook (§3 item 5) and the PR #27 CI
+fix below before anything actually goes live.
 **PR #27 merge blocker (not content-related):** the required `secret-scan` check crashes because
 `gitleaks` can't install — a leftover `/tmp/gitleaks.tmp` stuck in the self-hosted runner's private
 `/tmp` (`aegis-gha-runner@website.service` has `PrivateTmp=yes`, so it persists across job runs
@@ -53,11 +54,23 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 
 ## 3. Only Jeremy can do these
 
-1. **Monthly cost figures — mostly resolved 2026-09-15:**
-   - Game-server hosting (Shockbyte): **$19.99/mo, confirmed.** Renewal date still unknown —
-     Jeremy doesn't know it offhand; needs checking in the Shockbyte panel. This is the one
-     number still blocking the "funded through" line.
-   - OVH VPS (bots/APIs): **$10/mo, confirmed** — `aegis-services` `docs/ops/VPS.md`.
+**How the money actually flows (clarified 2026-09-15, Jeremy noticed the gap):** PayPal collects
+donations, but it doesn't pay any vendor directly — Shockbyte's payment method on file is
+**Stripe (card)**, not PayPal, and the OVH VPS is also card-billed. So this is not a
+PayPal-pays-Shockbyte pipeline: Jeremy periodically withdraws the PayPal balance to his linked
+bank/card and uses that to cover whatever's charging there, the same manual pattern already
+documented for the parked Venmo/Cash App plan (§7 V5, "move the balances to the linked bank, then
+into PayPal"). This doesn't change any decision above — D1's "same account can also pay
+vendors/invoices" language was about the *balance*, not a direct pay-Shockbyte-from-PayPal
+integration, which doesn't exist and isn't needed.
+
+1. **Monthly cost figures — resolved 2026-09-15:**
+   - Game-server hosting (Shockbyte): **$24.99/mo, confirmed from the panel** (registered
+     2026-09-02, monthly via Stripe). Corrects the $19.99 given verbally earlier — the panel
+     figure is authoritative. **Next due date: October 2, 2026** — this is now the "funded
+     through" value (§5), since no donations have been collected yet to extend it further.
+   - OVH VPS (bots/APIs): **$10/mo, confirmed** — `aegis-services` `docs/ops/VPS.md`. Renews
+     separately, next due 2026-10-13 (later than Shockbyte's, so it isn't the binding date).
    - Claude API: **no real metered spend exists to report.** Checked before asking Jeremy to
      decide: Claude Code usage (including the sessions doing this work) runs on his Max/Pro
      subscription seat, and Console usage/cost endpoints don't cover subscription seats at all
@@ -71,9 +84,9 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
      from `aegis-services/docs/aegis-agent-orchestration-plan.md` (a pre-build projection for when
      admin-bot/bug-report-agent eventually run on real keys), labeled on the page as an estimate,
      not measured usage — revisit once a metered key actually goes live.
-   - **Total: ~$44.99/mo**, now shown as a cost breakdown table on `/fund/` and in the Discord
-     embed. The "funded through" date itself still can't be computed without the Shockbyte
-     renewal date above.
+   - **Total: ~$49.99/mo**, now shown as a cost breakdown table on `/fund/` and in the Discord
+     embed. **§3 item 1 is now fully resolved** — every figure and the funded-through date are
+     real, nothing left `.tbc` here.
 2. ~~Create/confirm a PayPal Business account... set the `paypal.me` handle~~ — **done 2026-09-15.**
    Jeremy created the PayPal Business account and a hosted donate button (`hosted_button_id=XRUFPV3ECAETC`).
 3. **Decide whether donations and vendor payments share one balance or get separated by a labeled "Donations" tag/note in PayPal's transaction records** — needed so the monthly transparency post (Session 4) can tell donation income apart from other business activity on the same account.
@@ -94,10 +107,12 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 - Added `/fund/` (`src/pages/fund.html`, built via the site's `build.py` pipeline). Deployed and
   live since 2026-09-13 (`aegisdirective.net/fund/` returns 200).
 - **2026-09-15:** PR #27 replaces the `.tbc` placeholder table with the real embedded PayPal
-  `Donation.Button` widget (§2 D1) and updates the "what the money is for" copy to three things
-  (§ scope header above). Still `.tbc`: the "Server funded through" line, pending §3 item 1.
-- **Done when:** PR #27 merged and redeployed (`wrangler deploy`). *Blocked on:* the hosting
-  contract amount/renewal date and Claude API cap (Jeremy) for the one remaining `.tbc`.
+  `Donation.Button` widget (§2 D1), updates the "what the money is for" copy to three things
+  (§ scope header above), and adds a real cost breakdown + funded-through date (§3 item 1) — no
+  `.tbc` placeholders left in the content.
+- **Done when:** PR #27 merged and redeployed (`wrangler deploy`). *Blocked on:* a pre-existing CI
+  bug, not content — see the status header's PR #27 merge blocker note; needs
+  `sudo systemctl restart aegis-gha-runner@website.service` (Jeremy) before it can merge.
 
 ### Session 3 — Discord (repo: `services`) — merged (PR #10), real link wired 2026-09-15 (branch pushed, PR queued)
 - Added `scripts/post-fund-embed.mjs`, a one-shot script that posts and updates a pinned embed in
@@ -134,11 +149,11 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 >
 > **[ $5 ]  [ $10 ]  [ $20 ]  [ Other ]**
 >
-> **Monthly costs:** Game-server hosting (Shockbyte) $19.99 · VPS (bots/APIs) $10.00 ·
-> Claude API (estimate) ~$15.00 · **Total ~$44.99**
+> **Monthly costs:** Game-server hosting (Shockbyte) $24.99 · VPS (bots/APIs) $10.00 ·
+> Claude API (estimate) ~$15.00 · **Total ~$49.99**
 >
-> **Server funded through: TBC** · pending the hosting renewal date · updated monthly with a
-> costs-vs-donations summary.
+> **Server funded through: October 2, 2026** · the current hosting cycle's paid-through date, not
+> a donation surplus (none collected yet) · updated monthly with a costs-vs-donations summary.
 >
 > Donations are one-time, go to the server operator personally, and are **not tax-deductible**.
 > Any surplus pays for future months of hosting, infrastructure, and API costs. Refunds are
