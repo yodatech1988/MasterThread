@@ -1,9 +1,16 @@
 # AEGIS Directive — Server Operating Donations Plan
 
-**Status:** draft for Jeremy's approval · updated 2026-09-15 · the real PayPal link is now wired in
-(website PR [#27](https://github.com/yodatech1988/website/pull/27), services branch
+**Status:** draft for Jeremy's approval · updated 2026-09-15 · the real PayPal link and a real
+monthly-cost breakdown are wired in (website PR [#27](https://github.com/yodatech1988/website/pull/27),
+blocked on a pre-existing CI bug, not the content — see below; services branch
 `agent/services/fund-embed-donate-link` queued behind services #93) — still blocked on the hosting
-funded-through date/cost and the `#fund-the-server` channel/webhook, both §3.
+renewal date and the `#fund-the-server` channel/webhook, both §3.
+**PR #27 merge blocker (not content-related):** the required `secret-scan` check crashes because
+`gitleaks` can't install — a leftover `/tmp/gitleaks.tmp` stuck in the self-hosted runner's private
+`/tmp` (`aegis-gha-runner@website.service` has `PrivateTmp=yes`, so it persists across job runs
+until the service restarts). Confirmed via two separate run logs, not a real secret finding.
+Branch protection has `enforce_admins: true`, so this needs Jeremy to run
+`sudo systemctl restart aegis-gha-runner@website.service` before the PR can merge.
 **Scope:** one-time donations of **$5 / $10 / $20 / Other**, shown on aegisdirective.net and the AEGIS Discord.
 **What the money is for:** (1) the game-server hosting contract, (2) the OVH VPS that runs the
 network's bots/APIs ($10/mo, confirmed 2026-09-15), and (3) Claude API tokens that run the
@@ -46,9 +53,27 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 
 ## 3. Only Jeremy can do these
 
-1. **Monthly cost figures:** the game-server hosting contract amount and renewal date, and the
-   Claude API monthly cap. These feed the "funded through" line. (The third bucket, the OVH VPS,
-   is now known: **$10/mo**, confirmed 2026-09-15 — `aegis-services` `docs/ops/VPS.md`.)
+1. **Monthly cost figures — mostly resolved 2026-09-15:**
+   - Game-server hosting (Shockbyte): **$19.99/mo, confirmed.** Renewal date still unknown —
+     Jeremy doesn't know it offhand; needs checking in the Shockbyte panel. This is the one
+     number still blocking the "funded through" line.
+   - OVH VPS (bots/APIs): **$10/mo, confirmed** — `aegis-services` `docs/ops/VPS.md`.
+   - Claude API: **no real metered spend exists to report.** Checked before asking Jeremy to
+     decide: Claude Code usage (including the sessions doing this work) runs on his Max/Pro
+     subscription seat, and Console usage/cost endpoints don't cover subscription seats at all
+     (confirmed in MasterThread's own `tools/usage-monitor/README.md`); `core`'s
+     `claude-review.yml` cost-tracking step (core#55) isn't actually posting cost comments on
+     recent PRs (checked core #56/#60/#65/#67/#69 — none have one); no live player-facing bot
+     uses a metered key yet (chat-monitor's README says outright "makes no Claude calls, costs
+     nothing"; admin-bot/bug-report-agent aren't deployed). The one real metered spend on record
+     predates all this — a since-retired test key burned its credits in a day on 2026-09-12 (19
+     reviews, $0.46-$1.75 each). **Jeremy's call: use the pre-existing ~$15/mo planning estimate**
+     from `aegis-services/docs/aegis-agent-orchestration-plan.md` (a pre-build projection for when
+     admin-bot/bug-report-agent eventually run on real keys), labeled on the page as an estimate,
+     not measured usage — revisit once a metered key actually goes live.
+   - **Total: ~$44.99/mo**, now shown as a cost breakdown table on `/fund/` and in the Discord
+     embed. The "funded through" date itself still can't be computed without the Shockbyte
+     renewal date above.
 2. ~~Create/confirm a PayPal Business account... set the `paypal.me` handle~~ — **done 2026-09-15.**
    Jeremy created the PayPal Business account and a hosted donate button (`hosted_button_id=XRUFPV3ECAETC`).
 3. **Decide whether donations and vendor payments share one balance or get separated by a labeled "Donations" tag/note in PayPal's transaction records** — needed so the monthly transparency post (Session 4) can tell donation income apart from other business activity on the same account.
@@ -109,10 +134,15 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 >
 > **[ $5 ]  [ $10 ]  [ $20 ]  [ Other ]**
 >
-> **Server funded through: December 2026** · updated monthly with a costs-vs-donations summary.
+> **Monthly costs:** Game-server hosting (Shockbyte) $19.99 · VPS (bots/APIs) $10.00 ·
+> Claude API (estimate) ~$15.00 · **Total ~$44.99**
+>
+> **Server funded through: TBC** · pending the hosting renewal date · updated monthly with a
+> costs-vs-donations summary.
 >
 > Donations are one-time, go to the server operator personally, and are **not tax-deductible**.
-> Any surplus pays for future months of hosting and API costs. Refunds are available within 30 days on request.
+> Any surplus pays for future months of hosting, infrastructure, and API costs. Refunds are
+> available within 30 days on request.
 >
 > *AEGIS Directive is a community project, not affiliated with or authorized by Bohemia Interactive a.s.*
 
