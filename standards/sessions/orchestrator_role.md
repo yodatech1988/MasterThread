@@ -25,14 +25,70 @@ hands it to a one-off **Opus 5 / high** reviewer instead of upgrading itself:
   usage.
 - **No token-burning loops.** Don't poll long-running work; wait for notifications. A worker that has
   to wait on another PR stops and reports, and the orchestrator re-dispatches it later.
-- **Watch Jeremy's usage.** Run `tools/usage-monitor/check-usage.ps1` (this repo) at the start of a
-  round and periodically during a long one — it reads the subscription's 5-hour/weekly percentage
-  from a file `tools/usage-monitor/statusline.ps1` keeps current (see that tool's README for why
-  this is the only machine-readable source for an individual Pro/Max seat; the Admin API doesn't
-  cover it). When it reports the threshold crossed (~80%), send every session a pause order: finish
-  the current step, push WIP to the agent branch, write a "Paused" note (PR comment or PLAN.md
-  Status row), stop, and reply in 3 lines. Record the states in the handoff file, then run
-  `check-usage.ps1 -Acknowledge`.
+- **Watch Jeremy's usage with the usage watcher, always.** See "Usage watcher" below. It is not
+  optional and it starts before anything else in a round.
+
+## Usage watcher (mandatory for every orchestrator)
+
+Every orchestrator runs `tools/usage-monitor/usage-watch.ps1` for the whole of its round. It polls
+the subscription's real usage and sends the session a notification at **80, 90, 97, 98 and 99%** of
+the 5-hour session window (and the weekly window), each with the action to take. It replaces
+checking `check-usage.ps1` by hand. That file-based check depended on the statusline, which never
+runs in the VS Code extension, so from VS Code it never had data (found 2026-09-15).
+
+**Start it first**, before reading the handoff or dispatching anything, with the Monitor tool:
+
+```
+Monitor  command: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/Users/yoda_/GitHub/MasterThread/tools/usage-monitor/usage-watch.ps1" -Name <unique-name> -Program "<what this round is>" 2>&1
+         description: Claude usage tiers for <unique-name>
+         timeout_ms: 1800000
+```
+
+- **`-Name` is unique per parallel orchestrator** and stays the same for the whole round. A
+  duplicate name is refused.
+- **Re-arm it immediately every time the Monitor expires** (30 minutes at most), with the same
+  `-Name`. The watcher carries its start time and the tiers it already announced across the
+  restart, so re-arming repeats nothing and keeps its place. Only a gap longer than about 6 minutes
+  makes the other orchestrators see it as gone.
+- **Workers and lanes do not run a watcher.** The orchestrator pauses them.
+- **`USAGE-ERROR` means usage is UNKNOWN, not fine.** Treat it as high: dispatch no new lanes and
+  check `/usage` until `USAGE-OK` arrives. The data source is an undocumented endpoint and can
+  change.
+- **When the round ends**, stop the watcher (`TaskStop`) so it deregisters.
+
+### The tier runbook
+
+| Tier | Action (the notification repeats it) |
+|---|---|
+| 80% | **Prepare.** Dispatch no new lanes. Running lanes may finish their current step. Start the handoff. |
+| 90% | **Wrap up.** Send every lane the pause order (finish the current step, push WIP to the agent branch, write a Paused note, reply in 3 lines). Record each lane's state in the handoff. |
+| 97% | **Document.** Finish the handoff with the next-window plan: ordered queue, which lanes resume and with what model/effort, open PRs, owner blockers. |
+| 98% | **Save.** Commit and push the handoff and memory updates. No new tool-heavy work. |
+| 99% | **Stop.** One-line status to Jeremy, then nothing until the window resets. |
+
+If usage jumps past several tiers between readings, the notification names the skipped ones. Do
+their steps too. A `USAGE RESET` line means the window renewed: resume from the handoff plan.
+
+### Parallel orchestrators: one aggregator from 80%
+
+The limit is shared by every session on the account, so parallel orchestrators coordinate through
+the watcher's registry (`%APPDATA%\AEGIS\orchestrators\`):
+
+- **At start, and whenever one starts or stops, each is warned** about the others (`USAGE START ...
+  WARNING`, `USAGE PEER`). Every lane any of them dispatches spends the same budget, so dispatch
+  with that in mind.
+- **The aggregator is the earliest-started live orchestrator.** Every watcher computes the same
+  answer, and if the aggregator goes silent the next one takes over and is told where to pick up.
+- **At 80%, every non-aggregator hands off immediately.** Pause its lanes, then write
+  `GitHub\USAGE_HANDOFF_<window reset>\<Name>.md` with every lane and its state, open PRs and
+  branches, what is mid-flight, the next step for each, and owner blockers. Then dispatch nothing
+  more for the rest of the window.
+- **The aggregator manages the rest of the window for everyone.** It is told as each handoff file
+  arrives, and from 90% which are still missing (message those sessions via `ListAgents` /
+  `SendMessage`, or rebuild their state from PRs and branches). It writes the combined state and the
+  next-window plan to `AGGREGATE.md` in the same folder, and runs the tier runbook for everyone.
+- **The registry is local to this PC.** Cloud sessions and other machines are not seen. Count them
+  yourself if they are running.
 
 ## Assigning model and effort to each task
 
@@ -58,12 +114,15 @@ How to apply it:
 
 ## How to run a round
 
-1. **Start from the handoff file**, not a re-survey. Read the newest `GitHub\SESSION_HANDOFF_*.md`
+0. **Start the usage watcher** (section above) before anything else, and read its `USAGE START`
+   line: current usage, and any other orchestrators already running.
+1. **Start from the handoff file**, not a re-survey. If the watcher's last window left a
+   `GitHub\USAGE_HANDOFF_*\AGGREGATE.md`, that is the handoff to start from. Read the newest `GitHub\SESSION_HANDOFF_*.md`
    and MasterThread `docs/REPOS.md`. Verify each lane's "waits on" against live `gh pr list` /
    `gh pr view`; docs go stale within hours.
 2. **Triage the backlog into priority tiers**, per `priority_classification.md`, then **estimate
-   each item's size** (S/M/L/XL) per `task_sizing.md` before dispatching anything. Check
-   `tools/usage-monitor/check-usage.ps1` for the window's remaining budget. Priority decides which
+   each item's size** (S/M/L/XL) per `task_sizing.md` before dispatching anything. Take the window's
+   remaining budget from the watcher's latest reading. Priority decides which
    tier gets a lane this round; size decides the order within a tier — largest first on a fresh
    window, gated against remaining budget so an oversized item waits for the next window instead of
    starting somewhere it can't finish.
@@ -90,6 +149,7 @@ How to apply it:
 8. **Close out.**
    - Update the handoff file: merged, in flight, paused states, owner questions.
    - Refresh memory.
+   - Stop the usage watcher (`TaskStop`) so it deregisters.
    - Give Jeremy one prompt per next session, each headed with its model and effort from the table
      above.
 

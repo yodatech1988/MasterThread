@@ -26,7 +26,7 @@ $StatePath = Join-Path $StoreDir 'claude-usage-state.json'
 $FlagPath = Join-Path $StoreDir 'claude-usage-pause-flag.json'
 
 if (-not (Test-Path $StatePath)) {
-    Write-Output "No usage data yet. Is the statusLine set in ~/.claude/settings.json, and has at least one message been sent in an active session?"
+    Write-Output "No usage data yet: usage is UNKNOWN, not fine. Run usage-watch.ps1 -Once (works from VS Code) or start the usage watcher; the statusline never runs in the VS Code extension."
     exit 2
 }
 

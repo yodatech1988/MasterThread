@@ -1,9 +1,57 @@
 # Usage monitor
 
-Lets the orchestrator role (`standards/sessions/orchestrator_role.md`, "Cost rule") auto-detect
-when Jeremy's Claude Code subscription usage crosses ~80%, instead of relying on him to say so.
+Lets every orchestrator (`standards/sessions/orchestrator_role.md`, "Usage watcher") know when
+Jeremy's Claude subscription usage crosses 80, 90, 97, 98 and 99%, without relying on him to say so.
 
-## Why this shape
+## Start here: `usage-watch.ps1`
+
+**This is the tool to use.** Every orchestrator runs it under the Monitor tool for its whole round:
+
+```
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/Users/yoda_/GitHub/MasterThread/tools/usage-monitor/usage-watch.ps1" -Name <unique-name> -Program "<what this round is>" 2>&1
+```
+
+It polls `https://api.anthropic.com/api/oauth/usage` every 2 minutes (every 45 s above 75%), using
+the OAuth token Claude Code keeps in `~/.claude/.credentials.json`. The token is read fresh each
+poll, sent only to that endpoint, and never printed or stored. Each event prints one line, and
+Monitor delivers it to the session as a notification:
+
+| Line | Meaning |
+|---|---|
+| `USAGE START` | First reading, other orchestrators running, and whether this is a resumed watcher |
+| `USAGE TIER <n>` | A threshold crossed, with the action for this session's role |
+| `USAGE PEER` | Another orchestrator started or stopped heartbeating |
+| `USAGE AGGREGATOR` | The aggregator changed, and where the new one picks up |
+| `USAGE HANDOFF` | (Aggregator only) a peer's handoff file arrived |
+| `USAGE RESET` | A window renewed |
+| `USAGE-ERROR` / `USAGE-OK` | Data unavailable (usage is UNKNOWN; treat it as high) / flowing again |
+
+With parallel orchestrators, each registers in `%APPDATA%\AEGIS\orchestrators\`. The
+earliest-started live one is the aggregator, and at 80% the rest hand off into
+`GitHub\USAGE_HANDOFF_<window reset>\`. The runbook is in `orchestrator_role.md`.
+
+`-Once` takes a single reading and exits (0 under 80%, 1 at or above, 2 unknown). It is handy for a
+spot check and does not register. It also keeps `claude-usage-state.json` and the pause flag
+current, so `check-usage.ps1` still works.
+
+**Caveats.**
+- The endpoint is undocumented; it is what the `/usage` screen reads. If its shape changes, the
+  watcher says so with `USAGE-ERROR` rather than reporting a wrong number.
+- Monitor watches expire after 30 minutes. Re-arm with the same `-Name`. Start time and announced
+  tiers survive the restart, so nothing repeats.
+- The registry only sees orchestrators on this PC.
+
+Tested 2026-09-15 with simulated readings: every tier, skipped tiers, a window reset, weekly
+crossings, malformed data, three concurrent watchers with aggregator hand-off and takeover, a
+duplicate name, and re-arming. Also one live reading.
+
+## The earlier statusline approach (kept for check-usage.ps1)
+
+**It does not work from the VS Code extension.** The statusline only runs in the terminal CLI, and
+the extension never calls it, so from VS Code the state file below was never written. Use
+`usage-watch.ps1` instead.
+
+### Why this shape
 
 Jeremy's usage runs through `CLAUDE_CODE_OAUTH_TOKEN` — an individual Claude.ai Pro/Max
 subscription seat, not pay-per-token API billing. That rules out the pattern used by
@@ -62,9 +110,10 @@ Add to `~/.claude/settings.json` (merge with whatever's already there — don't 
 Claude Code picks this up on save; no restart needed. The first data point appears after a
 session's first API response (the doc notes `rate_limits` is absent until then).
 
-## How the orchestrator uses it
+## How the orchestrator used it (superseded by `usage-watch.ps1`)
 
-At the start of a round, and periodically during a long one:
+Orchestrators now run the usage watcher instead; see the top of this file. The manual check below
+still works as a spot check, as long as something keeps the state file current:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\usage-monitor\check-usage.ps1
@@ -78,7 +127,7 @@ without asking Jeremy.
 
 ## Limits
 
-- Needs at least one message sent in an active Claude Code session on this machine since the last
+- (statusline.ps1) Only runs in a terminal CLI session, never the VS Code extension. Needs at least one message sent in an active Claude Code session on this machine since the last
   reset before the first data point exists.
 - Reports only what this machine's Claude Code process has seen; it's not a live poll of Anthropic's
   servers between sessions.
