@@ -39,10 +39,12 @@ runs in the VS Code extension, so from VS Code it never had data (found 2026-09-
 **Start it first**, before reading the handoff or dispatching anything, with the Monitor tool:
 
 ```
-Monitor  command: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/Users/yoda_/GitHub/MasterThread/tools/usage-monitor/usage-watch.ps1" -Name <unique-name> -Program "<what this round is>" 2>&1
+Monitor  command: MT=C:/Users/yoda_/GitHub/MasterThread; N=<unique-name>; git -C $MT fetch -q origin main; git -C $MT show origin/main:tools/usage-monitor/usage-watch.ps1 > "$APPDATA/AEGIS/usage-watch.$N.ps1" && powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$APPDATA/AEGIS/usage-watch.$N.ps1" -HandoffRoot C:/Users/yoda_/GitHub -Name $N -Program "<what this round is>" 2>&1 || echo "USAGE-ERROR could not load or run usage-watch.ps1 from MasterThread origin/main"
          description: Claude usage tiers for <unique-name>
          timeout_ms: 1800000
 ```
+
+The command loads the watcher from `origin/main` into a per-name copy under `%APPDATA%\AEGIS\`, so it always runs the merged version whatever branch the shared MasterThread checkout is on, and parallel orchestrators never overwrite each other's copy. If it cannot load, the Monitor still gets a `USAGE-ERROR` line.
 
 - **`-Name` is unique per parallel orchestrator** and stays the same for the whole round. A
   duplicate name is refused.

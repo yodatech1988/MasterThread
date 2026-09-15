@@ -5,10 +5,10 @@ Jeremy's Claude subscription usage crosses 80, 90, 97, 98 and 99%, without relyi
 
 ## Start here: `usage-watch.ps1`
 
-**This is the tool to use.** Every orchestrator runs it under the Monitor tool for its whole round:
+**This is the tool to use.** Every orchestrator runs it under the Monitor tool for its whole round. The command loads it from `origin/main`, so it never depends on which branch a checkout is on:
 
 ```
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:/Users/yoda_/GitHub/MasterThread/tools/usage-monitor/usage-watch.ps1" -Name <unique-name> -Program "<what this round is>" 2>&1
+MT=C:/Users/yoda_/GitHub/MasterThread; N=<unique-name>; git -C $MT fetch -q origin main; git -C $MT show origin/main:tools/usage-monitor/usage-watch.ps1 > "$APPDATA/AEGIS/usage-watch.$N.ps1" && powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$APPDATA/AEGIS/usage-watch.$N.ps1" -HandoffRoot C:/Users/yoda_/GitHub -Name $N -Program "<what this round is>" 2>&1 || echo "USAGE-ERROR could not load or run usage-watch.ps1 from MasterThread origin/main"
 ```
 
 It polls `https://api.anthropic.com/api/oauth/usage` every 2 minutes (every 45 s above 75%), using
