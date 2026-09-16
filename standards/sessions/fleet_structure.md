@@ -5,19 +5,49 @@
 
 ## Seats
 
-Eight sessions. No team leads.
+**Headcount follows the work.** There is no fixed worker count: a worker exists because a workstream
+needs one, and a workstream with nothing live has no worker. An earlier draft of this document
+specified exactly six; the owner corrected it — *"we need to really scope workers to work streams not
+just have set 6 workers."*
 
 | Seat | Count | Reports to | Notes |
 |---|---|---|---|
-| PM | 1 | the owner | Directly manages all six workers. Self-watches usage (no PM above it). |
-| Worker | 6 | the PM | Each holds a current task **and** a queued next task. |
+| PM | 1 | the owner | Self-watches usage (no PM above it). Only the PM talks to the owner. |
+| Team lead | as needed | the PM | Holds each member's backlog: current, on deck, up next. |
+| Worker | one per live workstream | its lead | Never idle — see below. Runs subagents beneath it. |
 | Peer review + merge authority | 1 | the PM | One combined seat. Reviews, then merges. |
 
-The previous model inserted two team leads between the PM and the workers. It was dropped because
-every instruction and every finding travelled two hops in each direction, and several of the night's
-errors were introduced or amplified in relay — including a restructure justified by a PM that did not
-exist, and a dispatch chain that produced two confirmed-false claims. Direct management of six is
-within one session's capacity; the relay layer was not paying for itself.
+A **workstream** is a named, durable piece of production with an owner and a backlog — not a task.
+Workers are assigned to workstreams, and the number of workers is whatever the live workstreams
+require.
+
+**No worker is ever idle.** Each holds a current task, an on-deck task, and enough behind it that
+finishing a lane never produces a "what now?" round-trip to the lead. Eliminating that round-trip is
+the point. Backlog state (current / on deck / next, per member) is dashboard data the owner watches,
+not internal bookkeeping.
+
+**Workers run subagents beneath them.** A worker that does everything in its own context is the
+leverage being left on the table; the agent roster exists to be used. Launch independent subagents in
+a single message so they run concurrently. Two rules: a subagent's output is a **report, not a
+verdict** — the worker verifies before relaying, because a confident summary is the easiest thing in
+this system to mistake for a fact; and the expensive Opus-tier reviewer is deliberately rare, never a
+default.
+
+### On the lead layer
+
+It has been removed once and restored once, and both decisions were right at the time. Removed
+because every instruction and finding travelled two hops each way and several of the round's errors
+were introduced or amplified in relay. Restored by the owner when the fleet grew past what one PM can
+directly backlog. The cost is real, so pay it deliberately: leads exist to hold backlogs and keep
+workers loaded, not to pass messages. If a lead is only forwarding, the layer is not earning its
+place.
+
+**Every relay states its provenance.** A lead passing on an instruction or a finding says whether it
+verified the claim itself or is relaying it. This is not a formality: on 2026-09-16 the PM relayed a
+live owner instruction that contradicted this very document, told a lead to treat it as settled, and
+was caught by a worker that fetched the document fresh and checked. The instruction was genuine and
+the document was stale — but the only verifiable record said otherwise, and the challenge was
+correct.
 
 ## Why review and merge are one seat
 
