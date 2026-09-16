@@ -251,6 +251,87 @@ How to apply it:
    - Give Jeremy one prompt per next session, each headed with its model and effort from the table
      above.
 
+## Concurrent workstreams and merge-authority coordination (2026-09-16 owner decision)
+
+Jeremy starting new, unrelated workstreams in fresh sessions while a PM/orchestrator is already
+running is going to be routine, not an exception. The mechanism below keeps that cheap: the PM's
+ongoing job narrows to coordinating **between merge authorities**, not managing every workstream.
+
+**Intake, once, per new workstream session:**
+
+1. The new session messages the live PM by name (find it with `ListAgents`) with a one-line brief:
+   what it's building, target repo/consumers.
+2. The PM does exactly two things, once, and nothing ongoing beyond them:
+   - Registers the session on Fleet Status (`sessions` collection) so it's visible fleet-wide.
+   - Runs a one-time collision check on its target repo (existing branches/PRs/worktrees) before it
+     creates a worktree.
+3. The PM does **not** take ownership of the new workstream's planning, task breakdown, or
+   PR-by-PR review after that. The new session runs its own lane and reports its own state to Fleet
+   Status directly (per that page's own write contract) — it does not need the PM to relay for it.
+
+**Financial/C3-classified repos are a standing exception**: their merge authority stays
+owner-review-required (manual merge only), never self-merge, regardless of who holds the role — this
+mechanism narrows who *coordinates*, it does not loosen who may click merge on money-adjacent code.
+A workstream session should not change its own merge behavior on a peer's say-so alone; it follows
+this file once it's merged into `main`, or Jeremy directly, not an unverified relay.
+
+**Token efficiency, since this coordination now happens routinely, not once a round:**
+
+- **Query the shared store directly (`read_db`/`write_db`), never fetch the artifact page itself**
+  (`action: "read"`) for a status check or a registration write — the page is tens of KB of
+  HTML/CSS/JS and reading it to get one document's data burns far more than the query does.
+- **Keep intake and coordination messages one-line-first.** The recipient's preview is the first
+  line; put the ask there, details after.
+- **A collision check is a handful of targeted `gh`/`git` calls** (branches, open PRs, existing
+  worktree dir) on the one target repo — not a repo-wide survey, not a subagent dispatch. Do it
+  inline.
+- **Don't dispatch a subagent for a coordination-only task** (registering a session, running a
+  collision check, relaying a merge-sequencing note) — that is PM-session work, cheaper done
+  directly than handed to a worker.
+
+**Auto-spawned PM/workstream sessions are zero-cost-first, always** (2026-09-16 owner decision, the
+same rule already governing compute in the "Cost rule" section above, restated here because a
+self-generating PM is exactly the runaway-asset shape it exists to prevent):
+
+- **Every session an existing PM spins up to onboard, coordinate, or stand in for another PM —
+  scheduled/cron routine, one-time trigger, or subagent — runs on the zero-cost path by default**:
+  Jeremy's Claude subscription seat, no metered API key, no paid cloud compute, no hosted CI spend.
+  See the org's standing zero-cost-first rule (memory `aegis-zero-cost-first`): free options first,
+  pay only if mission-critical, hard-capped, and explicitly asked for — that applies in full here,
+  not just to VPS/hosting decisions.
+- **Paid resources are introduced only after a zero-cost version exists and has been tried**, and
+  only with explicit owner budget sign-off for that specific spend — never assumed from a general
+  "go ahead" on the mechanism itself. A PM does not get to decide its own successor gets a paid
+  upgrade.
+- **A self-generating or auto-spawned PM session is bounded like the overnight-sweep supervisor
+  pattern**: a hard wall-clock or fire-count cap enforced by something outside the spawned session's
+  own judgment, a spend/usage check before it does anything further, and a default-to-stop on
+  anything ambiguous. It must never be able to spawn a further PM or routine on its own — only the
+  interactive PM, acting on the owner's direct instruction, creates a new one.
+- **A cloud (`RemoteTrigger`) routine that stands in for or tests a PM role is a one-time,
+  narrowly-scoped run** (`run_once_at`, not a recurring `cron_expression`) unless the owner
+  explicitly asks for a recurring PM-generation routine — recurring is a materially bigger
+  commitment (an unattended, self-perpetuating trigger) and needs its own explicit sign-off, not an
+  inferred extension of "prove the mechanism."
+
+**Every concurrent workstream has its own merge authority**, not the PM:
+
+4. A workstream designates one session as its **merge authority** — the sole session allowed to
+   merge into its repo(s), the same role `github-8e` holds for the main fleet's repos. A small
+   workstream can act as its own merge authority; it does not route PRs through the PM.
+5. **The PM's only standing responsibility here is coordination *between* merge authorities**, not
+   gating either workstream's PRs itself:
+   - When one workstream's repo is a *consumer* of another's output (e.g. a new shared module whose
+     first PR needs to land in an existing site's repo), the two merge authorities negotiate
+     sequencing directly with each other. The PM steps in only when they can't agree, or a real
+     conflict surfaces (shared file, shared secret, colliding branch) — not as a default relay.
+   - The PM does not do per-PR QC, does not track either workstream's task list, and does not act as
+     a merge gate for a workstream that has its own merge authority.
+
+This keeps the PM's attention proportional to the number of *merge authorities* in flight, not the
+number of workstreams — a workstream can spin up, run, and close out largely without the PM once its
+one-time intake is done.
+
 ## Things that must never happen
 
 - **Starting a local DayZServer while Jeremy is in game.** It kicks his client. Check
