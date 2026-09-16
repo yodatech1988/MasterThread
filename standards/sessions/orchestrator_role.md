@@ -43,7 +43,15 @@ its round, and from that point the PM — not the orchestrator itself — is res
 and for deciding when it should rotate.
 
 1. **Check for a PM first.** `ListAgents` to see whether a PM session is live (current name
-   `ops-cycle-pm`, unless a peer or Jeremy says otherwise).
+   `ops-cycle-pm`, unless a peer or Jeremy says otherwise). **`ops-cycle-pm` is a role label, not a
+   real session id** — `ListAgents` shows raw session names (`github-44`, `github-7f`, …), which
+   won't literally match it. No formal PM-identity authentication protocol exists (checked
+   2026-09-16: not in this file, `session_plan_standard.md`, `worker_role.md`, or the T4 roster) —
+   the actual mechanism is a direct round-trip: message the peer you believe is PM, have it
+   self-identify and cite the authority artifact and Fleet Status URLs as a correctness check (a
+   session that can't name those isn't really PM), and treat that reply as confirmation. Don't
+   search local docs for a formal handshake that doesn't exist, and don't rely on name-matching in
+   `ListAgents` — go straight to the message exchange.
 2. **If the PM is reachable**, introduce yourself per `worker_intro_prompt.md` (name, workstream,
    what you're equipped to do) and wait for its acknowledgment. Once acknowledged, **do not start
    your own usage watcher** — the PM tracks your usage and tells you when to prepare, wrap up,
