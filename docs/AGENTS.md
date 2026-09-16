@@ -74,6 +74,83 @@ nothing on its own.
 | `budget-envelope-reporter` | haiku | R | `ops-platform` | Read-only per-zone spend report via the real ledger `accountant.js`, never `reserve`/`settle` |
 | `voice-transcriber` | haiku | | `jarvis` | Wraps the already-built whisper.cpp CLI, output only |
 | `voice-synthesizer` | haiku | | `jarvis` | Wraps the already-built XTTS synthesis script; requires whose-voice-and-why before running |
+| `badlands-mod-readiness-advisor` | sonnet | **A** | `site-badlands` | Verdict against the real mod-readiness tracker |
+| `badlands-hosting-plan-advisor` | sonnet | **A** | `site-badlands` | Verdict against the real hosting plan doc |
+| `badlands-release-prep-advisor` | sonnet | **A** | `site-badlands` | Verdict against the real release-prep research doc |
+| `badlands-status-reporter` | haiku | R | `site-badlands` | Fact summary from `STATUS.md` + `docs/PLAN.md` |
+| `badlands-mod-readiness-inventory` | haiku | R | `site-badlands` | Fact list of mods + readiness state |
+| `canon-consistency-advisor` | sonnet | **A** | `core` | Checks a proposed lore change against the real canon bible (8 files) |
+| `secret-rotation-schedule-advisor` | haiku | **A** | `core` | Verdict against the real `docs/ops/SECRET-ROTATION.md` expiry tables |
+| `vendored-validator-advisor` | sonnet | **A** | `core` | Verdict against `docs/ops/VENDORED-VALIDATOR.md`; found site-chernarus's drift check has never run, 6 files already diverged |
+| `canon-bible-inventory` | haiku | R | `core` | Lists the real canon docs + last-modified dates |
+| `secret-rotation-schedule-reporter` | haiku | R | `core` | Reports which schedule entries are due, fact-only |
+| `vendored-validator-status-reporter` | haiku | R | `core` | Reports validator version/drift state, fact-only |
+| `model-policy-advisor` | sonnet | **A** | `claude-agents` | Checks a model choice against the real `model-policy` ROLES map; flags disagreement with `worker_role.md` rather than silently reconciling |
+| `bug-report-triage-advisor` | sonnet | **A** | `claude-agents` | Checks a bug report against the real `bug-report-agent/src/triage.js` — that package has no severity scale, says so rather than inventing one |
+| `economy-worker-schema-advisor` | sonnet | **A** | `claude-agents` | Checks a query/migration against the real `economy-worker/schema.sql` |
+| `be-rcon-query-reporter` | haiku | R | `claude-agents` | Wraps `be-rcon`'s real read-only `players` query only |
+| `bug-report-inventory` | haiku | R | `claude-agents` | Lists open bug-report PRs via the real naming convention |
+| `economy-worker-health-check` | haiku | R | `claude-agents` | Read-only Cloudflare Worker deploy/health status |
+
+## Advisors against MasterThread's own standards (global, `~/.claude/agents/`)
+
+Every real (non-stub) file in `standards/architecture`, `standards/coding`, `standards/release`,
+`standards/requirements`, `standards/testing`, and `standards/maintenance` now has a paired Advisor
+(checks compliance) and, for the higher-value ones, a matching drafter Agent (produces new content
+in that standard's real format). `MasterThread/policies/*` (compliance, data, dayz, discord,
+engineering, patreon) are excluded — every file there is a literal 0-byte stub; building against
+them would mean inventing rules, which none of these do.
+
+| Agent | Model | Purpose |
+|---|---|---|
+| `api-spec-advisor` | sonnet | Verdict against `api_spec_standard.md`'s real required sections |
+| `architecture-doc-advisor` | sonnet | Verdict against `architecture_doc_standard.md`'s real required sections |
+| `mermaid-styleguide-advisor` | haiku | Verdict against `mermaid_styleguide.md`'s real rules |
+| `sequence-diagram-advisor` | haiku | Verdict against `sequence_diagram_standard.md`'s real rules |
+| `error-handling-advisor` | haiku | Verdict against `error_handling.md`'s real rules |
+| `file-structure-advisor` | haiku | Verdict against `file_structure.md`'s real rules |
+| `logging-conventions-advisor` | haiku | Verdict against `logging_conventions.md`'s real rules |
+| `naming-conventions-advisor` | haiku | Verdict against `naming_conventions.md`'s real rules |
+| `changelog-advisor` | haiku | Verdict against `changelog_standard.md`'s real format |
+| `release-notes-advisor` | haiku | Verdict against `release_notes_standard.md`'s real format |
+| `rollout-plan-advisor` | sonnet | Verdict against `rollout_plan_standard.md` — thin standard (5 bullets, no worked template), flagged rather than treated as complete |
+| `acceptance-criteria-advisor` | sonnet | Verdict against `acceptance_criteria.md`'s real `AC-NNN` format |
+| `functional-requirements-advisor` | sonnet | Verdict against `functional_requirements.md`'s real `FR-XXX` format |
+| `technical-requirements-advisor` | haiku | Verdict against `technical_requirements.md`'s real rules |
+| `user-story-advisor` | haiku | Verdict against `user_story_format.md`'s real template |
+| `integration-testing-advisor` | sonnet | Verdict against `integration_testing.md`'s real Scope/Guidelines |
+| `load-testing-advisor` | sonnet | Verdict against `load_testing.md`'s real Targets/Metrics |
+| `simulation-testing-advisor` | sonnet | Verdict against `simulation_testing.md` — very thin (12 lines, no real document structure), flagged |
+| `test-case-advisor` | haiku | Verdict against `test_case_standard.md`'s real ID/Steps/Expected format |
+| `escalation-matrix-advisor` | sonnet | Verdict against `escalation_matrix.md` — thin (4 example rows, no real taxonomy), flagged |
+| `issue-triage-advisor` | sonnet | Verdict against `issue_triage_standard.md`'s real P0-P3 severities (no label taxonomy exists, flagged) |
+| `changelog-entry-drafter` | sonnet | Drafts a changelog entry in the real Added/Changed/Fixed/Removed format |
+| `release-notes-drafter` | sonnet | Drafts release notes in the real 5-section format |
+| `user-story-drafter` | sonnet | Drafts a user story in the real role/capability/value template |
+| `test-case-drafter` | sonnet | Drafts a test case in the real ID/Preconditions/Steps/Expected format |
+| `acceptance-criteria-drafter` | sonnet | Drafts acceptance criteria in the real `AC-NNN` format |
+| `api-spec-drafter` | sonnet | Drafts an API spec skeleton in the real 5-section format |
+| `mermaid-diagram-drafter` | sonnet | Drafts a diagram per the real style rules |
+| `sequence-diagram-drafter` | sonnet | Drafts a sequence diagram in the real syntax/naming rules |
+| `rollout-plan-drafter` | sonnet | Drafts a rollout plan — kept to exactly the standard's 5 sections, `TODO` markers rather than invented structure |
+| `functional-requirements-drafter` | sonnet | Drafts functional requirements in the real `FR-XXX` format |
+| `technical-requirements-drafter` | sonnet | Drafts a technical requirements doc in the real format |
+| `integration-test-plan-drafter` | sonnet | Drafts an integration test plan in the real format |
+| `simulation-test-plan-drafter` | sonnet | Drafts a simulation test note — standard is too thin for a full plan shape, scoped down accordingly |
+| `architecture-doc-drafter` | sonnet | Drafts an architecture doc skeleton in the real required sections |
+| `load-test-plan-drafter` | sonnet | Drafts a load test plan in the real format |
+| `standards-stub-finder` | haiku | Sweeps `standards/`+`policies/` and reports stub vs real (>5 lines) — exists because this exact mistake happened repeatedly while building this roster |
+| `policy-coverage-reporter` | sonnet | Cross-refs this file against every real standard/policy doc with no agent yet |
+
+## More global mechanical reporters (`~/.claude/agents/`)
+
+| Agent | Model | Purpose |
+|---|---|---|
+| `claude-session-archive-status` | haiku | Wraps `Invoke-Archive.ps1`'s real status output; never triggers a run |
+| `github-org-repo-inventory` | haiku | `gh repo list yodatech1988` fact table — name/visibility/last-push/archived |
+| `discord-bot-key-age-reporter` | haiku | Real DPAPI key-file ages for the two named Discord bot keys; the second key's actual path differs from the assumed one — found and corrected during build |
+| `ovh-vps-usage-reporter` | haiku | Wraps `OvhApiKey.ps1 GET /vps` (scope `/vps/*`, no `DELETE`), fact-only |
+| `workshop-mod-inventory` | haiku | Lists real `module.json` files across `aegis-mods`/`aegis-poi`; found `aegis-poi` has no real modules yet, only test fixtures |
 
 ## Adding a new one
 
