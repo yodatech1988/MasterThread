@@ -258,6 +258,31 @@ this file once it's merged into `main`, or Jeremy directly, not an unverified re
   collision check, relaying a merge-sequencing note) — that is PM-session work, cheaper done
   directly than handed to a worker.
 
+**Auto-spawned PM/workstream sessions are zero-cost-first, always** (2026-09-16 owner decision, the
+same rule already governing compute in the "Cost rule" section above, restated here because a
+self-generating PM is exactly the runaway-asset shape it exists to prevent):
+
+- **Every session an existing PM spins up to onboard, coordinate, or stand in for another PM —
+  scheduled/cron routine, one-time trigger, or subagent — runs on the zero-cost path by default**:
+  Jeremy's Claude subscription seat, no metered API key, no paid cloud compute, no hosted CI spend.
+  See the org's standing zero-cost-first rule (memory `aegis-zero-cost-first`): free options first,
+  pay only if mission-critical, hard-capped, and explicitly asked for — that applies in full here,
+  not just to VPS/hosting decisions.
+- **Paid resources are introduced only after a zero-cost version exists and has been tried**, and
+  only with explicit owner budget sign-off for that specific spend — never assumed from a general
+  "go ahead" on the mechanism itself. A PM does not get to decide its own successor gets a paid
+  upgrade.
+- **A self-generating or auto-spawned PM session is bounded like the overnight-sweep supervisor
+  pattern**: a hard wall-clock or fire-count cap enforced by something outside the spawned session's
+  own judgment, a spend/usage check before it does anything further, and a default-to-stop on
+  anything ambiguous. It must never be able to spawn a further PM or routine on its own — only the
+  interactive PM, acting on the owner's direct instruction, creates a new one.
+- **A cloud (`RemoteTrigger`) routine that stands in for or tests a PM role is a one-time,
+  narrowly-scoped run** (`run_once_at`, not a recurring `cron_expression`) unless the owner
+  explicitly asks for a recurring PM-generation routine — recurring is a materially bigger
+  commitment (an unattended, self-perpetuating trigger) and needs its own explicit sign-off, not an
+  inferred extension of "prove the mechanism."
+
 **Every concurrent workstream has its own merge authority**, not the PM:
 
 4. A workstream designates one session as its **merge authority** — the sole session allowed to
