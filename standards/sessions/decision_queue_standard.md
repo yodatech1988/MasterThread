@@ -48,7 +48,39 @@ number, and the page itself never invents a status.
 | `status` | `"open"` \| `"resolved"` | The only field the page's render logic keys off for open/resolved grouping — never inferred from whether `resolution` is non-empty. |
 | `resolution` | string | The owner's actual answer. Empty until they've actually answered — never pre-filled with a recommendation copied in, even as a placeholder; that has caused real confusion when a card was miscategorized as answered. |
 | `comment` | string | Free-text context the owner added alongside their resolution. |
+| `followUpPending` | boolean | **Set whenever a resolution names a real action that hasn't happened yet** (an owner click, a build, a merge) (2026-09-16 standing rule). Keeps the card visible indefinitely — see Lifecycle below. `followUpNote` says what's still outstanding. |
+| `corrections` | array | `{ note, correctedBy, correctedAt, previousResolution }` entries, appended — never delete or silently overwrite a resolved card's `resolution` in place; append a correction and update `resolution` to the new value. See Correcting a resolved card below. |
 | `createdAt` / `resolvedAt` | ISO 8601 | Timestamps. |
+
+## Lifecycle: open → resolved → archived
+
+A resolved card is never deleted, but it does age through three visibility stages so the page stays
+readable on a long working night without losing the record (2026-09-16 owner instruction — ten-plus
+resolved cards in one night already made the collapsed history unreadable):
+
+1. **Open** — blocks in the "needs you" section (`ownerRequired: true`) or shows as ops's default
+   plan (`ownerRequired: false`), same as always.
+2. **Resolved** — for 20 minutes after `resolvedAt`, shows in a highlighted "just answered" strip so
+   a burst of answers gets visible confirmation; after that, moves into the normal collapsed
+   "N resolved" section.
+3. **Archived** — once resolved more than 4 hours ago, moves into a separate "N archived" collapsed
+   section, out of the default view but never deleted and still one click away.
+
+**The one hard exception:** a card with `followUpPending: true` never reaches stage 3, no matter how
+old `resolvedAt` gets. "Resolved" and "done" are deliberately different words here — several cards
+the night this rule was written were resolved in the sense of "Jeremy answered the question" while
+the actual action the answer called for (an OVH token-scope change, a cost-panel update) hadn't
+happened yet. Don't let a real answer disappear from view before the thing it asked for is actually
+done.
+
+## Correcting a resolved card
+
+Never overwrite a resolved card's `resolution` field in place. If it needs correcting after the
+fact: append `{ note, correctedBy, correctedAt: <now>, previousResolution: <the old resolution
+text> }` to `corrections`, then update `resolution` to the corrected value in the same write. The
+card then shows the current answer and the full correction trail, not a silent edit. Always pin the
+write with `if_version` (see below) — a card can be corrected while the owner is mid-answer on it,
+and a forced overwrite has already clobbered a live answer once tonight.
 
 ## Filing a card
 
