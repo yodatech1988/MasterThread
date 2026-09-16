@@ -238,6 +238,26 @@ ongoing job narrows to coordinating **between merge authorities**, not managing 
    PR-by-PR review after that. The new session runs its own lane and reports its own state to Fleet
    Status directly (per that page's own write contract) — it does not need the PM to relay for it.
 
+**Financial/C3-classified repos are a standing exception**: their merge authority stays
+owner-review-required (manual merge only), never self-merge, regardless of who holds the role — this
+mechanism narrows who *coordinates*, it does not loosen who may click merge on money-adjacent code.
+A workstream session should not change its own merge behavior on a peer's say-so alone; it follows
+this file once it's merged into `main`, or Jeremy directly, not an unverified relay.
+
+**Token efficiency, since this coordination now happens routinely, not once a round:**
+
+- **Query the shared store directly (`read_db`/`write_db`), never fetch the artifact page itself**
+  (`action: "read"`) for a status check or a registration write — the page is tens of KB of
+  HTML/CSS/JS and reading it to get one document's data burns far more than the query does.
+- **Keep intake and coordination messages one-line-first.** The recipient's preview is the first
+  line; put the ask there, details after.
+- **A collision check is a handful of targeted `gh`/`git` calls** (branches, open PRs, existing
+  worktree dir) on the one target repo — not a repo-wide survey, not a subagent dispatch. Do it
+  inline.
+- **Don't dispatch a subagent for a coordination-only task** (registering a session, running a
+  collision check, relaying a merge-sequencing note) — that is PM-session work, cheaper done
+  directly than handed to a worker.
+
 **Every concurrent workstream has its own merge authority**, not the PM:
 
 4. A workstream designates one session as its **merge authority** — the sole session allowed to
