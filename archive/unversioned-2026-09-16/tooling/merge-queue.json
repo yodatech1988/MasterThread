@@ -1,0 +1,309 @@
+[
+  {
+    "repo": "yodatech1988/core",
+    "pr": 78,
+    "tier": 3,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "REVIEW SECOND, RIGHT AFTER services#97, BEFORE ANY TIER 1 ENTRY: this must land before Jeremy flips the Actions token permissions on the automerge repos (aegis-mods, claude-agents, aegis-poi), or agent-definition PRs — which grant tool access, exactly what ops-infra#9's vps-drift-checker demonstrated — become auto-mergeable with no human ever looking. || Content: adds '.claude/agents/**' to claude-review.yml's owner-review automerge gate, same treatment as the existing '.github/**' check. Verified the actual diff myself: single file (.github/workflows/claude-review.yml, +6/-1), purely additive, blocks automerge only (not the review job itself), matches the existing .github/ grep pattern exactly, includes a clear comment explaining why (an agent that says 'read-only' in prose is only as read-only as the tools it's actually given). No secrets. RED CHECK EXPLAINED, don't misread it: review/review shows FAILURE, expected for two independent reasons — (1) self-referential: this PR touches claude-review.yml itself, which trips that same workflow's own 'nothing under .github/ may automerge' rule; (2) the known runner gh-PATH/unzip bug that services#97 fixes. Note: I could not independently re-read the exact job log this pass (blocked by this session's own permission classifier on that specific command), so this rests on github-6b's characterization plus my own full read of the diff content, which independently confirms the change is sound regardless of which failure reason applies. CANNOT SELF-SERVE BY DESIGN: this is a .github/ change, so by the very gate it amends, it can never automerge — it requires a human merge. That's the system working as intended, not an obstacle.",
+    "authorSession": "github-9a",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/MasterThread",
+    "pr": 57,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: 5 Tier-1 procedure skills (dispatch-lane, land-pr, owner-click, round-closeout, round-start) + skills/README.md + docs/LESSONS.md. Verified: does NOT reference worker_intro_prompt.md or the new telemetry section MasterThread #54 adds to task_sizing.md (checked both strings against the full diff, zero matches) — its only task_sizing.md references are to the pre-existing S/M/L/XL bands already on main. No content dependency on #54, despite an earlier (incorrect) suspicion — see merge-queue-NOTES.md's #57/#54 worked example. No secrets, no removed-file reappearance, never-list traceability spot-checked. No CI configured for this repo.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/MasterThread",
+    "pr": 58,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Recovers 72 already-live claude-agents/*.md roster files + a generator script into git (docs/config, not new capability). github-6b independently verified all 71 agent definitions are byte-identical to the live roster at ~/.claude/agents/ — this recovers already-in-use capability into version control, it doesn't grant anything new. Of the 25 Bash-granted agents in the set, each individually checked: real technical restriction (nmap category boundaries + maintenance-window gate for vuln-scan-active; no-DELETE token scope for ovh-vps-usage-reporter) or no production reach at all (local git/test-runner scope only) — none hold SSH/production-host credentials like ops-infra#9's vps-drift-checker did. No secrets, no CI on this repo (same pr-review-workflow outage as the rest of the fleet), this manual review is the only gate.",
+    "authorSession": "github-9a",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/aegis-mods",
+    "pr": 48,
+    "tier": 3,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "AEGIS_Medicine Session 7: surgery + diseases (real game code — new AegisMedicineDiseases.c, AegisMedicineDiseasesLogic.c, plus modifications across the mod). CAVEAT: boot-verified partial — configuration tested is vanilla only. Author's 71/71 self-test claim is specific and falsifiable (exact server version, signing tool, observed log message) but has no in-repo/CI artifact backing it — this repo's CI 'check' job is a confirmed no-op. Per the standard adopted after aegis-poi#13's compile-defect catch: independently confirmed this PR has zero Expansion-gated code (grepped for EXPANSION/EXPANSIONMODMARKET, no matches) — so unlike #13, there is no ifdef-hidden branch that vanilla-only testing could have missed; claim scope and test scope actually match here. Code itself reviewed clean: proper null-checks, guarded array access, correct reverse-iteration pattern, no secrets, no removed-mod reappearance. CI green.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/aegis-mods",
+    "pr": 47,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: adds T4 subagent defs (mod-boot-test-runner, module-json-contract-checker, workshop-publish-preflight). CI green.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/aegis-pricing",
+    "pr": 8,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: adds T4 subagent def (mod-boot-test-runner). CI green.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/site-badlands",
+    "pr": 6,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: adds 5 T4 subagent defs (3 advisors + 2 reporters, round 3). CI green.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/claude-agents",
+    "pr": 25,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: adds T4 subagent defs (3 advisors + 3 reporters, round 3). CI green.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/MasterThread",
+    "pr": 52,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: indexes round-2 T4 agents (GitHub review-cost, security, ops-platform budget). No CI configured for this repo.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/MasterThread",
+    "pr": 44,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: parks Venmo/Cash App donation options in backlog (P3). No CI configured for this repo.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/MasterThread",
+    "pr": 55,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: aligns orchestrator_role.md usage-watcher section with CLAUDE.md's PM-handoff model; old fallback mechanics preserved verbatim, correct polarity confirmed. No CI configured for this repo. DEPENDENCY: independently verified this PR's own diff references worker_intro_prompt.md (orchestrator_role.md line 47) by name, and that file exists only on MasterThread #54's unmerged branch, not on main — a genuine content dependency (unlike #57's suspected-but-disproven one). Do not approve before #54 merges; the tool's dependsOn enforcement blocks this automatically.",
+    "authorSession": "github-4f",
+    "mergeMethod": "squash",
+    "dependsOn": ["yodatech1988/MasterThread#54"]
+  },
+  {
+    "repo": "yodatech1988/MasterThread",
+    "pr": 56,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: registers ops-policies + _security-public in docs/REPOS.md ledger (flags _security-public as local-only, not yet a git repo); content verified accurate against ops-policies #13.",
+    "authorSession": "github-9a",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/site-chernarus",
+    "pr": 98,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: adds T4 subagent defs (classname-duplicate-triage, economy-invariant-checker, loot-table-reviewer) — agent tooling docs, not game content. CI green.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/site-chernarus",
+    "pr": 92,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: adds vault/black-market portal network design doc. CI green.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/site-chernarus",
+    "pr": 99,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: Session 18 docs/PLAN.md entry (design restart-triggered VPS backups), single file. review/review check is red but independently confirmed to be the known self-hosted-runner infra bug (missing unzip), not a content finding.",
+    "authorSession": "github-54",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/core",
+    "pr": 77,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: T4 subagent defs (3 advisors + 3 reporters, round 3). review/review failure independently confirmed via job log: 'Unable to locate executable file: unzip' cascading into 'bun: command not found' in the claude-review action's setup step — known runner-infra bug, not a content finding.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/services",
+    "pr": 93,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Reviewed clean per QC. blocking-issues/secret-scan failures independently confirmed via job logs: 'gh: command not found' and gitleaks tar-extract/install failure — known runner-infra bug, not real findings against the diff.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/services",
+    "pr": 98,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Community DB Phase 4 CS5: per-IP rate limiting + resend-confirmation on website signup API. TOCTOU fix independently verified (INSERT-first-then-count, not check-then-increment), SQL parameterized, no enumeration/abuse vector, 200+ lines of new/updated tests. review/review failure is the same known runner-infra bug. PM (github-64) confirmed this repo has no deploy workflow at all — merging does not change live behavior; deploy is a separate manual step.",
+    "authorSession": "github-80",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/ops-policies",
+    "pr": 12,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: single-line clarification to OPEN_QUESTIONS.md Q15 (CI advisory scope, edge only not dedicated CI VPS). No conflict with #13 (different section/topic), narrows rather than reverses the existing advisory.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/ops-policies",
+    "pr": 13,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs/config-only: cross-references D0-D3 scheme against org-wide C0-C3 scheme; records a D2-vs-C3 conflict as an explicitly open question (Q32), deliberately unresolved pending owner rather than silently resolved in the machine-readable classes.yaml. No CI configured for this repo.",
+    "authorSession": "github-9a",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/claude-agents",
+    "pr": 26,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: design note for the in-game chat moderator (planning only, nothing built/live). Matches standing chat-moderation constraints (RCON never sees Expansion chat, log-tail is after-the-fact only, real-time masking routes to a Workshop module not a VPS script). CI green.",
+    "authorSession": "github-4f",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/ops-platform",
+    "pr": 10,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: new T4 agent def (budget-envelope-reporter.md). Read-only tool scope (Bash/Read only) with an explicit Never-section blocking write/spend calls. No CI configured for this repo.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/aegis-poi",
+    "pr": 12,
+    "tier": 1,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Docs-only: adds 2 T4 subagent defs (mod-boot-test-runner, module-json-contract-checker), no code/secrets/crash risk. CI green. NOTE: branch is BEHIND base, needs updating before merge will be offered cleanly (mergeable was initially UNKNOWN, re-polled to MERGEABLE).",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/claude-agents",
+    "pr": 27,
+    "tier": 2,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b via live-reviewer (credential-tool escalation, cleared directly by PM github-64)",
+    "qcSummary": "Adds GitHubTwoFactorKey.ps1 (2FA recovery-code capture tool), single new file. Content-clear per live-reviewer's manual read. CAVEAT: the 'no secrets' finding rests entirely on that manual read, NOT on CI — this repo has no secret-scan job, so green CI here is not secret-scan evidence. Do not cite the green check as the basis for this clearance later.",
+    "authorSession": "github-4f",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/services",
+    "pr": 97,
+    "tier": 3,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "REVIEW THIS FIRST, REGARDLESS OF TIER ORDER: this is the fix for the self-hosted-runner bug that is currently making CI checks meaningless across the fleet. Every red check on core#77, services#93, and site-chernarus#99 in this same queue is caused by this exact bug, not a real finding — and any PR reviewed after this one inherited the same blind spot. Merging this first (then having the VPS installer actually re-run — see caveat below) restores real CI signal for everything else in the queue. The tool displays this at Tier 3, after 19 Tier-1 entries, purely because it has no way to express 'read this before any tier' yet — that's a tooling gap, not a signal that this is low-priority. || Content: installs gh CLI + unzip, verifies rootless Docker with a 5-attempt retry (fixes a systemd/dockerd race). set -euo pipefail throughout, both blocks fail loudly by design, bash -n clean, no secrets touched (only pre-existing registration-token plumbing, unchanged). CAVEAT: merged != runner fixed — the VPS still needs the installer script manually re-run (owner step, not automatic) before CI signal actually recovers. Its own gate/secret-scan checks show the exact failures it's meant to fix — expected (runner hasn't been updated yet), not a new/different failure.",
+    "authorSession": "github-7a",
+    "mergeMethod": "squash"
+  },
+  {
+    "repo": "yodatech1988/site-chernarus",
+    "pr": 96,
+    "tier": 4,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Removes government-affiliated patches from loot and traders (owner request). Live game-economy content change, not docs. NOTE: branch is BEHIND base, needs updating before merge will be offered cleanly.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash",
+    "liveWarning": "Live game-economy content on the live Chernarus server. Flagged as needing live-reviewer/owner sign-off, not just QC's pass — hold for explicit owner clearance before merging."
+  },
+  {
+    "repo": "yodatech1988/site-chernarus",
+    "pr": 94,
+    "tier": 4,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Loose ammo: made sellable at traders, removed from all loot spawn pools. Live game-economy content change, not docs. NOTE: branch is BEHIND base, needs updating before merge will be offered cleanly.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash",
+    "liveWarning": "Live game-economy content on the live Chernarus server. Flagged as needing live-reviewer/owner sign-off, not just QC's pass — hold for explicit owner clearance before merging."
+  },
+  {
+    "repo": "yodatech1988/site-chernarus",
+    "pr": 88,
+    "tier": 4,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Sell-only fish/meat/pelts, removes Gator tractor, removes bus from traders. Live game-economy content change, not docs. NOTE: branch is BEHIND base, needs updating before merge will be offered cleanly.",
+    "authorSession": "not identified (pre-dates current fleet)",
+    "mergeMethod": "squash",
+    "liveWarning": "Live game-economy content on the live Chernarus server. Flagged as needing live-reviewer/owner sign-off, not just QC's pass — hold for explicit owner clearance before merging."
+  },
+  {
+    "repo": "yodatech1988/ops-infra",
+    "pr": 11,
+    "tier": 4,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b",
+    "qcSummary": "Regression tests for #10's B3/B4 audit-log guards. Base branch is #10's own branch (agent/ops-infra/session8-postgres-audit), not main — confirmed via git merge-base --is-ancestor. Real assertions verified against the actual append()/verify() paths, no mocks, no secrets, doesn't touch schema/Ansible beyond the test file. STACKED WITH #10: merge this one first — it merges into #10's branch, not main, so it's always safe to land independently of #10's own approval. No CI configured for this repo.",
+    "authorSession": "github-7a",
+    "mergeMethod": "squash",
+    "liveWarning": "Part of the same armed-on-next-run change as ops-infra #10 (writes test coverage for the personal-vault Postgres role). Grouped in Tier 4 alongside it, though this PR itself only adds test code and targets #10's branch, not main."
+  },
+  {
+    "repo": "yodatech1988/ops-infra",
+    "pr": 10,
+    "tier": 4,
+    "qcVerdict": "PASS",
+    "qcVerifier": "github-6b (audit-log chaining logic) + live-reviewer x2, independent passes (auth surface via read, and B1-B4 fixes via execution) requested by PM github-64",
+    "qcSummary": "Session 8: platform Postgres role + hash-chained audit log (~1300 lines, 14 files). Audit-log chaining logic independently verified by github-6b (advisory lock, isolation-level assertion against forking, off-host daily anchor against full-chain rewrite). First live-reviewer pass (auth surface, by read): pg_hba.conf adds 3 new rules at a path that doesn't exist on main (nothing overwritten, no access widened); pg_ident.conf is an empty map (fail-closed); all 3 new DB roles are NOLOGIN, no passwords, PUBLIC revoked — zero login credentials created; host_vars adds one key scoped to the platform zone; unattended post-merge apply has a findmnt guard that aborts rather than writing to the unencrypted root filesystem if the vault is sealed. Second, independent live-reviewer pass (github-7a, by execution): booted the pinned Postgres image twice, ran apparmor_parser against the rendered profile, ran real SQL attacks against a live DB for the B3/B4 guards — both held. Both passes agree, no scope creep, no secrets. CAVEAT 1: no teardown path — a git revert + re-run does not uninstall the container/systemd units/data dir; rollback would be manual. CAVEAT 2: recommend the first real apply be run attended with --check (role is check-mode aware, shows deltas without starting anything). CAVEAT 3: B1/B2 are only fully proven by a real apply against personal-vault, but both failure modes are loud not silent — the parser blocks bad syntax at template time, a denied socket write fails Postgres's startup retry. Non-blocking findings for later: postgres/tasks/main.yml:33 uses a bare {{ luks_data_mount }} instead of the defaulted form the rest of the role uses (works today via cross-role default scoping, inconsistent); postgres_root is hardcoded to /srv/vault/{{ postgres_zone }}/pg rather than derived from luks_data_mount (a future mount-path change could desync the B2 preflight from where data actually lives, but verify.yml catches it post-apply); no regression test exercises the new B3/B4 guards WITHOUT #11 merged first — that's exactly what #11 fixes, hence the dependency. Also: POSTGRES_HOST_AUTH_METHOD=trust is set but inert today (overridden by explicit hba_file + read-only mount, caught by verify.yml if that changes); podman exec into the Postgres container as the platform-zone user grants Postgres superuser on the ledger, which is intentional (how migrations apply) — real trust boundary is the off-host daily anchor. SEQUENCE: this entry must merge AFTER #11 (dependsOn enforces this) so #11 lands into this PR's branch first, then this merge carries both changesets into main as the single top-branch→main landing per the stacked-PR convention.",
+    "authorSession": "not identified (ledger-gap sweep)",
+    "mergeMethod": "squash",
+    "dependsOn": ["yodatech1988/ops-infra#11"],
+    "liveWarning": "Writes pg_hba.conf/pg_ident.conf auth templates and edits host_vars/personal-vault.yml — the personal/financial enclave host. The ansible-playbook apply step is manual, but merging ARMS this auth config for whoever runs that playbook next, possibly without realizing a merge changed it. Live-reviewer has cleared the auth surface twice, independently, but there is no teardown path if the apply needs to be undone, and the first real apply should be attended with --check. dependsOn ops-infra#11 is real, enforced blocking — verified by reading AEGIS-Merge-Queue.ps1's Test-DependencyMerged function, which fails closed on error/unmerged/nonexistent."
+  }
+]
