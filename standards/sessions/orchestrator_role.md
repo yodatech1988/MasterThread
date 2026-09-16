@@ -127,16 +127,44 @@ How to apply it:
    `GitHub\USAGE_HANDOFF_*\AGGREGATE.md`, that is the handoff to start from. Read the newest `GitHub\SESSION_HANDOFF_*.md`
    and MasterThread `docs/REPOS.md`. Verify each lane's "waits on" against live `gh pr list` /
    `gh pr view`; docs go stale within hours.
-2. **Triage the backlog into priority tiers**, per `priority_classification.md`, then **estimate
+2. **Turn the ask into a fixed, executable workload before dispatching anything — don't
+   dispatch against a scope that's still being negotiated.** (Owner correction, 2026-09-16: a
+   worktree spool-down effort dispatched agents against several different framings of the same
+   ask as it evolved turn-by-turn in conversation, instead of pinning scope once. It came out
+   fine because verification caught the mistakes, not because the process was right.) Follow
+   SDLC phases, backed by MasterThread's existing standards rather than a freehand prompt:
+   - **Requirements/scope** — what does "done" mean, what's explicitly out of scope. For a real
+     feature or change, run it through `functional-requirements-drafter` or
+     `technical-requirements-drafter`; for a done-condition check, `acceptance-criteria-drafter`.
+     These encode the real standards at `standards/requirements/` (`functional_requirements.md`,
+     `technical_requirements.md`, `acceptance_criteria.md`, `user_story_format.md`) — use them
+     instead of writing requirements from scratch in a prompt.
+   - **Design/plan the workload** — break the requirement into discrete, sized units (see step 3
+     below for sizing/priority), each with an explicit sequence or dependency order. A
+     `lane-card-writer` card is the right unit for this, not a paragraph in chat.
+   - **Implementation** — dispatch against the fixed plan. If scope changes mid-round, that is a
+     new requirements pass (repeat the bullet above), never a silent scope-graft onto agents
+     already running against the old scope.
+   - **Verification** — every execution step gets an independent check before it's trusted (this
+     is already standard practice here — audit before act, re-verify immediately before a
+     destructive action, never trust a relayed verdict over live state; keep doing it).
+   - **Release/close-out** — report against the original requirements/acceptance criteria, not
+     just "what happened." Anything that surfaced but wasn't in scope becomes its own future lane
+     (a fresh `lane-card-writer` card for next round), not an ad-hoc addition to the current one.
+   - For a large or ambiguous ask, run it through `rollout-plan-drafter` or
+     `integration-test-plan-drafter` before execution, not after something breaks.
+   This step applies to any multi-step, PM-driven ask — feature work, infra cleanup, an
+   owner-directed one-off — not only repo plan sessions.
+3. **Triage the backlog into priority tiers**, per `priority_classification.md`, then **estimate
    each item's size** (S/M/L/XL) per `task_sizing.md` before dispatching anything. Take the window's
    remaining budget from the watcher's latest reading. Priority decides which
    tier gets a lane this round; size decides the order within a tier — largest first on a fresh
    window, gated against remaining budget so an oversized item waits for the next window instead of
    starting somewhere it can't finish.
-3. **Pre-create worktrees** with `GitHub\New-ParallelWorktrees.ps1 -Repo <folder> -Slugs <slug>`.
+5. **Pre-create worktrees** with `GitHub\New-ParallelWorktrees.ps1 -Repo <folder> -Slugs <slug>`.
    Hand each worker its exact path, and never let a worker choose its own folder. One open agent PR
    per repo.
-4. **Dispatch with a card, not a long prompt.**
+6. **Dispatch with a card, not a long prompt.**
    - Builders get a **lane card** that points at `worker_role.md`.
    - Read-only questions get a **research card** that points at `researcher_role.md`.
    - A judgment call — a verdict, a recommendation, a compliance check, no action taken — gets an
@@ -146,18 +174,18 @@ How to apply it:
    - The role files already carry the never-list, attribution, the pause protocol, the one-PR rule
      and the report format. The card only adds what's specific to the lane: worktree, read list,
      scope, out of scope, done-when, and constraints such as "owner is in game".
-5. **Review before merge**, every time:
+7. **Review before merge**, every time:
    - `gh pr view --json files,statusCheckRollup,mergeable`
    - read the diff (grep for known crash patterns, secrets, removed-mod names)
    - confirm checks are green
    - aegis-mods and aegis-poi have no Claude review; the orchestrator is the reviewer there
    - never `--admin`; never self-approve around a stale CHANGES_REQUESTED (Jeremy clicks)
-6. **Live changes are Jeremy's click.** The auto-mode classifier blocks Claude from production deploys
+8. **Live changes are Jeremy's click.** The auto-mode classifier blocks Claude from production deploys
    and from "blind apply". Write a double-click `GitHub\AEGIS-*.cmd` that shows the diff and needs
    him to type YES, open it for him, then read the result (push log + newest live RPT, read-only).
-7. **Collisions.** Before dispatching into a repo, check `ListAgents` and open PRs. Stop the
+9. **Collisions.** Before dispatching into a repo, check `ListAgents` and open PRs. Stop the
    orchestrator's own background tasks that overlap a newly started session.
-8. **Close out.**
+10. **Close out.**
    - Update the handoff file: merged, in flight, paused states, owner questions.
    - Refresh memory.
    - Stop the usage watcher (`TaskStop`) so it deregisters.
