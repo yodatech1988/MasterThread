@@ -31,6 +31,12 @@ Each agent's file is the source of truth; this table is the index, not a duplica
 | `support-triage` | sonnet | Classifies a ticket, proposes routing, never replies | `policies/discord/support.md` — dormant |
 | `moderation-flagger` | haiku | Flags a message against policy; flag-only, no act tools | `policies/discord/moderation.md` — dormant |
 | `announcement-drafter` | sonnet | Drafts an announcement in the AEGIS voice; never sends | `policies/discord/announcements.md` — dormant |
+| `review-tier-recommender` | haiku | Recommends model/effort for a PR review, filling the gap `claude-review.yml` leaves open | Token audit A1 |
+| `automerge-preflight` | haiku | Checks a PR against `claude-review.yml`'s real automerge gates before it's pushed | Token audit A1/A2; `claude-review.yml` |
+| `secrets-handling-auditor` | sonnet | Audits a repo's secret-handling PRACTICE (storage, injection, gitignore) against org policy | `_security-public/policies/security/secrets_handling.md` |
+| `incident-response-drafter` | sonnet | Drafts a postmortem from the real P0-P3 severity table and response steps; proposes only | `_security-public/policies/security/incident_response.md` |
+| `agent-automation-gatekeeper` | sonnet | Reviews a *new* proposed agent against the org's automation policy before it's added | `_security-public/policies/security/agents_and_automation.md` |
+| `data-classification-tagger` | haiku | Tags data with the real C0-C3 classes, not a generic public/internal/confidential scheme | `_security-public/policies/data/classification.md` |
 
 "Dormant" = Discord/Patreon automation stays paused per the standing owner decision
 (`docs/REPOS.md`); the definition exists for when that's lifted, and creating the file triggers
@@ -57,6 +63,7 @@ nothing on its own.
 | `vps-drift-checker` | sonnet | `ops-infra` | Read-only SSH diff of live config vs Ansible source |
 | `invoice-drafter` | sonnet | `handymansfield` | Drafts (never sends) an invoice from a Job record |
 | `expense-triage` | sonnet | `handymansfield` | Proposes expense categorization, read-only |
+| `budget-envelope-reporter` | haiku | `ops-platform` | Read-only per-zone spend report via the real ledger `accountant.js`, never `reserve`/`settle` |
 
 ## Adding a new one
 
