@@ -151,18 +151,31 @@ Each entry:
   github-54, github-85 and github-f9 each parked by choice pending Jeremy's direct word, and the PM
   explicitly did not pressure them ("that costs capacity, not correctness").
 
-### Shared checkout on a feature branch produces false conflicts between sessions — 2026-09-16
-- **False assumption:** that reading a file from the shared `GitHub\MasterThread` checkout reflects
-  `origin/main`.
-- **Rule candidate:** always read `origin/main` explicitly (`git show origin/main:<path>`, or an
-  `origin-reader`-style fetch) rather than the shared working tree, whose HEAD can silently be on
-  another session's feature branch.
-- **Where it belongs:** reinforces the existing "verify before merge... diff against origin/main,
-  not a stale local checkout" rule already in `orchestrator_role.md` step 7 and memory
-  `aegis-verify-before-merge.md`; not separately promoted, cited here as a fresh concrete instance.
-- **Seen:** 1 — `SESSION_HANDOFF_2026-09-16-fleet-pm-rotation.md` "Traps discovered" #1:
+### Shared checkout on a feature branch produces false conflicts and silent cross-session writes — 2026-09-16 (seen twice, promoted)
+- **False assumption:** that reading a file from a shared, non-worktree-isolated checkout reflects
+  `origin/main` (occurrence 1); and, separately, that a checkout is private to the session that has
+  it "active" (occurrence 2) — a second, non-authoring session can `cd` into the same folder and
+  silently edit a file with no isolation stopping it and no signal to the session that actually owns
+  that work.
+- **Rule candidate:** **never** read or write a repo checkout that isn't a dedicated worktree for
+  the current session's own branch. Always create one (`git worktree add`) before doing any real
+  work in a repo another session might also be touching — reading `git show origin/main:<path>`
+  covers the read case only; the write case has no substitute for real isolation. A session that
+  wants to hand a peer content for a shared checkout sends it as a message, never edits the file
+  directly, even once, even if a first direct edit went uncorrected.
+- **Where it belongs:** promoted — extends `standards/sessions/worker_role.md`'s Never-list (never
+  edit a repo checkout that isn't your own dedicated worktree) and reinforces
+  `orchestrator_role.md` step 7 ("verify before merge... diff against origin/main, not a stale local
+  checkout") and memory `aegis-verify-before-merge.md`.
+- **Seen:** 2 — `SESSION_HANDOFF_2026-09-16-fleet-pm-rotation.md` "Traps discovered" #1:
   `GitHub\MasterThread` sat on PR #54's branch, so two sessions reading the "same" file reached
-  opposite conclusions about its content.
+  opposite conclusions about its content. `SESSION_HANDOFF_2026-09-16-payments-module.md`: a new
+  single-branch repo (`yodatech1988/payments`) was set up as one shared checkout with no worktree
+  isolation; a peer session (`github-cb`) directly edited the file a second time after being told
+  not to and after acknowledging a "route through the PM" agreement, with no message attached either
+  time. Content was accurate both times, but the pattern was indistinguishable from an attempt to
+  inject content outside the review channel, and took real investigation (who has access, what
+  changed, cross-referencing conversation history) to rule out.
 
 ### Green (or red) CI is not evidence of what it looks like it's evidence of — 2026-09-16
 - **False assumption:** that a green check means secrets were scanned, or that a red check means
