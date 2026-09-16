@@ -22,6 +22,7 @@ not yet classified — a real gap, not a "doesn't apply."
 | `worktree-sweep` | haiku | R | Reports safe-to-remove worktrees; never removes | B2; `aegis-worktree-remove-no-force` |
 | `origin-reader` | haiku | R | Reads a file/dir from `origin/<default>`, never local | `researcher_role.md` |
 | `collision-check` | haiku | R | Pre-dispatch PR/branch/worktree collision check | `orchestrator_role.md` "Collisions"; `parallel-session-collision` |
+| `handoff-drift-reviewer` | sonnet | **A** | Checks a session handoff against the documented procedure; called by the outgoing session, not the incoming one | `orchestrator_role.md` "PM handoff"; `aegis-skills-program` |
 | `lane-card-writer` | sonnet | R | Formats a worker/research card with Priority+Size | `worker_role.md`, `researcher_role.md`, `task_sizing.md` |
 | `diff-reviewer` | sonnet | **A** | Pre-merge diff review: crash patterns, secrets, removed names | `session_plan_standard.md` rule 10 |
 | `test-baseline-runner` | sonnet | R | Runs stated validators, reports real counts only | `worker_role.md` "Tests and validators" |
