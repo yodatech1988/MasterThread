@@ -129,6 +129,7 @@ work goes" table happens.
 | [claude-session-archive](https://github.com/yodatech1988/claude-session-archive) | Archives every Claude Code session transcript under `~/.claude/projects/` to this repo: redacted, full-text searchable (SQLite+FTS5), AI-summarized | `docs/PLAN.md` (6 sessions; Sessions 1–4 all merged). **Session 5 (`src/run.js` full pipeline: discover → backup → parse → redact → render → summarize → gitleaks gate → index → auto-merging PR) merged as #11 (2026-09-14)** — the repo's own PLAN.md still says "in progress," stale | Session 6: full backfill of every existing session under `~/.claude/projects`, spot-check rendered output, update this row | None currently blocking. Standing open decision: raw backups stay unencrypted plaintext in `%LOCALAPPDATA%\ClaudeSessionArchive\raw\`; revisit if the threat model changes |
 | [MasterThread](https://github.com/yodatech1988/MasterThread) | This ledger and org standards | this page (this PR keeps it current) | Keep rows current every round. Recent: #34 documents aegis-pricing as a third Workshop-module home, #37 documents the orchestrated-parallel-lanes exception to rule 9 | — |
 | [repo-template](https://github.com/yodatech1988/repo-template) | Standard for new repos | n/a — no goal written, so no `docs/PLAN.md` session plan applies here | Nothing pending: PRs #4 (`CLAUDE.md`/`docs/PLAN.md` stubs), #5 (`.gitignore`, protection script) and #6 (Claude PR review + auto-merge rollout) are all merged. See "Stable" below | — |
+| [ops-policies](https://github.com/yodatech1988/ops-policies) | Data classes (D0-D3), OPA rules, agent tool allowlists, budget envelopes and model routing for the autonomous ops cycle. Every merge needs owner approval. | `docs/PLAN.md` (Sessions 0-8 merged: #1-#9). Sessions 9 (dynamic budget/priority model) and 10 (ops-agent review batch) queued 2026-09-16 after the owner's full `docs/OPEN_QUESTIONS.md` review pass. PR #13 (open, 2026-09-16) cross-references this pack's D0-D3 against the org-wide C0-C3 scheme in `_security-public` and records one unresolved conflict (Q32: bill/transaction amounts are D2 here, C3 `financial` there) | Sessions 9 and 10, per the owner's routing in `docs/OPEN_QUESTIONS.md` | Merge PR #13. Decide Q32 (which scheme's financial-amount classification moves) — opposite live effects on model exposure, not a default either agent should pick |
 
 ## Stable: no plan until work is planned
 
@@ -150,6 +151,16 @@ opening a session there spends tokens without a target.
 | [personal-growth](https://github.com/yodatech1988/personal-growth) | Personal growth tracking |
 | [3d-printing](https://github.com/yodatech1988/3d-printing) | Prints and slicer profiles |
 | [flightory-stork-vtol](https://github.com/yodatech1988/flightory-stork-vtol) | Flightory Stork VTOL build |
+
+## Local-only: not yet a git repo
+
+Content that exists only on the owner's console, with no GitHub remote — distinct from "Scaffolds"
+(a real repo with template files) and "Dormant" (an archived repo). Added to this ledger so future
+sessions stop discovering it fresh each time (rule 3: if it's not recorded, it did not happen).
+
+| Path | Area | Note |
+|---|---|---|
+| `_security-public/policies/` | Org-wide policy of record: C0-C3 data classification, the two-enclave (game-network / personal-financial) model, and the 7 governing rules every repo (core, site-chernarus, services, claude-agents, aegis-mods, MasterThread) derives from | Written 2026-09-12, extended 2026-09-14. No `.git` directory — plain files, no remote, no PRs possible until it becomes a real repo. Program status per owner decision: **paused**, planned but not deployed; resume documented for 2026-09-19 (scheduled task). Cross-referenced against `ops-policies`' D0-D3 scheme in `ops-policies` PR #13, which found one live conflict (Q32) needing an owner call before either scheme changes. `_security-aegis` and `_security-personal` sibling folders are `git init`'d locally with no commits and no remote yet either. |
 
 ## Dormant or archived: no sessions
 
