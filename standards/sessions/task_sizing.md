@@ -72,3 +72,14 @@ see `priority_classification.md`). Size decides order and a start-gate, inside t
 - When a lane pauses or finishes, note its *actual* shape in the handoff file next to its size guess
   (tool-call count if you have it, or "took two reboot rounds, not one") — this is the calibration
   data the bands above are built from. No separate tracking system; a one-line note is enough.
+
+**Worked example, 2026-09-15 (ops-cycle-pm):** two lanes carded the same size ("Opus 5, high") came
+back at very different shapes — AppArmor finished in 62 tool calls / 29 min, LUKS+age identities took
+129 tool calls / 96 min (~2x), driven by two discovery findings (a `sops path_regex` matching bug, an
+AIDE exclusion gap) that a cheap read-only pass could have surfaced first. Separately, two pieces of
+manual orchestrator work that session — a stale-PLAN.md drift check across two repos, and a
+merged-vs-open PR sweep across five — turned out to be exactly `plan-status-check` and
+`pr-state-sweep`'s shape (see the T4 roster, `docs/AGENTS.md`), done by hand only because the roster
+didn't exist yet mid-session. Concrete takeaway: front-load a T4 scout before an Opus/high lane when
+the task involves reading unfamiliar state (existing configs, docs, third-party tool quirks) rather
+than known-shape execution — it prices the same discovery at Haiku instead of Opus rates.
