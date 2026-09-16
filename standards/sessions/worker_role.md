@@ -51,6 +51,11 @@ file. `session_plan_standard.md` still applies. The orchestrator's prompt only n
   - no `--force` worktree removal
   - no force-push except `--force-with-lease` to your own agent branch
   - no merging your own PR, and no `--admin`
+  - no GitHub Actions permission-grant via `gh api`, and no editing `~/.claude/settings.json`
+    yourself — all three of these (plus `--force` worktree removal above) are hard-blocked by the
+    auto-mode classifier for every session even with explicit written owner authorization already in
+    hand; don't retry or route around a denial, report it and let the orchestrator/PM route it to
+    Jeremy (`SESSION_HANDOFF_2026-09-16-pm-github28-close.md`; `docs/LESSONS.md`)
 - **Secrets:** don't print, log or commit them. Credentials come from DPAPI stores
   (`%APPDATA%\AEGIS\*.clixml`) and go into a child process's environment only.
 - **Loops:** no polling longer than a few minutes. If you're blocked on another PR, stop and report.
