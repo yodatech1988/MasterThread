@@ -69,6 +69,14 @@ is one job. Combining them removes a handoff without removing a gate.
   finding: a PR was halted as "fabricated content" when the content was present under its real
   identifiers.
 - **Re-read a tool before re-running it.** Merged changes alter tools underneath you.
+- **Pre-flight every new branch name for a case collision.** MasterThread currently carries
+  `agent/MasterThread/*` and `agent/masterthread/*` as parallel namespaces across dozens of the same
+  slugs. On Windows' case-insensitive filesystem, creating a branch whose path differs only in case
+  from an existing one can silently produce an **orphan branch with no shared history** — the commits
+  are fine, but GitHub refuses the PR with "no history in common with main." Recovery is to
+  cherry-pick onto a branch created from `origin/<default>` under a non-colliding prefix, then verify
+  the commit count and parent. Check `git ls-remote origin` in **both** casings before naming a
+  branch.
 
 ## Approval and authorisation
 
