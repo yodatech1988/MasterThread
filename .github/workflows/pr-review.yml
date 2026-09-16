@@ -1,0 +1,26 @@
+# Calls the shared Claude review/approve pipeline defined in core.
+# See yodatech1988/core/.github/workflows/claude-review.yml and
+# .github/claude-review.md (the actual rubric) for details.
+#
+# Needs a CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY repo secret to do
+# anything -- without one this workflow no-ops with a visible notice.
+#
+# automerge is deliberately OFF here: this repo holds the session
+# standing-instructions and standards that every other repo's agents are
+# grounded in, so a Claude-review-only gate is a first pass, not a
+# self-merge. Owner review is still required (Ops Decision Queue card
+# review-gates-masterthread-ops-policies, 2026-09-16).
+name: pr-review
+
+on:
+  pull_request:
+    # No `synchronize`: pushes don't re-review (see COST in claude-review.yml).
+    # `labeled` is how a re-review is requested -- add the claude-review label.
+    types: [opened, reopened, ready_for_review, labeled]
+
+jobs:
+  review:
+    uses: yodatech1988/core/.github/workflows/claude-review.yml@main
+    with:
+      automerge: false
+    secrets: inherit
