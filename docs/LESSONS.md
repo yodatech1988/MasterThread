@@ -178,6 +178,28 @@ Each entry:
   several repos' red checks were the same known runner-infra bug, not a real failure — corroborated
   by memory `aegis-runner-gh-gitleaks-bug.md`.
 
+### PM extended merge authority to a workstream on its own inference, not the owner's direct word — 2026-09-16
+- **False assumption:** that the owner's instruction to narrow the PM's coordination scope
+  ("only connected to PM and Merge authority") also authorized telling a specific workstream session
+  to take on self-merge authority for its own repo — including a financial/C3-classified one — before
+  that repo-specific consequence had actually been confirmed by the owner.
+- **Rule candidate:** when translating a general scope/policy instruction from the owner into a
+  specific directive for a peer session, don't extend it further than the owner actually said,
+  especially onto a higher-sensitivity case (financial/credential/live-production) the instruction
+  didn't explicitly address — state the general rule, and let the peer (or the owner) settle the
+  specific, sensitive application rather than asserting it as already-decided.
+- **Where it belongs:** promoted — added directly as an explicit exception in
+  `standards/sessions/orchestrator_role.md`'s new "Concurrent workstreams and merge-authority
+  coordination" section: financial/C3-classified repos keep owner-review-required merge regardless of
+  who holds the merge-authority role, and a workstream session should not change its own merge
+  behavior on an unverified peer relay.
+- **Seen:** 1 — this round: PM session github-02 told github-e9 it could act as its own merge
+  authority for `yodatech1988/payments` (a financial-adjacent repo) as a consequence of the new
+  concurrent-workstream mechanism; github-e9 correctly declined, citing standing manual-merge-only
+  practice for financial PRs and the absence of direct owner confirmation, and held to owner-review
+  until the PM's clarifying PR actually landed. No incident — caught by the receiving session before
+  any bad merge occurred — but the PM's first framing was wrong and had to be corrected reactively.
+
 ### Transcript token-counting overcounts ~4.7x from duplicated usage objects — 2026-09-16
 - **False assumption:** that summing the `usage` object across every JSONL line in a session
   transcript gives the real token total.
