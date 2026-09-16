@@ -81,6 +81,25 @@ PRs hid three real defects because the checks that were green had not actually r
     per-run paid automation is opt-in per repo, capped (`--max-budget-usd`), and runs on
     `opened`/`reopened`/`ready_for_review` only, with re-review through a label, never on every push.
     Adding or re-enabling spend is the owner's call, and the zero-cost alternative is presented with it.
+12. **Pilot before a bulk or destructive batch, and verify each item live regardless of who
+    built the list.** (2026-09-16: a worktree spool-down found 180+ stale worktrees — rule 9's
+    "prune when the PR merges" existed the whole time but wasn't reliably followed — and a
+    cleanup batch built from a partly-guessed list would have deleted real repos and installed
+    content if the executing lane hadn't independently re-verified each entry instead of
+    trusting the list.) When a task's scope is "do the same action to N similar items" and any
+    item's action is hard to reverse:
+    - Run and report a small first batch against live state before committing to the full set —
+      this doubles as the check that the plan's assumptions actually hold.
+    - A list handed down from a plan, a prior audit, or another session is a claim, not verified
+      state (rule 10 applies to a batch the same as it applies to a merge) — re-check each item
+      against live reality immediately before acting on it, even when the list was carefully
+      built and especially when it wasn't.
+    - When the batch is genuinely destructive (deleting content, discarding local changes),
+      capture whatever real content it would destroy into a durable, git-tracked location
+      *before* removing anything. A removal is only as safe as what it preserved first.
+    - The session or lane that finishes a unit of work is the one responsible for closing it out
+      per rule 9 (pruning its own worktree) as part of *finishing*, not leaving it for a future
+      cleanup sweep to rediscover — that's exactly how rule 9 stopped being followed in practice.
 
 ## `docs/PLAN.md` shape
 
