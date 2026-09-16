@@ -30,16 +30,42 @@ hands it to a one-off **Opus 5 / high** reviewer instead of upgrading itself:
   worktree) for this kind of work over spending a T3 write-lane's Sonnet budget on it.
 - **No token-burning loops.** Don't poll long-running work; wait for notifications. A worker that has
   to wait on another PR stops and reports, and the orchestrator re-dispatches it later.
-- **Watch Jeremy's usage with the usage watcher, always.** See "Usage watcher" below. It is not
-  optional and it starts before anything else in a round.
+- **Hand off usage responsibility to the PM at the start of every round; self-watch only as a
+  fallback.** See "Usage watcher and PM handoff" below. It is not optional and it happens before
+  anything else in a round.
 
-## Usage watcher (mandatory for every orchestrator)
+## Usage watcher and PM handoff (mandatory for every orchestrator)
 
-Every orchestrator runs `tools/usage-monitor/usage-watch.ps1` for the whole of its round. It polls
-the subscription's real usage and sends the session a notification at **80, 90, 97, 98 and 99%** of
-the 5-hour session window (and the weekly window), each with the action to take. It replaces
-checking `check-usage.ps1` by hand. That file-based check depended on the statusline, which never
-runs in the VS Code extension, so from VS Code it never had data (found 2026-09-15).
+Per CLAUDE.md's "PM handoff and usage responsibility" rule (2026-09-16 owner decision — this is now
+the default path; self-watching is the fallback for when no PM exists, not the primary model this
+section used to describe): every orchestrator hands off to the current PM session at the start of
+its round, and from that point the PM — not the orchestrator itself — is responsible for its usage
+and for deciding when it should rotate.
+
+1. **Check for a PM first.** `ListAgents` to see whether a PM session is live (current name
+   `ops-cycle-pm`, unless a peer or Jeremy says otherwise).
+2. **If the PM is reachable**, introduce yourself per `worker_intro_prompt.md` (name, workstream,
+   what you're equipped to do) and wait for its acknowledgment. Once acknowledged, **do not start
+   your own usage watcher** — the PM tracks your usage and tells you when to prepare, wrap up,
+   document, save, or stop, using the same tier runbook below.
+   - The PM also decides **session rotation**: when a session has run long enough (heavily
+     compacted context, many hours active, or the workstream is naturally complete) that it should
+     stop and hand off rather than continue. When told to rotate, write a
+     `GitHub\SESSION_HANDOFF_<date>-<topic>.md` file (done/verified/next-step/pending-decisions, per
+     the existing handoff convention) and stop; a fresh session picks it up.
+3. **If the PM is not reachable, fall back to self-watching** exactly as described below, and
+   re-check for a PM periodically rather than assuming none will ever appear.
+4. **The PM session itself always self-watches** — it has no PM above it to hand off to — and is the
+   aggregator described in "Parallel orchestrators" below for every session that has handed off to
+   it, not only other orchestrators.
+
+### Fallback: self-watch when no PM exists
+
+Run `tools/usage-monitor/usage-watch.ps1` for the whole of the round. It polls the subscription's
+real usage and sends the session a notification at **80, 90, 97, 98 and 99%** of the 5-hour session
+window (and the weekly window), each with the action to take. It replaces checking
+`check-usage.ps1` by hand. That file-based check depended on the statusline, which never runs in the
+VS Code extension, so from VS Code it never had data (found 2026-09-15).
 
 **Start it first**, before reading the handoff or dispatching anything, with the Monitor tool:
 
@@ -76,10 +102,12 @@ The command loads the watcher from `origin/main` into a per-name copy under `%AP
 If usage jumps past several tiers between readings, the notification names the skipped ones. Do
 their steps too. A `USAGE RESET` line means the window renewed: resume from the handoff plan.
 
-### Parallel orchestrators: one aggregator from 80%
+### Parallel orchestrators (no PM): one aggregator from 80%
 
-The limit is shared by every session on the account, so parallel orchestrators coordinate through
-the watcher's registry (`%APPDATA%\AEGIS\orchestrators\`):
+This subsection applies among self-watching orchestrators when no PM exists to aggregate for them
+(see step 4 above — once a PM is live, it plays this role for every session that handed off to it,
+not just orchestrators). The limit is shared by every session on the account, so parallel
+orchestrators coordinate through the watcher's registry (`%APPDATA%\AEGIS\orchestrators\`):
 
 - **At start, and whenever one starts or stops, each is warned** about the others (`USAGE START ...
   WARNING`, `USAGE PEER`). Every lane any of them dispatches spends the same budget, so dispatch
