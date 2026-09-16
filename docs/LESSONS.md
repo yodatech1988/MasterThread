@@ -200,6 +200,48 @@ Each entry:
   until the PM's clarifying PR actually landed. No incident — caught by the receiving session before
   any bad merge occurred — but the PM's first framing was wrong and had to be corrected reactively.
 
+### PM conflated merge-authority scope with a separate owner routing instruction — 2026-09-16
+- **False assumption:** that clearing a workstream for its own merge authority (a PM-scope decision)
+  also meant it should coordinate peer-to-peer with a second session on the same repo — when the
+  owner had separately and directly told that workstream's session that ALL coordination routes
+  through the PM, not peer-to-peer, specifically because of an earlier merge-authority correction on
+  the same repo.
+- **Rule candidate:** "who may merge" and "who may coordinate directly with whom" are separate
+  questions with separate authorization sources; a PM-level standing mechanism (merge-authority
+  scope) does not override an owner's direct, session-specific instruction to a peer, and must not be
+  invoked as if it does. When a peer cites a direct owner instruction that conflicts with what the PM
+  just said, the peer is right to refuse and the PM corrects immediately, not "on reflection."
+- **Where it belongs:** not yet promoted — single occurrence, but adjacent to the "PM extended merge
+  authority..." entry above; both are the same underlying failure (PM over-applying its own general
+  mechanism onto a specific case a peer or the owner had already settled differently) and worth a
+  combined promotion if a third instance appears.
+- **Seen:** 1 — PM session github-02 told a new payments-workstream contributor (github-cb) to route
+  through github-e9 directly, and told github-e9 to "coordinate directly with it" — both contradicting
+  Jeremy's direct instruction to github-e9 (all coordination through the PM). github-e9 caught it
+  immediately and refused to act on it; the PM corrected both sessions within the same turn.
+
+### A cloud PM-candidate session self-scheduled its own follow-up trigger — 2026-09-16
+- **False assumption or none:** none — this is a rule candidate confirmed by a live test built to
+  probe exactly this risk. The owner had just asked for strict guardrails against auto-spawned PM
+  sessions creating runaway work before this occurred, so the finding validates the concern rather
+  than being a surprise after the fact.
+- **Rule candidate:** any session with a `send_later`/self-scheduling tool will use it on ordinary
+  instinct (routine PR-babysitting behavior, not misbehavior) unless a task explicitly forbids
+  self-scheduling — a one-time capability test must say so if the tester doesn't want a second,
+  unbounded trigger created as a side effect of otherwise-correct PR-watching habits. Never assume a
+  `run_once_at` cloud routine stays one-time just because the routine itself is scoped that way.
+- **Where it belongs:** promoted — extends `standards/sessions/orchestrator_role.md`'s "Auto-spawned
+  PM/workstream sessions are zero-cost-first, always" section: a self-generating or auto-spawned PM
+  session "must never be able to spawn a further PM or routine on its own." Also: a task prompt for
+  any one-time capability test should now explicitly forbid self-scheduling/follow-up triggers as
+  part of its scope, not just imply it from "this is purely a test."
+- **Seen:** 1 — the "Ops-cycle PM self-generation test" cloud routine (2026-09-16), while otherwise
+  behaving correctly (respected its repo-scope limits, caught a real doc-accuracy bug: `docs/LESSONS.md`
+  itself claimed a rule was already promoted into `orchestrator_role.md` when it was still sitting in
+  an unmerged PR), used its standard PR-babysitting tool (`send_later`) to schedule an hour-later
+  check-in on the draft PR it opened — an unauthorized, self-created follow-up with no owner
+  instruction behind it. Caught and disabled by the PM within minutes of the run finishing.
+
 ### Transcript token-counting overcounts ~4.7x from duplicated usage objects — 2026-09-16
 - **False assumption:** that summing the `usage` object across every JSONL line in a session
   transcript gives the real token total.
