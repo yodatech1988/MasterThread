@@ -83,6 +83,14 @@ The command loads the watcher from `origin/main` into a per-name copy under `%AP
   `-Name`. The watcher carries its start time and the tiers it already announced across the
   restart, so re-arming repeats nothing and keeps its place. Only a gap longer than about 6 minutes
   makes the other orchestrators see it as gone.
+- **A Monitor stream ending is not proof the watched process died.** A normal 30-minute expiry, or
+  the stream going silent, only means notifications stopped reaching this session — the underlying
+  PowerShell process can still be live and still holding the name. Before re-registering the name or
+  treating "no more events" as "usage is fine now," confirm the actual process
+  (`Get-CimInstance Win32_Process -Filter "ProcessId=<n>"`, compare the command line). One round hit
+  this directly: killing the still-live process and re-registering under a new name were both denied
+  by the classifier ("Interfere With Workloads"), forcing a fallback to one-off spot checks
+  (`SESSION_HANDOFF_2026-09-16-ops-cycle-v3.md` §2).
 - **Workers and lanes do not run a watcher.** The orchestrator pauses them.
 - **`USAGE-ERROR` means usage is UNKNOWN, not fine.** Treat it as high: dispatch no new lanes and
   check `/usage` until `USAGE-OK` arrives. The data source is an undocumented endpoint and can
@@ -124,6 +132,13 @@ orchestrators coordinate through the watcher's registry (`%APPDATA%\AEGIS\orches
   next-window plan to `AGGREGATE.md` in the same folder, and runs the tier runbook for everyone.
 - **The registry is local to this PC.** Cloud sessions and other machines are not seen. Count them
   yourself if they are running.
+- **On any watcher-name collision, verify before acting either way** — don't assume it's
+  automatically a live duplicate (leave it alone) or automatically stale (kill it). Sequence: (1)
+  `ListAgents` and message every peer to rule out a live duplicate, (2) inspect the colliding PID's
+  actual command line, (3) only then kill or reuse the name. This has held for both a peer's
+  orphaned watcher and this session's own still-live one
+  (`SESSION_HANDOFF_2026-09-16-ops-cycle-v2.md` §0, `SESSION_HANDOFF_2026-09-16-ops-cycle-v3.md` §2;
+  memory `aegis-orchestrator-watcher-collision-check.md`).
 
 ## Assigning model and effort to each task
 
@@ -154,7 +169,14 @@ How to apply it:
 1. **Start from the handoff file**, not a re-survey. If the watcher's last window left a
    `GitHub\USAGE_HANDOFF_*\AGGREGATE.md`, that is the handoff to start from. Read the newest `GitHub\SESSION_HANDOFF_*.md`
    and MasterThread `docs/REPOS.md`. Verify each lane's "waits on" against live `gh pr list` /
-   `gh pr view`; docs go stale within hours.
+   `gh pr view`; docs go stale within hours. **If an item touches the Ops Decision Queue, read the
+   store directly rather than trusting its open/resolved filter** — the queue treats "the owner
+   typed something" as a decision, so a request for more work can be filed `resolved` and collapse
+   out of view identically to something actually closed (`SESSION_HANDOFF_2026-09-16-fleet-pm-rotation.md`,
+   `SESSION_HANDOFF_2026-09-16-pm-github28-close.md`; `docs/LESSONS.md`). A handoff repeating
+   "resolved" forward is not itself evidence — trace it to a real artifact before repeating it again
+   (the restart-backup signoff was carried as resolved across two handoffs before either one was
+   true).
 2. **Turn the ask into a fixed, executable workload before dispatching anything — don't
    dispatch against a scope that's still being negotiated.** (Owner correction, 2026-09-16: a
    worktree spool-down effort dispatched agents against several different framings of the same
@@ -205,7 +227,16 @@ How to apply it:
 7. **Review before merge**, every time:
    - `gh pr view --json files,statusCheckRollup,mergeable`
    - read the diff (grep for known crash patterns, secrets, removed-mod names)
-   - confirm checks are green
+   - confirm checks are green — but **a green check is only evidence for what it actually runs**.
+     Confirm the specific job exists before trusting it (a repo can be green with no secret-scan job
+     at all), and don't read a red check as "this PR broke something" without checking whether it's
+     the known runner-infrastructure false-negative instead
+     (`SESSION_HANDOFF_2026-09-16-fleet-pm-rotation.md` "Traps discovered"; memory
+     `aegis-runner-gh-gitleaks-bug.md`)
+   - always diff against `origin/main`, never a shared local checkout — it can silently sit on
+     another session's feature branch, producing two sessions reading the "same" file and reaching
+     opposite conclusions (`SESSION_HANDOFF_2026-09-16-fleet-pm-rotation.md` "Traps discovered" #1;
+     memory `aegis-verify-before-merge.md`)
    - aegis-mods and aegis-poi have no Claude review; the orchestrator is the reviewer there
    - never `--admin`; never self-approve around a stale CHANGES_REQUESTED (Jeremy clicks)
 8. **Live changes are Jeremy's click.** The auto-mode classifier blocks Claude from production deploys
@@ -231,3 +262,9 @@ How to apply it:
 - **Handing Jeremy git or terminal steps.** Do git yourself, or give him a clickable file.
 - **Building an unattended trigger that gives in-game chat full tool access** without Jeremy's
   explicit sign-off.
+- **Attempting `git worktree remove --force`, a GitHub Actions permission-grant `gh api` call, or an
+  edit to the session's own `~/.claude/settings.json`** — even with explicit written owner
+  authorization already in hand. The auto-mode classifier hard-blocks all three ("Irreversible
+  Local Destruction," "Permission Grant," "Self-Modification") for every session, subagent included;
+  no session can clear them for itself or another. Only Jeremy editing `settings.json` himself
+  unblocks the first two (`SESSION_HANDOFF_2026-09-16-pm-github28-close.md`; `docs/LESSONS.md`).
