@@ -37,6 +37,9 @@ Each agent's file is the source of truth; this table is the index, not a duplica
 | `incident-response-drafter` | sonnet | Drafts a postmortem from the real P0-P3 severity table and response steps; proposes only | `_security-public/policies/security/incident_response.md` |
 | `agent-automation-gatekeeper` | sonnet | Reviews a *new* proposed agent against the org's automation policy before it's added | `_security-public/policies/security/agents_and_automation.md` |
 | `data-classification-tagger` | haiku | Tags data with the real C0-C3 classes, not a generic public/internal/confidential scheme | `_security-public/policies/data/classification.md` |
+| `vuln-scan-passive` | sonnet | Non-intrusive recon (`nmap -sV --open`, TLS check); runs anytime, no window needed | Owner-scoped security testing round |
+| `vuln-scan-active` | sonnet | Safe-NSE vulnerability confirmation only, gated on `ops-infra`'s maintenance-window check | Owner-scoped security testing round; never attempts exploitation |
+| `dependency-cve-scanner` | haiku | `npm audit`/`pip-audit` against a repo's dependencies | Owner-scoped security testing round |
 
 "Dormant" = Discord/Patreon automation stays paused per the standing owner decision
 (`docs/REPOS.md`); the definition exists for when that's lifted, and creating the file triggers
@@ -59,7 +62,7 @@ nothing on its own.
 | `classname-duplicate-triage` | haiku | `site-chernarus` | Flags true dupes only — checks trader file first per `CLAUDE.md` |
 | `economy-invariant-checker` | sonnet | `site-chernarus` | Checks economy XML against policy AND the real files |
 | `loot-table-reviewer` | sonnet | `site-chernarus` | Reviews loot changes against `policies/dayz/loot_tables.md` |
-| `rarity-price-reviewer` | sonnet | `aegis-pricing` | Pricing invariant checks |
+| `rarity-price-reviewer` | sonnet | `aegis-pricing` | Checks a curve against the real always-on guards (exchange exemption, spread, clamp ranges) |
 | `vps-drift-checker` | sonnet | `ops-infra` | Read-only SSH diff of live config vs Ansible source |
 | `invoice-drafter` | sonnet | `handymansfield` | Drafts (never sends) an invoice from a Job record |
 | `expense-triage` | sonnet | `handymansfield` | Proposes expense categorization, read-only |
