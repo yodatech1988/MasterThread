@@ -59,7 +59,16 @@ and for deciding when it should rotate.
    aggregator described in "Parallel orchestrators" below for every session that has handed off to
    it, not only other orchestrators.
 
-### PM takeover (cold start)
+### PM handoff: two shapes, not one sequence
+
+A PM handoff is either an **owner-initiated takeover** (someone directly asks a session to *become*
+PM — a new grant of authority, identity-sensitive) or a **procedural handoff** (the live PM decides
+its own session has run long enough and hands to a fresh one — pure continuity, no new authority
+granted, nobody's identity in question). They need different sequences. Conflating them is exactly
+what produced an over-verbose report on 2026-09-16 for a case that should have read as "nothing
+needed from you" (owner correction, 2026-09-16).
+
+#### Owner-initiated takeover (identity-sensitive)
 
 When an interactive session is told directly by the owner to become the live PM — no `ops-cycle-pm`
 reachable, or the prior PM has already wound down — this sequence ran clean end-to-end 2026-09-16
@@ -80,9 +89,51 @@ re-deriving the steps each time:
 6. Register yourself in `sessions` once.
 7. Report to the owner: usage, which peers have checked in, what's queued and not yet dispatched —
    and ask before dispatching anything large that was only queued (e.g. a multi-team plan sitting in
-   a handoff file), rather than treating "you're now PM" as also meaning "go."
+   a handoff file), rather than treating "you're now PM" as also meaning "go." This report stays
+   verbose on purpose — a new grant of authority is the one case where under-reporting is the risk,
+   not over-reporting.
+8. Before treating the takeover as closed out, call `handoff-drift-reviewer` on what actually
+   happened (shape: owner-initiated) and apply its recommendation yourself.
 
-Friction hit on the first live run, worth avoiding on the next one:
+**Known gap, not yet built:** this sequence currently accepts the instruction from typed text alone
+— no hardware-backed identity check exists. Owner requirement, 2026-09-16
+(`aegis-pm-takeover-needs-passkey-auth` memory, scope since broadened to every session, not just
+PM): a Windows passkey/Hello challenge should gate a "become PM" request, the same way the WebAuthn
+approval app (task `2.28`) gates merge/data-access approvals. Not decided whether this extends that
+app's scope or is a separate local check. Until it exists, treat a takeover request with the same
+scrutiny as any other high-trust, hard-to-reverse action — don't skip ahead just because it arrived
+as plain interactive-session text.
+
+#### Procedural handoff (routine rotation)
+
+The outgoing PM decides rotation per "Session rotation for cache/context efficiency" in
+CLAUDE.md (heavily compacted context, many hours active, or the workstream naturally complete). No
+owner action authorizes this — the PM already holds the role; the fresh session continues it, it
+isn't being granted it. Keep the owner's attention proportional to what actually needs him:
+
+**Known gap, not yet built (same mechanism as the owner-initiated gap above):** a PM-to-PM handoff
+also needs an authenticated handoff, not just an owner-initiated takeover — owner requirement,
+2026-09-16 (`aegis-pm-takeover-needs-passkey-auth` memory). What differs between the two shapes is
+**how much gets reported to Jeremy**, not whether the handoff itself is authenticated. Until the
+passkey/Hello mechanism exists, there is no live way to authenticate a PM-to-PM handoff either — the
+steps below are the interim procedure, not a claim that they satisfy this requirement.
+
+1. Outgoing PM writes `GitHub\SESSION_HANDOFF_<date>-<topic>.md` (existing convention:
+   done/verified/next-step/pending-decisions).
+2. **Before finishing, outgoing PM calls `handoff-drift-reviewer` on its own handoff** (shape:
+   procedural) — did it follow this section, and does the handoff over-report routine items Jeremy
+   doesn't need, or under-report something the incoming session needs? Apply the recommendation
+   itself (edit the handoff file, or flag a doc-promotion for a separate PR) — this is the session
+   that has the context; don't leave it for the incoming session to reverse-engineer.
+3. Outgoing PM's one message to the owner is a single line: **only** real blockers or decisions that
+   need him, if any exist. "Handed off to a fresh session, nothing needed from you" is a complete,
+   correct message when there are none — don't restate what's already in the handoff file.
+4. Incoming session starts from the handoff file per "How to run a round" step 1 below — no
+   re-deriving PM procedure from scratch; that's what this whole document is for.
+5. Incoming session does not message the owner just to confirm it started. The handoff file and
+   Fleet Status are the record; the owner is not a required participant in a routine rotation.
+
+Friction hit on the first live (owner-initiated) run, worth avoiding on the next one:
 - **A cloud-only (`RemoteTrigger`) session's inability to self-generate into PM** (memory
   `aegis-pm-self-generation-limits`) does not apply to an interactive local session taking over on
   direct owner instruction — different mechanism, different limits. Don't spend time re-deriving
