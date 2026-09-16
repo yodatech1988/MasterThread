@@ -60,6 +60,12 @@ file. `session_plan_standard.md` still applies. The orchestrator's prompt only n
   (`%APPDATA%\AEGIS\*.clixml`) and go into a child process's environment only.
 - **Loops:** no polling longer than a few minutes. If you're blocked on another PR, stop and report.
 - **Cost:** don't create anything that spends money (paid runners, API keys, cloud resources).
+- **Another session's checkout:** never edit a file in a repo checkout you don't own a dedicated
+  worktree for — including a shared, non-worktree checkout another session is actively using, even
+  to hand it a correction or content it would want. Send it as a message instead and let that session
+  apply its own edit. Doing this even once, silently, is indistinguishable from an attempt to inject
+  content outside review, regardless of whether the content itself was accurate
+  (`docs/LESSONS.md` "Shared checkout... seen twice").
 
 ## Pause order
 
