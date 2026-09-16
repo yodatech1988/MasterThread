@@ -3,13 +3,22 @@
 # .github/claude-review.md (the actual rubric) for details.
 #
 # Needs a CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY repo secret to do
-# anything -- without one this workflow no-ops with a visible notice.
+# anything -- without one this workflow no-ops with a visible notice. This
+# repo doesn't have one yet as of 2026-09-16; that's a separate owner step
+# (key/token creation can't be automated). Until that secret is set, adding
+# this file closes zero risk by itself -- "the file exists" and "the gate
+# actually works" are different states; several repos in this estate have
+# already been mistaken for reviewed because of that gap.
 #
-# automerge is deliberately OFF here: this repo holds the session
-# standing-instructions and standards that every other repo's agents are
-# grounded in, so a Claude-review-only gate is a first pass, not a
-# self-merge. Owner review is still required (Ops Decision Queue card
-# review-gates-masterthread-ops-policies, 2026-09-16).
+# 2026-09-16 decision (decisions/review-gates-masterthread-ops-policies on
+# the Ops Decision Queue): MasterThread gets the SAME standard gate as
+# every other repo, per the owner's explicit choice -- no special-cased
+# treatment despite the circularity concern raised when this was proposed
+# (this repo is where sessions' own standing instructions and the
+# standards other agents cite as authoritative both live, so a
+# Claude-reviewed gate here has the reviewer and the reviewed sharing an
+# origin). automerge is off regardless, same as every other repo's
+# standards/process-critical scope -- a human merges every PR here.
 name: pr-review
 
 on:
