@@ -31,6 +31,12 @@ file. `session_plan_standard.md` still applies. The orchestrator's prompt only n
 - **Tests and validators** (validate, pytest, npm test, econ_check, boot-test) must match the stated
   baseline. Report real counts, and never claim a pass you didn't observe. Anything that needs a
   real game client is an owner play-test item; list it and don't claim it.
+- **Bulk or destructive batches** (the same action against N similar items — a worktree sweep, a
+  batch edit, a mass removal) follow `session_plan_standard.md` rule 12: verify a small pilot batch
+  against live state first and report it before the full set; re-check every single item against
+  live reality immediately before acting on it, even when the list came from the lane card itself —
+  a list is a claim, not verified state; capture any real content a destructive action would
+  otherwise lose into a durable, git-tracked location before removing it.
 
 ## Never
 
@@ -82,6 +88,10 @@ If the orchestrator sends "PAUSE" (usage limit):
   - findings outside scope
   - owner steps
   - how the task's actual size compared to its card's estimate (per `task_sizing.md`)
+- **Close your own lane out.** Once the PR merges, prune your worktree yourself
+  (`session_plan_standard.md` rule 9) — this is part of finishing the lane, not a future cleanup
+  sweep's job. If the PR can't merge yet (owner review pending, blocked on another PR), say so and
+  leave the worktree; don't prune early and don't leave it dangling once it's actually done.
 
 ## Lane card (what the orchestrator sends)
 
