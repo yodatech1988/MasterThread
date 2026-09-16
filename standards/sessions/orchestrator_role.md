@@ -21,8 +21,13 @@ hands it to a one-off **Opus 5 / high** reviewer instead of upgrading itself:
   on the OVH VPS (see core's zero-cost-first rule).
 - **Use the cheapest model and effort that will clear the done-when bar.** If a lane fails its bar,
   re-run it one step higher. Don't start high "to be safe".
-- **Keep the fleet small.** No more than ~6 parallel lanes, one per repo. Parallel lanes multiply
-  usage.
+- **Keep the write fleet small; read-only fan-out is a different budget.** No more than ~6 parallel
+  **write lanes** at once — one per repo, each with its own worktree/branch/PR, per
+  `session_plan_standard.md` rule 9. That cap exists because a worktree, a branch and a PR are
+  collision surfaces; a read-only task (a `pr-state-sweep`, a `plan-status-check`, an inventory
+  grep, an origin read) touches none of those and can fan out far wider — gate it on usage-window
+  budget (`tools/usage-monitor/`), not on the write-lane count. Prefer a T4 subagent (Haiku, no
+  worktree) for this kind of work over spending a T3 write-lane's Sonnet budget on it.
 - **No token-burning loops.** Don't poll long-running work; wait for notifications. A worker that has
   to wait on another PR stops and reports, and the orchestrator re-dispatches it later.
 - **Watch Jeremy's usage with the usage watcher, always.** See "Usage watcher" below. It is not
