@@ -1,5 +1,10 @@
 # Lessons learned — 2026-09-16, a worker's-eye view
 
+**Status: landing incomplete, on purpose.** Per PM direction during a full fleet rotation: get this to
+incoming sessions now rather than hold it for polish. Treat every section below as current as of
+landing, not as a closed/final account — later sessions should extend it, not wait for a "finished"
+version that never arrives before the context that produced it is gone.
+
 `fleet_structure.md` and `docs/handoffs/2026-09-16-fleet-pm.md` (PR #60) carry the adopted rules and
 the PM's own narrative of this round. This file doesn't restate those — read them first. What
 follows is the same round from a different seat: a worker session (`github-85`) that spent the night
@@ -59,12 +64,42 @@ existing casing convention for that repo (check `git branch -a | grep -i "^..*ag
 which case that repo's branches actually use, since it's inconsistent repo-to-repo in practice) rather
 than adding a third variant.
 
-## What this session is still holding, for the record
+## Closed: the merge tool's owner-initiation gap
 
-The desktop merge tool (`AEGIS-Merge-Queue.ps1`) this session built earlier tonight has the same gap
-`fleet_structure.md`'s "Approval and authorisation" section describes in the abstract: it checks that
-a human clicked, but not that the owner was the one who *started the run*. Per the handoff doc, this
-tool is on hold pending an owner ruling on who may invoke it — this session will not modify it without
-that direction, but flags the specific fix once directed: refuse to launch unless started interactively
-by the owner (e.g. require confirmation that the invoking process is an interactive console session on
-his own machine, not something launched programmatically on his behalf).
+The desktop merge tool (`AEGIS-Merge-Queue.ps1`) this session built earlier tonight had the exact gap
+`fleet_structure.md`'s "Approval and authorisation" section describes in the abstract: it checked that
+a human clicked, but not that the owner was the one who *started the run*. This wasn't hypothetical —
+per `decisions/merge-tool-owner-initiation-gate`, a session's believed-harmless dry run rendered real
+Windows Forms dialogs on Jeremy's desktop, and he clicked Approve on several genuinely believing he'd
+started the queue himself. Every click was real; the initiation wasn't; from inside the dialog those
+two facts were indistinguishable.
+
+Fixed and empirically verified, not just reasoned about: the script's first executable line now checks
+`[Console]::IsInputRedirected`. Every agent tool call in this environment runs with stdin attached to
+the null device (documented behavior of the harness's own Bash/PowerShell tools) — so
+`IsInputRedirected` reads `$true` for any programmatic invocation and `$false` for a real console a
+human opened themselves. This session ran the script through its own tool call after adding the check
+and confirmed it refuses immediately (`exit 2`, no window ever rendered) rather than trusting the logic
+would work. The property holds regardless of *why* a session might invoke it — including if the owner
+asks a session, in chat, to run it on his behalf: the fix is specifically that a relayed instruction to
+run it is not the same as him running it, which is the same distinction the CLAUDE.md/telemetry
+confusion above turned on.
+
+## A live instruction and the document of record disagreed, and the document was believed
+
+Mid-round, this session was told (via relay) that team leads had been reinstated, reversing
+`fleet_structure.md`'s eight-seat, no-leads model — attributed to a direct Jeremy quote given to the
+PM. Checked before passing it along: the currently open PR #60 still said "no team leads," and none of
+eighteen live Decision Queue cards recorded any such reversal. Reported the discrepancy back rather
+than relaying it forward. The relaying session's own account afterward: it had passed the PM's message
+on without checking it against #60 or the queue itself, despite the exact same verify-before-relay
+discipline being the theme of this file.
+
+The lesson isn't "that session made a mistake" — it's that this failure mode survives being named and
+agreed on. Everyone in this round already knew "verify before relaying" by the time this happened; it
+happened anyway, hours after the rule was well-established and repeatedly demonstrated. A live
+instruction and a committed document of record can genuinely disagree — the document can be stale, or
+the instruction can be a mistaken/premature relay — and the only way to tell which is checking the
+actual source (here: asking whether #60 needed updating, or whether the relay was wrong), not defaulting
+to trusting whichever one arrived more recently or more confidently. Recency and confidence are not
+evidence.
