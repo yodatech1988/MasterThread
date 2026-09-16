@@ -48,6 +48,12 @@ file. `session_plan_standard.md` still applies. The orchestrator's prompt only n
 - **Secrets:** don't print, log or commit them. Credentials come from DPAPI stores
   (`%APPDATA%\AEGIS\*.clixml`) and go into a child process's environment only.
 - **Loops:** no polling longer than a few minutes. If you're blocked on another PR, stop and report.
+- **Waiting on another session's handoff:** never block or poll waiting for a peer session to finish
+  its handoff. Use `SendMessage` with `notify_when_idle: true` on that session (a one-shot
+  subscription, no message needed if you have nothing to say yet) and move on to any other in-scope
+  work while you wait. If there's genuinely nothing else to do, stop and report that you're blocked
+  and subscribed — don't sit idle checking back. (2026-09-16 owner decision: the ops-cycle chain was
+  repeatedly stalling on sessions waiting on each other's handoffs; this is the fix.)
 - **Cost:** don't create anything that spends money (paid runners, API keys, cloud resources).
 
 ## Pause order

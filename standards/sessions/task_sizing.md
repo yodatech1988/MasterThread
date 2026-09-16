@@ -83,3 +83,35 @@ merged-vs-open PR sweep across five — turned out to be exactly `plan-status-ch
 didn't exist yet mid-session. Concrete takeaway: front-load a T4 scout before an Opus/high lane when
 the task involves reading unfamiliar state (existing configs, docs, third-party tool quirks) rather
 than known-shape execution — it prices the same discovery at Haiku instead of Opus rates.
+
+## Real-time effort telemetry (2026-09-16 owner decision)
+
+For every subagent dispatch (not just full lanes), record predicted vs. actual, timestamped against
+the usage monitor so a task's real cost is measured in usage-percentage consumed, not just tool-call
+count:
+
+1. **At dispatch**: note the predicted size (S/M/L/XL) and the usage monitor's current reading
+   (5-hour %, weekly %, timestamp) at that moment.
+2. **At completion**: note the actual outcome (tool-call count, what actually happened) and the
+   usage monitor's reading at that moment. The delta between the two readings is that task's real
+   usage cost — a much sharper calibration signal than tool-call count alone, especially for
+   comparing agent types against each other.
+3. **Report per task as it completes**, not batched at end-of-session — the PM needs this in real
+   time to catch a systemic mis-estimate mid-round rather than after the fleet has already run on a
+   bad assumption.
+4. **One session owns aggregating this until it's automated.** For now, that's the PM: it already
+   receives every report and holds the usage-monitor context, so it's the natural place to log
+   predicted-vs-actual pairs and watch for drift. This is a stopgap, not a permanent design — flag it
+   for actual automation once the pattern is proven out.
+5. **Every handoff closes with a review of what this told you**, not just a status list: which agent
+   types or task shapes are consistently over/under their predicted size, and what should change —
+   this file's bands, a specific agent's scope or tool grants, or how a lane card is written. An
+   improved agent (or an improved band) is a real handoff deliverable, not optional cleanup. This is
+   the same principle as the org's existing lessons-learned loop, applied per-subagent instead of
+   only per-lane.
+6. **Archive on a schedule — don't let this become an unbounded dataset.** Raw predicted/actual
+   records older than 30 days are rolled up into a per-agent-type summary (mean/median delta,
+   worst outlier with its cause) and the raw rows are dropped; keep outliers with a real lesson
+   attached (like the worked example above) as prose, not as a growing raw log. This follows the
+   same shape as `_security-public/policies/data/retention.md`'s tiered-archive pattern — a fixed
+   window of raw data, a permanent but small summary, nothing kept "just in case."
