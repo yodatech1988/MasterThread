@@ -59,6 +59,46 @@ and for deciding when it should rotate.
    aggregator described in "Parallel orchestrators" below for every session that has handed off to
    it, not only other orchestrators.
 
+### PM takeover (cold start)
+
+When an interactive session is told directly by the owner to become the live PM — no `ops-cycle-pm`
+reachable, or the prior PM has already wound down — this sequence ran clean end-to-end 2026-09-16
+(`SESSION_HANDOFF_2026-09-16-pm-github02-close.md` → this session). Follow it in order rather than
+re-deriving the steps each time:
+
+1. `ListAgents` first — confirms no PM is live and gives the reachable-peer list to message next.
+2. **Start the usage watcher before anything else** (self-watch — see above; this session has no PM
+   to hand off to). Don't wait on step 3 or 4 to do this.
+3. Find and read the newest PM-authored `SESSION_HANDOFF_*.md` (filenames containing `pm-` or
+   `ops-cycle`) — it carries the real state; don't re-survey the fleet from scratch.
+4. Message every reachable peer once: who you are, that you're now PM, and ask for a one-line brief
+   (workstream, target repo, whether they hold their own merge authority). Don't block on replies —
+   continue with steps 5-7 while they land.
+5. Read the Fleet Status `sessions` collection once for a full picture, but treat it as a supplement,
+   not the source of truth — most rows are hours-stale (`state: "done"`/`"parked"`/`"woundDown"`) by
+   the time a new PM starts. A peer's live reply or the outgoing PM's handoff file overrides it.
+6. Register yourself in `sessions` once.
+7. Report to the owner: usage, which peers have checked in, what's queued and not yet dispatched —
+   and ask before dispatching anything large that was only queued (e.g. a multi-team plan sitting in
+   a handoff file), rather than treating "you're now PM" as also meaning "go."
+
+Friction hit on the first live run, worth avoiding on the next one:
+- **A cloud-only (`RemoteTrigger`) session's inability to self-generate into PM** (memory
+  `aegis-pm-self-generation-limits`) does not apply to an interactive local session taking over on
+  direct owner instruction — different mechanism, different limits. Don't spend time re-deriving
+  that distinction; it's settled.
+- **Fleet Status `tasks` status values are only `"done"` and `"unknown"`** (no `"in-progress"`,
+  `"blocked"`, or `"todo"` — confirmed against all 93 live rows 2026-09-16). A `read_db` `query` with
+  a `where` filter guessing other values returns zero silently. If the schema isn't already known,
+  sample a handful of docs with a plain `list` first instead of guessing filter values.
+- **A peer can go idle/unreachable between confirming something and your reply landing** — a
+  `SendMessage` failure right after a peer's own "I'm stopping now" is the peer having left cleanly,
+  not an error worth retrying.
+- **Don't edit the shared repo checkout for anything, including a PM's own doc updates** — get a
+  dedicated worktree first (`New-ParallelWorktrees.ps1`), same as any other lane. A shared checkout
+  can be sitting dirty on a stale, unrelated session's branch, and that diff looks like real content
+  until it's checked against `origin/main`.
+
 ### Fallback: self-watch when no PM exists
 
 Run `tools/usage-monitor/usage-watch.ps1` for the whole of the round. It polls the subscription's
