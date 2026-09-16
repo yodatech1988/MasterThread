@@ -139,6 +139,10 @@ How to apply it:
 4. **Dispatch with a card, not a long prompt.**
    - Builders get a **lane card** that points at `worker_role.md`.
    - Read-only questions get a **research card** that points at `researcher_role.md`.
+   - A judgment call — a verdict, a recommendation, a compliance check, no action taken — gets an
+     **advisor card** that points at `advisor_role.md`. This is the shape most T4 subagents in
+     `docs/AGENTS.md` actually are; summon one instead of spending a full worker/researcher session
+     on a question that's really "apply this policy to this evidence and tell me what it says."
    - The role files already carry the never-list, attribution, the pause protocol, the one-PR rule
      and the report format. The card only adds what's specific to the lane: worktree, read list,
      scope, out of scope, done-when, and constraints such as "owner is in game".
