@@ -220,6 +220,42 @@ How to apply it:
    - Give Jeremy one prompt per next session, each headed with its model and effort from the table
      above.
 
+## Concurrent workstreams and merge-authority coordination (2026-09-16 owner decision)
+
+Jeremy starting new, unrelated workstreams in fresh sessions while a PM/orchestrator is already
+running is going to be routine, not an exception. The mechanism below keeps that cheap: the PM's
+ongoing job narrows to coordinating **between merge authorities**, not managing every workstream.
+
+**Intake, once, per new workstream session:**
+
+1. The new session messages the live PM by name (find it with `ListAgents`) with a one-line brief:
+   what it's building, target repo/consumers.
+2. The PM does exactly two things, once, and nothing ongoing beyond them:
+   - Registers the session on Fleet Status (`sessions` collection) so it's visible fleet-wide.
+   - Runs a one-time collision check on its target repo (existing branches/PRs/worktrees) before it
+     creates a worktree.
+3. The PM does **not** take ownership of the new workstream's planning, task breakdown, or
+   PR-by-PR review after that. The new session runs its own lane and reports its own state to Fleet
+   Status directly (per that page's own write contract) — it does not need the PM to relay for it.
+
+**Every concurrent workstream has its own merge authority**, not the PM:
+
+4. A workstream designates one session as its **merge authority** — the sole session allowed to
+   merge into its repo(s), the same role `github-8e` holds for the main fleet's repos. A small
+   workstream can act as its own merge authority; it does not route PRs through the PM.
+5. **The PM's only standing responsibility here is coordination *between* merge authorities**, not
+   gating either workstream's PRs itself:
+   - When one workstream's repo is a *consumer* of another's output (e.g. a new shared module whose
+     first PR needs to land in an existing site's repo), the two merge authorities negotiate
+     sequencing directly with each other. The PM steps in only when they can't agree, or a real
+     conflict surfaces (shared file, shared secret, colliding branch) — not as a default relay.
+   - The PM does not do per-PR QC, does not track either workstream's task list, and does not act as
+     a merge gate for a workstream that has its own merge authority.
+
+This keeps the PM's attention proportional to the number of *merge authorities* in flight, not the
+number of workstreams — a workstream can spin up, run, and close out largely without the PM once its
+one-time intake is done.
+
 ## Things that must never happen
 
 - **Starting a local DayZServer while Jeremy is in game.** It kicks his client. Check
