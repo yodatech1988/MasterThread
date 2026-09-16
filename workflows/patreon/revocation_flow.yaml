@@ -1,0 +1,37 @@
+name: patreon_revocation_flow
+description: Handle revocation of entitlements when Patreon membership lapses or is
+  cancelled.
+trigger:
+  type: state_change
+  source: patron_subscription
+  conditions:
+    status_in:
+    - cancelled
+    - expired
+    - past_due
+orchestrator: Patreon Orchestrator Agent
+stages:
+- name: identify_entitlements
+  agents:
+  - Entitlement Policy Agent
+  inputs:
+  - patron_record
+  - subscription_record
+  outputs:
+  - revocation_actions
+- name: apply_revocations
+  agents:
+  - DayZ Perk Applier Agent
+  - Role Sync Agent
+  inputs:
+  - revocation_actions
+  outputs:
+  - dayz_changes
+  - discord_role_changes
+- name: notify_user
+  agents:
+  - Patron Comms Agent
+  inputs:
+  - revocation_actions
+  outputs:
+  - revocation_notification

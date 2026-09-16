@@ -1,0 +1,89 @@
+name: sdlc_new_feature
+description: End-to-end SDLC flow for a new feature from intake to release.
+trigger:
+  type: github_issue
+  conditions:
+    labels_any:
+    - feature
+    - enhancement
+    state: open
+orchestrator: Architect Agent
+stages:
+- name: requirements
+  description: Clarify and formalize requirements.
+  agents:
+  - Context & Identity Agent
+  - Requirements Analyst Agent
+  - ROM Estimator Agent
+  - SOW Drafting Agent
+  inputs:
+  - github_issue
+  - linked_context
+  outputs:
+  - requirements_doc
+  - acceptance_criteria
+- name: design
+  description: Produce and review architecture and design artifacts.
+  agents:
+  - Systems Designer Agent
+  - Design Reviewer Agent
+  - Schema Designer Agent
+  inputs:
+  - requirements_doc
+  outputs:
+  - architecture_doc
+  - api_spec
+  - schema_changes
+- name: build
+  description: Generate and review implementation code.
+  agents:
+  - API Scaffolding Agent
+  - Code Generator Agent
+  - Code Reviewer Agent
+  - Migration Agent
+  inputs:
+  - architecture_doc
+  - api_spec
+  - schema_changes
+  outputs:
+  - pull_request
+  - db_migrations
+- name: test
+  description: Create and execute tests.
+  agents:
+  - Test Case Generator Agent
+  - Test Plan Generator Agent
+  - Test Plan Executor Agent
+  - Automated QA Executor
+  inputs:
+  - pull_request
+  - requirements_doc
+  - acceptance_criteria
+  outputs:
+  - test_results
+  - quality_report
+- name: release
+  description: Prepare and approve release.
+  agents:
+  - Release Manager Agent
+  - Acceptance Documentation Agent
+  - Technical Writer Agent
+  inputs:
+  - test_results
+  - quality_report
+  outputs:
+  - release_notes
+  - changelog
+  - deployment_plan
+- name: post_release
+  description: Monitor and feed back into SDLC.
+  agents:
+  - Monitoring Agent
+  - Maintenance Agent
+  - Incident Response Agent
+  inputs:
+  - telemetry
+  - incidents
+  outputs:
+  - follow_up_issues
+  - postmortems

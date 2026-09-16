@@ -1,0 +1,54 @@
+name: dayz_economy_balance_flow
+description: Analyze and adjust DayZ economy parameters based on telemetry.
+trigger:
+  type: scheduled
+  cron: 0 */6 * * *
+orchestrator: Game Operations Orchestrator Agent
+stages:
+- name: collect_metrics
+  agents:
+  - Telemetry Agent
+  - Game Analytics Agent
+  inputs:
+  - economy_metrics
+  - loot_metrics
+  outputs:
+  - economy_snapshot
+- name: detect_anomalies
+  agents:
+  - Anomaly Detection Agent
+  inputs:
+  - economy_snapshot
+  outputs:
+  - anomaly_report
+- name: propose_adjustments
+  agents:
+  - Economy DayZ Agent
+  inputs:
+  - economy_snapshot
+  - anomaly_report
+  outputs:
+  - economy_adjustment_plan
+- name: review_adjustments
+  agents:
+  - Game Operations Orchestrator Agent
+  inputs:
+  - economy_adjustment_plan
+  outputs:
+  - approved_adjustments
+- name: apply_adjustments
+  agents:
+  - Economy DayZ Agent
+  inputs:
+  - approved_adjustments
+  outputs:
+  - config_changes
+  - restart_plan
+- name: log_changes
+  agents:
+  - GitHub Integration Agent
+  inputs:
+  - approved_adjustments
+  - config_changes
+  outputs:
+  - economy_change_record

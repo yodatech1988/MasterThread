@@ -1,0 +1,53 @@
+name: sdlc_bugfix
+description: Shortened SDLC for bug fixes and patches.
+trigger:
+  type: github_issue
+  conditions:
+    labels_any:
+    - bug
+    - defect
+    state: open
+orchestrator: Architect Agent
+stages:
+- name: triage
+  agents:
+  - Support Triage Agent
+  - Context & Identity Agent
+  inputs:
+  - github_issue
+  - logs
+  outputs:
+  - priority
+  - problem_summary
+- name: analysis
+  agents:
+  - Requirements Analyst Agent
+  - Game Analytics Agent
+  inputs:
+  - problem_summary
+  outputs:
+  - root_cause_hypothesis
+  - updated_requirements
+- name: fix
+  agents:
+  - Code Generator Agent
+  - Code Reviewer Agent
+  inputs:
+  - root_cause_hypothesis
+  outputs:
+  - patch_pull_request
+- name: verify
+  agents:
+  - Test Plan Executor Agent
+  - Automated QA Executor
+  inputs:
+  - patch_pull_request
+  outputs:
+  - test_results
+- name: deploy
+  agents:
+  - Release Manager Agent
+  inputs:
+  - test_results
+  outputs:
+  - deployment_record

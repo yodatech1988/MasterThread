@@ -1,0 +1,17 @@
+{
+  "agent": "Marketing Announcement Copy Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Marketing Announcement Copy Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Marketing Announcement Copy Agent received example input.",
+    "Marketing Announcement Copy Agent performed validation and produced this example output."
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "agent": "Migration Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Migration Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Migration Agent received example input.",
+    "Migration Agent performed validation and produced this example output."
+  ]
+}

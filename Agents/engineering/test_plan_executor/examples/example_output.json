@@ -1,0 +1,17 @@
+{
+  "agent": "Test Plan Executor Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Test Plan Executor Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Test Plan Executor Agent received example input.",
+    "Test Plan Executor Agent performed validation and produced this example output."
+  ]
+}

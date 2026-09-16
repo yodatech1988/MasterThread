@@ -1,0 +1,17 @@
+{
+  "agent": "Support Ticket Agent",
+  "timestamp": "2025-01-01T00:00:01Z",
+  "status": "success",
+  "primary_result": {
+    "summary": "Example output from the Support Ticket Agent.",
+    "actions": [
+      "validate_input",
+      "apply_policies",
+      "prepare_structured_response"
+    ]
+  },
+  "logs": [
+    "Support Ticket Agent received example input.",
+    "Support Ticket Agent performed validation and produced this example output."
+  ]
+}
