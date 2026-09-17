@@ -1,0 +1,51 @@
+// Renders the page's card builders to strings and checks them: escaping, the scannable-card
+// layout, the collapsed Background section. No DOM needed. usage: node render-harness.js
+const fs=require('fs');
+const html=fs.readFileSync(__dirname+'/ops-decision-queue.html','utf8');
+const m=html.match(/<script>([\s\S]*?)<\/script>/);
+let src=m[1].replace(/\}\)\(\);\s*$/, 'globalThis.__t={esc,rich,firstSentence,cardOwner,cardOps,cardAction,timelineItem,backgroundBlock,openBackground};\n})();');
+const el=()=>({addEventListener(){},innerHTML:'',querySelectorAll:()=>[],querySelector:()=>null,classList:{toggle(){},add(){},remove(){}},reset(){}});
+global.document={getElementById:()=>el(),addEventListener(){},querySelectorAll:()=>[],activeElement:null,body:{appendChild(){}},createElement:()=>el()};
+global.window={addEventListener(){},matchMedia:()=>({matches:false})};
+global.localStorage={getItem:()=>'x',setItem(){}};
+global.location={hash:''};
+global.setInterval=()=>0;
+eval(src);
+const BS=String.fromCharCode(92);const P="C:"+BS+"Users"+BS+"x"+BS+"file.cmd";const t=globalThis.__t; let fail=0;
+const ok=(name,c)=>{console.log((c?'PASS ':'FAIL ')+name); if(!c) fail++;};
+const words=n=>Array.from({length:n},(_,i)=>'word'+i).join(' ');
+const legacy={id:'legacy1',title:'Legacy',ownerRequired:true,context:'Should we move the backup job to the new server? '+words(250)+'.\nSecond paragraph here.',bestPractice:'BP text from standards.',divergenceNote:'We diverge because X.',options:['Yes','No'],recommendedOption:0,recommendedBy:'pm',recommendedRationale:'Cheaper.'};
+let h=t.cardOwner(legacy,false);
+ok('legacy: in-short is first sentence', h.includes('<p>Should we move the backup job to the new server?</p>'));
+ok('legacy: no points list', !h.includes('<ul class="points">'));
+ok('legacy: no visible context paragraph', !h.includes('class="context"'));
+ok('legacy: full context inside closed details', /<details class="bg" data-bg="legacy1"><summary>Background and sources<\/summary>[\s\S]*word249[\s\S]*Second paragraph here\./.test(h));
+ok('legacy: best practice + divergence in details', h.indexOf('Best practice says')>h.indexOf('<details') && h.indexOf('Where we diverge')>h.indexOf('<details'));
+ok('legacy: rec + rationale visible before details', h.indexOf('Cheaper.')<h.indexOf('<details') && h.indexOf('Cheaper.')>0);
+ok('legacy: nothing preselected, recommended option only labelled', !h.includes('option-btn chosen') && /data-opt="0">Yes<span class="rec-mark">ops recommends<\/span>/.test(h) && !/data-opt="1">No<span/.test(h));
+ok('legacy: Approve present but disabled until a pick, hint shown', /data-action="approve-recommended" disabled>Approve/.test(h) && h.includes('data-role="pick-hint">Click the option you want first.') && h.includes('data-recommended="0"'));
+ok('long single sentence capped', t.firstSentence(words(100)).length<=220 && t.firstSentence(words(100)).endsWith('…'));
+const evil='<img src=x onerror=alert(1)>';
+const nw={id:'new1',title:'New '+evil,ownerRequired:true,summary:'Pick a host '+evil+' now',points:['Run '+P+' first.','See https://example.com/a?b=1&c=2 for cost.',evil,42,''],details:'Para one '+evil+'\n\nPara two '+P+'',context:'Old context text.',bestPractice:'BP '+evil,options:['A '+evil,'B'],recommendedOption:1,recommendedRationale:'R '+evil,corrections:[{note:'n '+evil,correctedBy:'s'}]};
+for (const [name,fn] of [['cardOwner',()=>t.cardOwner(nw,false)],['cardOps',()=>t.cardOps({...nw,ownerRequired:false,suggestedResolution:'do '+evil},false)],['cardAction',()=>t.cardAction({...nw,kind:'action',checkResult:'cr '+evil},false)],['cardAction-claimed',()=>t.cardAction({...nw,kind:'action',claimedAt:new Date().toISOString(),claimComment:evil},true)],['timeline',()=>t.timelineItem({...nw,status:'resolved',resolution:evil,comment:evil,followUpPending:true,followUpNote:evil})]]) {
+  const o=fn();
+  ok(name+': no raw <img', !o.includes('<img'));
+  ok(name+': escaped form present', o.includes('&lt;img src=x onerror=alert(1)&gt;'));
+  ok(name+': exactly one details', (o.match(/<details/g)||[]).length===1);
+}
+h=t.cardOwner(nw,false);
+ok('new: summary used', h.includes('Pick a host'));
+ok('new: 3 bullets (non-strings/empties dropped)', (h.match(/<li>/g)||[]).length===3);
+ok('new: path chip in bullet', h.includes('<li>Run <span class="path-chip"><code>'+P+'</code><button type="button" data-copy="'+P+'">Copy</button></span> first.</li>'));
+ok('new: url link in bullet', h.includes('<a href="https://example.com/a?b=1&amp;c=2" target="_blank" rel="noopener">'));
+ok('new: details AND original context both reachable', h.includes('Para two') && h.includes('Original context') && h.includes('Old context text.'));
+ok('new: corrections in details', h.indexOf('class="corrections"')>h.indexOf('<details'));
+const a=t.cardAction({id:'a1',title:'Act',kind:'action',context:'1. Click\n2. Done',summary:'Click the thing.',bestPractice:'bp'},false);
+ok('action: steps stay visible before details', a.indexOf('class="context steps"')>0 && a.indexOf('class="context steps"')<a.indexOf('<details'));
+ok('action: context not duplicated in details', (a.match(/1\. Click/g)||[]).length===1);
+ok('action: no fallback summary', !t.cardAction({id:'a2',title:'Act',kind:'action',context:'Step one. Step two.'},false).includes('In short'));
+t.openBackground.add('legacy1');
+ok('open state re-applied', t.cardOwner(legacy,false).includes('data-bg="legacy1" open>'));
+ok('id attr escaped', t.cardOwner({...legacy,id:'x" onmouseover="y'},false).includes('data-bg="x&quot; onmouseover=&quot;y"'));
+console.log(fail?('FAILURES: '+fail):'ALL PASS');
+process.exit(fail?1:0);

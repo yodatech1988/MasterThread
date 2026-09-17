@@ -1,0 +1,11 @@
+{
+  "name": "ops-decision-queue-page",
+  "private": true,
+  "description": "Source of the Ops Decision Queue artifact page and the harnesses that test it",
+  "scripts": {
+    "test": "node render-harness.js && node click-harness.js ops-decision-queue.html"
+  },
+  "devDependencies": {
+    "jsdom": "29.1.1"
+  }
+}
