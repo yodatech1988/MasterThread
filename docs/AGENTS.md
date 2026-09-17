@@ -24,6 +24,7 @@ not yet classified — a real gap, not a "doesn't apply."
 | `collision-check` | haiku | R | Pre-dispatch PR/branch/worktree collision check | `orchestrator_role.md` "Collisions"; `parallel-session-collision` |
 | `handoff-drift-reviewer` | sonnet | **A** | Checks a session handoff against the documented procedure; called by the outgoing session, not the incoming one | `orchestrator_role.md` "PM handoff"; `aegis-skills-program` |
 | `lane-card-writer` | sonnet | R | Formats a worker/research card with Priority+Size | `worker_role.md`, `researcher_role.md`, `task_sizing.md` |
+| `pm-agent` | sonnet | **A** | Judgment layer for ops-platform's headless PM (triage/digest/escalation text only, Read/Grep only, no dispatch or self-scheduling) | `ops-platform` task 2.25; `aegis-pm-self-generation-limits`; Decision Queue card `headless-pm-cmd-run-mechanism-2026-09-17` |
 | `diff-reviewer` | sonnet | **A** | Pre-merge diff review: crash patterns, secrets, removed names | `session_plan_standard.md` rule 10 |
 | `test-baseline-runner` | sonnet | R | Runs stated validators, reports real counts only | `worker_role.md` "Tests and validators" |
 | `live-reviewer` | **opus** | **A** | Live prod / credential / money / death-path review only | `worker_role.md` model table row 1 |
