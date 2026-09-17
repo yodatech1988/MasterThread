@@ -32,7 +32,9 @@ agent with `claude --print` until **both** of these hold:
    and report, the `overnight-sweep-supervisor.ps1` pattern):
 
    ```
-   ^gh pr (view|list)\b
+   ^date -u\b
+   ^gh pr (view|list|checks)\b
+   ^gh run view\b                  (--log-failed, to attribute a red check)
    ^gh api repos/[^ ]+/branches/[^ ]+/protection\b
    ^gh api repos/[^ ]+/actions/permissions/workflow\b
    ^gh api repos/[^ ]+/actions/runners\b
@@ -63,6 +65,9 @@ If `decisions_dir` is missing or empty, stop and say so. Never sweep from memory
 
 ## Steps
 
+0. **Clock.** Run `date -u +%FT%TZ` first and use that value for the report's timestamp and for every
+   "as of" statement. Never write a time from memory or inference - the first real run stamped its
+   report two hours into the future.
 1. **Claims.** From `decisions_dir` build three lists:
    - open cards with `ownerRequired: true` (split `kind: "action"` from decisions; note any action
      card with `claimedAt` set - that is a verification somebody owes *now*);
@@ -87,9 +92,26 @@ If `decisions_dir` is missing or empty, stop and say so. Never sweep from memory
    reports? `gh api .../actions/runners` returning zero runners? a failing check?), `BEHIND`/`DIRTY`
    (needs a rebase - a session can do that), `CLEAN` but unmerged (nobody is merging - a merge-seat
    staffing gap, not an owner decision, unless the path is owner-merge per `merge_authority.md`).
+   - **Route each PR by `merge_authority.md`'s table, first matching row wins - and check the
+     route C rows in this order before looking at anything else:** (a) repo in `OWNER_ONLY_REPOS`;
+     (b) label `owner-review` / `do-not-merge`; (c) **any** changed path under `.github/`,
+     `standards/sessions/`, `policies/`, or credential/secret tooling; (d) **Tier 4** - the merge
+     arms a live system on its next run (Ansible roles or playbooks targeting a real host, deploy
+     workflows, live economy/loot content, `server/` config, the death/damage path). One matching
+     path makes the whole PR route C. Only a PR that matches none of these is seat route. The first
+     real run sent a `.github/workflows` PR and two Ansible-role PRs to the seat by looking at
+     "docs/code, not standards" alone.
+   - A parent PR may carry other PRs: `gh pr list --repo <r> --state merged --base <head-branch>`.
+     Branch protection covers default branches only, so a child merged into the parent's branch
+     reaches main on the parent's merge. Report children with the parent.
+   - A red check is attributed from its log (`gh run view <id> --log-failed`), never guessed:
+     "content" or a named infrastructure cause. If you cannot read the log, say "unattributed".
 4. **Session waits.** From `sessions_dir`, list rows updated in the last 24h whose `waitingOn` is
    non-empty. Match each wait to a card id or PR. A wait with no matching open card is a finding:
    the owner cannot see it.
+   **One state per item.** Each PR and each card appears in exactly one section with exactly one
+   state, taken from a single read. If two of your reads disagree, read a third time and report the
+   latest with its time - never describe the same PR as merged in one section and open in another.
 5. **Root-cause grouping.** Collapse everything that shares one cause into one blocker (e.g. "branch
    protection requires a check that cannot run" -> the N PRs it blocks). Order blockers by how much
    they unblock, not by age.
@@ -105,12 +127,15 @@ Plain markdown, in this order, nothing else:
 ```
 # Blocked-work sweep - <UTC timestamp>
 ## 1. Owner clicks outstanding      (what, exact file/URL, what he will see, what it unblocks, evidence)
-## 2. Claimed done, not done        (card id, what it says, what live state says, evidence)
+## 2. Card and reality disagree     (both directions: resolved-but-not-done, AND open-but-already-done)
 ## 3. Owner decisions outstanding   (card id, one line, what it blocks)
 ## 4. Not the owner's               (rebases, unstaffed merge seat, sessions waiting with no card)
 ## 5. Could not verify              (and why)
 ## 6. Recommended queue writes      (for the CALLER to make - see below)
 ```
+
+Counts are counted, not estimated: if you state "N of M cards are resolved", N and M come from a
+listing you made in this run.
 
 Section 6 is a list of proposed writes in the queue's own contract
 (`standards/sessions/decision_queue_standard.md`): for a click that did not take, "clear
