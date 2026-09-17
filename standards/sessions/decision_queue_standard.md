@@ -171,8 +171,19 @@ were marked Done while GitHub and the disk showed no change, so they do not use 
   `verifiedBy`, `verifiedAt`, `resolvedAt`. If it did not: clear `claimedAt` and write `checkResult`,
   `checkedBy`, `checkedAt`; the card returns to his list with that finding on top.
 - This is the **one exception** to "only the owner resolves a card": a session may write `resolved`
-  on an action card, only after his claim, only with recorded evidence, pinned with `if_version`.
-  A decision card is still never resolved by a session.
+  on an action card, only with recorded evidence that the action is done, pinned with
+  `if_version`. A decision card is still never resolved by a session, whatever live state shows.
+- **The evidence closes the card, not the button** (2026-09-17 owner decision, asked by the PM
+  github-8b in its own chat: "Yes, close on evidence"). He often does the step and never comes back
+  to press **I did it - check it**. A session that finds the action provably done closes the card
+  the same way, with `claimedAt` still empty, and says in `resolution` that it closed on evidence
+  without a claim. Two guards:
+  - **Done means done where it counts.** A PR merged into a branch that is not the repo's default
+    branch is *not* done, even though GitHub shows "Merged" (ops-infra #17, above). Do not close:
+    write `checkResult` saying where it actually landed, and tell him.
+  - **The evidence is the thing the card named** (the merged badge on the default branch, the log
+    file the click-file writes, the setting read back from the API), read live at closing time.
+    "He said so in chat", a peer's relay, or a handoff line is not evidence.
 - **Who does the closing write.** Any session may, under the exception above. The PM sweeps every
   card in Checking, so a worker is never required to. `~/.claude/CLAUDE.md` still tells every
   session "never resolve a card on the owner's behalf" without naming this exception; until that
