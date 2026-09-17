@@ -54,7 +54,7 @@ number, and the page itself never invents a status.
 | `comment` | string | Free-text context the owner added alongside their resolution. |
 | `followUpPending` | boolean | **Set whenever a resolution names a real action that hasn't happened yet** (an owner click, a build, a merge) (2026-09-16 standing rule). Keeps the card visible indefinitely — see Lifecycle below. `followUpNote` says what's still outstanding. |
 | `corrections` | array | `{ note, correctedBy, correctedAt, previousResolution }` entries, appended — never delete or silently overwrite a resolved card's `resolution` in place; append a correction and update `resolution` to the new value. See Correcting a resolved card below. |
-| `createdAt` / `resolvedAt` | ISO 8601 | Timestamps. **Real UTC, read from the clock** (`date -u +%Y-%m-%dT%H:%M:%SZ`) at the moment of the write, never typed from memory: on 2026-09-17 two sessions hand-typed stamps that ran 10-35 minutes ahead, which made cards look answered before they were filed. The same applies to every `*At` field below. |
+| `createdAt` / `resolvedAt` | ISO 8601 | Timestamps. **Real UTC, read from the clock** (`date -u +%Y-%m-%dT%H:%M:%SZ`) at the moment of the write, never typed from memory. This covers every timestamp a session writes to **either** artifact, this queue and Fleet Status (`updatedAt` on a `sessions` row included), and every `*At` field below. On 2026-09-17 hand-typed stamps ran 10-100 minutes ahead all day: cards looked answered before they were filed (`resolvedAt` earlier than `createdAt`), and a Fleet Status row stamped in the future made a live session read as wound down. |
 | `claimedAt` / `claimComment` | ISO 8601 / string | Action cards only, written by the page when the owner presses **I did it - check it**. |
 | `verifiedBy` / `verifiedAt` | string / ISO 8601 | Action cards only, written by the session that checked live state and closed the card. The evidence itself goes in `resolution`. |
 | `checkResult` / `checkedBy` / `checkedAt` | string / string / ISO 8601 | Action cards only: what a check found when the action had **not** taken, or (with `checkedBy: "owner"`) a problem the owner reported from the card. The card stays open. |
@@ -197,6 +197,24 @@ were marked Done while GitHub and the disk showed no change, so they do not use 
   anything, `summary` says so in plain words ("merging #13 also lands #16") and `points` carries
   each absorbed PR's `.../pull/<n>/files?diff=split` link on its own bullet, ahead of the merge
   link. A merge click is only informed if he can see everything it lands.
+- **A merge card is filed only for a PR whose base is the repo's default branch**, checked at
+  filing time: `gh pr view <n> --repo <owner>/<repo> --json baseRefName` against
+  `gh repo view <owner>/<repo> --json defaultBranchRef`. A card cannot carry a condition such as
+  "only after #13, retarget first": he answers cards in seconds and in whatever order they sit.
+  On 2026-09-17 ops-infra #17 was carded exactly that way while its base was still #13's side
+  branch. He merged it 26 seconds after #13 landed; GitHub showed "Merged"; none of it reached
+  `main`, and it had to be re-landed as #18. **A stack lands as one PR from the top branch to the
+  default branch** (memory `github-stacked-pr-merge`), and that one PR is what gets the card. If a
+  PR's base is not the default branch, there is nothing to card yet.
+- **What a card says about a PR's contents comes from `gh` at filing time**, never from a handoff,
+  a lane report or memory: `gh pr view <n> --repo <owner>/<repo> --json files --jq '.files[].path'`.
+  That covers the file count and any claim like "docs only", "adds files only" or "no code runs".
+  On 2026-09-17 site-chernarus #111 and #112 were carded as "two docs files" (each had three), and
+  #113 was carded "documents only" while it also added two Python files and a README under
+  `tools/quest_grounding/`. #111 and #112 were merged on the wrong description. If the file list
+  changes after filing (a push, a merge of `main`), correct the card before he gets to it. Name
+  every path outside `docs/` on the card. A merge state of `BLOCKED` or `UNKNOWN` is re-read after
+  a minute before it goes on a card: GitHub reports `UNKNOWN` while it is still computing.
 - One click per card, numbered in order when they depend on each other ("Step 1 of 3").
 - Check the fix would help **before** asking for the click (does the runner exist? is the
   prerequisite merged?). An approved click that unblocks nothing is a wasted owner action.
