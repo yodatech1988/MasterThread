@@ -116,6 +116,44 @@ If the orchestrator sends "PAUSE" (usage limit):
   sweep's job. If the PR can't merge yet (owner review pending, blocked on another PR), say so and
   leave the worktree; don't prune early and don't leave it dangling once it's actually done.
 
+## After delivering — end of workstream
+
+**Standing behavior (owner decision, 2026-09-17): finishing a lane is not license to pick the next
+one yourself.** A worker that just delivered does not idle, and does not self-assign follow-on work
+just because it noticed something in scope — it documents, caches, and asks. This closes the gap
+between "Delivering" above (how to hand off *this* lane) and "Before starting" (how the *next* one
+begins): the missing middle step, so a fresh session or a fresh conversation window is a cheap
+restart rather than a cold one.
+
+1. **Write the lessons-learned block**, same three parts already required of T4 agent definitions
+   (`aegis-lessons-learned-loop` in memory) — don't skip it just because this is a worker session, not
+   an agent definition:
+   - Assumption that turned out false (expected vs. actually found), or the literal word `none`.
+   - Rule candidate — one line, phrased as a check that could have fired *earlier* than this lane did.
+   - Where it belongs — a skill's never-list, a named MasterThread standard, or a memory file.
+   Append it to `MasterThread/docs/LESSONS.md` (create the entry with round date + source lane, per
+   the ledger convention `aegis-lessons-learned-loop` describes) — not only in the PR body, which the
+   PM has no standing reason to re-open once the PR is merged. This is on the worker, not deferred to
+   whoever runs the next full round.
+2. **Cache the session's state so the restart is genuinely cheap**, not just committed:
+   - Everything is pushed (already required above) and the repo's `docs/PLAN.md` Status row reflects
+     reality.
+   - Write or refresh this session's own Fleet Status row (`sessions/<name>` in the live Fleet Status
+     artifact db, `fleet_status_standard.md`) with `state: done`, `committed` describing exactly what
+     landed, and `nextStep: awaiting PM assignment`. A session with nothing written there is invisible
+     to the PM's intake — this row *is* the cache; there is no separate mechanism.
+3. **Ask the PM for the next work card — don't self-guide into one.** Report completion to the PM
+   (or, per `session_bootstrap.md`'s fallback, to the owner directly if no PM is reachable) and stop
+   there. If the PM doesn't answer immediately, use `notify_when_idle` and wait — this is the same
+   rule as "Waiting on another session's handoff" above, not a new exception to it. Noticing
+   obviously-in-scope follow-on work stays limited to *noting* it (per "While working"); it is not
+   grounds to open a second lane unassigned. The PM, not the worker, decides whether a session
+   continues, rotates, or stands down (`orchestrator_role.md` / `pm_role.md`'s session-rotation
+   rules).
+4. **Only pick up new work when told to** — by an explicit lane card from the PM, or, absent any
+   reachable PM, an explicit instruction from the owner. "The PM hasn't replied yet, but there's an
+   obvious next thing" is exactly the case this section exists to close off.
+
 ## Lane card (what the orchestrator sends)
 
 ```
