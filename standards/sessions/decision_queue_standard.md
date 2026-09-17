@@ -134,6 +134,71 @@ card then shows the current answer and the full correction trail, not a silent e
 write with `if_version` (see below) — a card can be corrected while the owner is mid-answer on it,
 and a forced overwrite has already clobbered a live answer once tonight.
 
+## Reopening a card: `status` goes in the same write as the correction
+
+**Reopening is a special case of correcting a resolved card, and it has its own failure mode.** A
+card that was wrongly marked `resolved` — an auto-resolve bug, or a reply that turned out to be a
+question rather than a decision (see Action cards below and "Writing a card to be scanned") — needs
+`status` flipped back to `"open"` as well as a `corrections` entry. **These are one write, not two.**
+
+The worked example, from `ops-infra-decision-a-tailscale-vs-cloudflare-conflict-2026-09-17`
+(2026-09-17): the card was reopened **three times** before it stuck.
+
+1. github-3d appended a correction explaining the owner's reply was a question, not an answer. It
+   did not include `status: "open"` in that write. The card kept reading `resolved`.
+2. github-8b appended a second correction — its own note says exactly what happened: *"github-3d's
+   reopen note above landed but the status field itself was never actually flipped back to 'open' —
+   confirmed the bug github-91 flagged is real, not a stale read on their end."* **The note landed.
+   The status did not, because it was never in the payload.** github-8b's own write repeated the
+   same mistake: another `corrections` entry, still no `status` field in that update.
+3. github-b5 caught it on a third pass, quoting live state directly: *"this card still read
+   status=resolved despite two prior correction entries saying it should be reopened — the write
+   never actually took."* Only this write actually included `status: "open"` and cleared
+   `resolution`/`resolvedAt`.
+
+This was never a platform bug and never a lost update — `db.update()` doesn't silently drop fields
+that are actually passed to it. It was two sessions, independently, writing a `corrections` entry
+and a prose claim ("reopening this", "setting status to open now") without putting `status` in the
+same call, and neither re-read the card afterward to confirm the claim matched live state.
+
+**The rule going forward:**
+
+- A reopen is one `update()` call carrying **both** the `corrections` append and
+  `status: "open"` (plus clearing `resolution`, `comment`, `resolvedAt` — see below). Never write
+  the correction now and the status "next", even seconds later — that gap is exactly where this
+  failed twice.
+- Pin the write with `if_version`, same as any correction.
+- **After the write returns, read the card back and confirm `status` actually reads `"open"`
+  before telling anyone it's reopened.** Saying "reopening this" in a `note` is not evidence the
+  reopen happened; only a re-read is. This is the same discipline the standard already asks of a
+  session verifying an action card's `claimedAt` — apply it to your own writes, not only the
+  owner's.
+
+```js
+db.collection('decisions').doc(id).update({
+  status: 'open',
+  resolution: '',
+  comment: '',
+  resolvedAt: null,
+  corrections: [...existingCorrections, {
+    note: 'Reopening: <why the resolution is wrong>',
+    correctedBy: '<your session name>',
+    correctedAt: new Date().toISOString(),
+    previousResolution: '<the resolution text being reopened>',
+  }],
+}, { if_version: <version you read> })
+// then re-read the doc and confirm status === 'open' before reporting it reopened.
+```
+
+**Known limitation, logged and not fixed here:** neither this write pattern nor the page's own
+`resolve()`/`writeClaim()` functions (`tools/decision-queue/ops-decision-queue.html`) pin any write
+with `if_version` on the page side — only sessions using the ArtifactData tool do. Two writers
+racing on the same card (the owner clicking Approve while a session reopens it, or two sessions
+correcting at once) is last-write-wins with no conflict detection on either side. This has not
+caused a real incident — the three-reopen failure above was a missing field, not a race — so it's
+recorded here as a known gap for whoever next touches concurrency on this page, not something this
+PR changes.
+
 ## Filing a card
 
 Any session can add one directly:
