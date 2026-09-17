@@ -25,6 +25,36 @@ unmerged branch as the adopted standard to every session reading it.
 4. **Fix the Status table first.** Correct your repo's `docs/PLAN.md` Status table against merged PRs
    on origin; it's often stale.
 
+## Reading the repo: what you looked at is part of the finding
+
+Two search habits produced four wrong conclusions across four sessions on 2026-09-17, each one
+reported confidently before anyone checked. Both are cheap to avoid and neither is obvious.
+
+**Read `origin`, never a working tree.**
+
+```
+git fetch -q origin main
+git show origin/main:<path>
+```
+
+A shared checkout sitting on `main` can still be far behind — one was **8 commits behind** that day,
+and a session grepping it reported a plan instructing the owner to build a system that had been
+superseded, complete with a line number. The line number was the tell: the text existed, just not on
+`main`. A worktree is whatever its lane last rebased onto, and there were **13 worktrees for one
+repo, 7 of them carrying pre-rewrite text**. Before quoting a file at the owner or another lane,
+confirm which tree you read it from.
+
+**Ripgrep honours `.gitignore`, so it silently skips untracked work in sibling worktrees** — which
+is exactly where every parallel lane's in-progress deliverable lives. Two sessions each concluded the
+other's work "does not exist anywhere in the estate", and both were wrong; one of those was a
+450-line rescue procedure whose absence was being reported as a program risk. Use `--no-ignore` (or
+`-uu`) when the question is "does this exist anywhere", and search `git ls-files` plus the worktree
+list when the question is "is anyone already doing this".
+
+**State what you searched.** "I searched and found nothing" is close to worthless here on its own.
+Say which tree, which ref, and what the search excluded — that lets the next reader spot the gap
+instead of inheriting the conclusion.
+
 ## While working
 
 - Stay inside the card's scope. For anything out of scope: if it's small and obviously wrong, note it
@@ -46,6 +76,15 @@ unmerged branch as the adopted standard to every session reading it.
 
 ## Never
 
+- **Scope — adjacency is not authority.** Having the context for a neighbouring task is a reason to
+  be *asked* for it, never a reason to start it. Your scope came from the owner; finishing it does
+  not extend it to whatever is next to it. Picking up adjacent work because you happen to hold the
+  design in your head produces work the owner did not ask for and cannot easily audit — and it is
+  how one interface ends up designed twice, incompatibly, by two lanes that each believe they own
+  it. Flag the gap, offer a constraints note if one would help whoever does take it, and let the
+  owner assign it. On 2026-09-17 two lanes independently declined the same adjacent design within
+  minutes of each other, on this reasoning, without coordinating; the PM had assigned it to one of
+  them and was wrong to.
 - **Live actions:** no SFTP writes, no RCON beyond read-only `players`, no push, no restart, no repo
   variables or secrets, no deploys. Those are the owner's click, prepared by the orchestrator.
 - **Local servers:** don't start a local DayZServer if `Get-Process *DayZ*` shows `DayZ_x64` or
