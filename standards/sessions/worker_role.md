@@ -58,6 +58,20 @@ such retracts a landed PR. Check the PR's `state` *and* the content on `origin/m
 the files are there and say what they should. One session nearly misreported a merged PR as unmerged
 on this in a single evening.
 
+**`gh pr view` reads stale immediately after a push.** A branch you have just pushed can report
+`mergeable: CONFLICTING` and `mergeStateStatus: DIRTY` — or `UNKNOWN` — for a minute or more while
+GitHub recomputes, and a stale `CONFLICTING` is indistinguishable from a real conflict. The wrong
+response, and the tempting one, is to start re-resolving a conflict that no longer exists. Settle it
+locally instead:
+
+```
+git merge-base --is-ancestor origin/main HEAD    # does my branch already contain everything on main?
+git merge-tree --write-tree origin/main HEAD     # does a test-merge actually conflict?
+```
+
+If those two are clean, the `gh` read is stale — wait and re-read rather than touching the branch.
+Seen four times on 2026-09-17.
+
 **State what you searched.** "I searched and found nothing" is close to worthless here on its own.
 Say which tree, which ref, and what the search excluded — that lets the next reader spot the gap
 instead of inheriting the conclusion.
