@@ -98,6 +98,29 @@ db.collection('decisions').add({
 Never set `status: 'resolved'` or populate `resolution` at filing time — only the owner's own
 approval/override action does that, via the page.
 
+## Action cards (`kind: "action"`): clicks only the owner can make
+
+**(2026-09-17 owner decision, card `action-cards-done-without-doing-design-2026-09-17`.)** A click
+the owner owes - run a click-file, merge an owner-only PR, flip a repo setting - is filed as an open
+card with `kind: "action"`. Answering one runs nothing, and three times on 2026-09-17 action cards
+were marked Done while GitHub and the disk showed no change, so they do not use the decision flow:
+
+- **No `options`, no `recommendedOption`.** Nothing is preselected. `context` carries the steps, with
+  line breaks: what to click, in what order, what he will see, what "wrong" looks like, how to undo.
+  Name the evidence a checker will look for (a log file, a merged badge).
+- The page's only button, **I did it - check it**, writes `claimedAt` (+ `claimComment`) and leaves
+  `status: "open"`. The card shows as **Checking** and stays in his list.
+- **Any session that sees `claimedAt` set verifies live state** (`gh`, the disk); the PM sweeps for
+  them. If it took: set `status: "resolved"`, `resolution` (what was verified, with the evidence),
+  `verifiedBy`, `verifiedAt`, `resolvedAt`. If it did not: clear `claimedAt` and write `checkResult`,
+  `checkedBy`, `checkedAt`; the card returns to his list with that finding on top.
+- This is the **one exception** to "only the owner resolves a card": a session may write `resolved`
+  on an action card, only after his claim, only with recorded evidence, pinned with `if_version`.
+  A decision card is still never resolved by a session.
+- One click per card, numbered in order when they depend on each other ("Step 1 of 3").
+- Check the fix would help **before** asking for the click (does the runner exist? is the
+  prerequisite merged?). An approved click that unblocks nothing is a wasted owner action.
+
 ## Editing an existing card safely
 
 Always pin writes with `if_version` (the document's last-read `version`) and re-read on a
