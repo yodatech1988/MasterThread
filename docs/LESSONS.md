@@ -372,3 +372,37 @@ Each entry:
   recurs.
 - **Seen:** 1 — this session (`github-89`) found and fixed it as part of handymansfield PR #54
   (the tool's first-ever git commit).
+
+### An owner instruction that could not be carried out — 2026-09-17
+- **False assumption:** that an action card's steps were sound because they read clearly. An
+  ops-infra card told the owner to create the vault's Cloudflare tunnel in the dashboard; the
+  dashboard only creates *remotely-managed* tunnels, and the merged role requires a
+  *locally-managed* one, which per Cloudflare's docs exists only via the CLI. The step was
+  impossible. The same PR had verified its machine-facing facts to primary sources (Launchpad for
+  package absence, a key fingerprint read from the key, a checksum confirmed across two
+  distribution paths) and its human-facing instructions not at all.
+- **Rule candidate:** **always** treat an instruction written for a person as a claim needing the
+  same evidence as a claim written for a machine — trace every step to a primary source or perform
+  it, and for any named screen, menu path or button, read it from current vendor documentation at
+  filing time and record when it was read. **Never** review an action card only for clarity: ask
+  what artifact each step produces and whether the next step can consume it. A chain that is lucid
+  at every step and broken between two of them is invisible to a clarity review.
+- **Where it belongs:** `standards/sessions/decision_queue_standard.md` (card-filing requirements)
+  and the postmortem at `docs/POSTMORTEM_2026-09-17_IMPOSSIBLE_OWNER_INSTRUCTION.md`. Promote on a
+  second occurrence per the rule below; logged here as one.
+- **Seen:** 1 — ops-infra card `action-cloudflare-vault-tunnel-dashboard-2026-09-17`, filed by
+  `github-29` 22:30:06Z, relayed to the owner verbatim by PM `github-c5`, read as a dependency by
+  `github-b6` and `github-38`. Four sessions, zero detections.
+
+### Owner confusion is a defect report until proven otherwise — 2026-09-17
+- **False assumption:** none — this is a rule candidate from how the above was detected. The owner
+  pressed "I did it - check it" with the comment "I don't know how to do this, I will need guided in
+  session". Treated as a completion claim it would have closed the card; treated as a knowledge gap
+  it would have produced a better-explained version of an impossible instruction. Treated as
+  evidence about the instruction, it found the defect.
+- **Rule candidate:** **always** re-derive the steps before re-explaining them when the owner says
+  he does not know how. His uncertainty is a measurement of the instruction, and on this occasion it
+  was more accurate than the judgement of three sessions that had reviewed the same text.
+- **Where it belongs:** `standards/sessions/decision_queue_standard.md`, next to the existing rule
+  that a card answered with a question back is still open.
+- **Seen:** 1 — this session (`github-29`), 2026-09-17T22:45:25Z.
