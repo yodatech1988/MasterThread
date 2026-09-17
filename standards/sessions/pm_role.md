@@ -1,6 +1,8 @@
 # PM role
 
-**Status:** draft for owner review, 2026-09-17. Owner direction the same day: *"the PM role needs to
+**Status:** owner-confirmed 2026-09-17 (Ops Decision Queue card `pr81-q1-pm-orchestrates-workstreams`:
+"Yes - PM orchestrates workstreams via a register"); takes effect when the owner merges this file.
+Owner direction the same day: *"the PM role needs to
 be orchestrating multiple work streams."* This reverses the 2026-09-16 narrowing in
 `orchestrator_role.md` ("the PM's ongoing job narrows to coordinating between merge authorities, not
 managing every workstream"). Until the owner merges this file, that older text stays in force.
@@ -184,10 +186,8 @@ Only the PM talks to the owner on the fleet's behalf (exception: `fleet_structur
 
 ## Open owner decisions
 
-1. Confirm this reverses the 2026-09-16 narrowing (PM orchestrates workstreams, not only
-   coordinates between merge authorities).
-2. Register location: a new Fleet Status `workstreams` collection (recommended) or the handoff file.
-3. Lead threshold: about five active workstreams (recommended) or another number.
+1. Register location: a new Fleet Status `workstreams` collection (recommended) or the handoff file.
+2. Lead threshold: about five active workstreams (recommended) or another number.
 
 Related: `merge_authority.md`, `fleet_structure.md`, `orchestrator_role.md`,
 `priority_classification.md`, `task_sizing.md`, `decision_queue_standard.md`,

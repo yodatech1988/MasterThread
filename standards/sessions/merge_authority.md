@@ -1,8 +1,8 @@
 # Merge authority
 
-**Status:** draft for owner review, 2026-09-17. Until the owner merges this file, the merge rules in
-`orchestrator_role.md` and `fleet_structure.md` stay in force. Items marked **default pending
-confirmation** are this document's recommendation, not an owner decision.
+**Status:** owner decisions recorded 2026-09-17 in the Ops Decision Queue (cards `pr81-q2` … `pr81-q5`,
+read from the store, not relayed); see "Owner decisions" at the end. This file takes effect when the
+owner merges it. Items still marked **default pending confirmation** are recommendations.
 
 Merge authority answers one question: **who or what is allowed to put a given PR into a default
 branch, and how does anyone know afterwards that the right one did it.** The PM does not hold it
@@ -51,7 +51,7 @@ Every PR takes exactly one route. Pick the **first row that matches**.
 
 | Route | Label | Who merges | Applies to |
 |---|---|---|---|
-| **C. Owner** | `merge:owner` | Jeremy, by his own click | Any repo in `OWNER_ONLY_REPOS` (core `claude-review.yml`) or classified C3. Any PR automerge marked `owner-required`. **Tier 4**: merging arms a change to a live system on its next run (live economy or loot content, Ansible roles targeting a real host, deploy workflows, the death/damage path). Credentials, secrets, workflow permissions, branch protection, runner configuration. **`standards/sessions/*`, `policies/*`, `CLAUDE.md`-feeding docs and agent definitions** — the documents that tell sessions how to behave are not approved by the sessions they govern. |
+| **C. Owner** | `merge:owner` | Jeremy, by his own click | Any repo in `OWNER_ONLY_REPOS` (core `claude-review.yml`) or classified C3. Any PR automerge marked `owner-required`. **Tier 4**: merging arms a change to a live system on its next run (live economy or loot content, Ansible roles targeting a real host, deploy workflows, the death/damage path). Credentials, secrets, workflow permissions, branch protection, runner configuration. **`standards/sessions/*`, `policies/*` and `CLAUDE.md`-feeding docs** — the documents that tell sessions how to behave are not approved by the sessions they govern. Agent definitions are *not* in this class (owner decision `pr81-q3`): they go through the seat, after `agent-automation-gatekeeper`, unless another row here applies. |
 | **A. Automerge** | `merge:auto` | The `automerge` job, no session | Repos opted in with `automerge: true`, when every deterministic gate passes: Claude verdict `RISK: low` + `AUTOMERGE: eligible`, not owner-only, no sensitive words, size caps, all other checks green, head commit unchanged. |
 | **B. Seat** | `merge:seat` | The merge-authority seat | Everything else: PRs automerge declined for a non-owner reason (size, medium risk, a repo with no Claude review such as aegis-mods and aegis-poi, a check that is red for the known runner-infrastructure reason). |
 
@@ -149,15 +149,20 @@ was merged by its own author session per the dispatch ledger. The PM runs it at 
 round and reports findings to the owner. This catches a walk-past after the fact; it does not
 prevent one.
 
-**Phase 2 — branch protection everywhere (owner applies).** Every default branch gets protection:
-required status checks that actually exist for that repo, no force-push, no deletion, admins
-included. The six unprotected repos first; MasterThread is public and governs session behaviour, so
+**Phase 2 — branch protection everywhere (owner applies; approved, card `pr81-q4`).** Every default
+branch gets protection: a pull request required, no force-push, no deletion, admins included, and
+a required status check **only where that check has been seen to pass in that repo**. Requiring a
+check that cannot run (no runner, a workflow that fails at startup) blocks every PR in the repo and
+leaves admin bypass as the only way through — found live on 2026-09-17, the same day this was
+written. The click-file is `GitHub\AEGIS-Protect-Default-Branches.cmd`; it refuses to run from a
+session. The six unprotected repos first; MasterThread is public and governs session behaviour, so
 it goes first of all. Branch protection is a repo security setting — a session writes the exact
 settings into a double-click `AEGIS-*.cmd` for the owner and never applies them itself.
 
 **Phase 3 — separate identities (the real fix).** While sessions act as `yodatech1988`, GitHub
 cannot distinguish owner from session and no review requirement can bind (an author cannot approve
-their own PR, and every PR is "his"). Moving session writes to the `gh-federation` GitHub App
+their own PR, and every PR is "his"). Approved as the target, to be planned as its own workstream
+after phase 2 (card `pr81-q5`). Moving session writes to the `gh-federation` GitHub App
 identity makes route C enforceable by GitHub itself: CODEOWNERS plus a required owner review on
 route C paths and repos, which the App identity cannot satisfy. Until this lands, route C rests on
 session discipline plus the phase 1 audit. **Default pending confirmation** — this depends on the
@@ -177,14 +182,22 @@ Every PR moved from route B to route A is one the seat, and the owner, never hav
 - "Every concurrent workstream has its own merge authority" as the default in `orchestrator_role.md`.
 - Naming a session id as the merge authority in any standard.
 
-## Open owner decisions
+## Owner decisions (Ops Decision Queue, 2026-09-17)
 
-1. Adopt one fleet seat as the default (recommended) or keep per-workstream seats as the default.
-2. Should `standards/sessions/*` and agent definitions be route C permanently (recommended), given
-   the circularity of sessions approving their own rules?
-3. Phase 2 branch protection: approve, and in what order.
-4. Phase 3: commit to gh-federation as the session write identity, or accept detection-only.
-5. Headless operation: when the owner is away, route C simply waits (recommended, and current
+| Card | Decision |
+|---|---|
+| `pr81-q2-one-fleet-merge-seat` | One fleet seat by default; per-workstream only when the PM records it. |
+| `pr81-q3-standards-permanently-owner-merge` | Owner-merge for `standards/sessions/*` and `policies/*` only; agent definitions may go through the seat. (Narrower than the recommendation.) |
+| `pr81-q4-branch-protection-all-default-branches` | Approved: click-file, MasterThread first, then the other five. |
+| `pr81-q5-gh-federation-session-write-identity` | Yes: the target; its own workstream after branch protection. |
+
+A queue answer is an instruction, not authorization for an irreversible action
+(`decision_queue_standard.md`): the merge of this file, and the branch-protection click, remain the
+owner's own actions.
+
+## Still open
+
+1. Headless operation: when the owner is away, route C simply waits (recommended, and current
    behaviour). An out-of-band phone approval was scoped earlier and deliberately not built.
 
 Related: `pm_role.md`, `fleet_structure.md`, `orchestrator_role.md` ("Review before merge"),
