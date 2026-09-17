@@ -165,7 +165,7 @@ their own PR, and every PR is "his"). Approved as the target, to be planned as i
 after phase 2 (card `pr81-q5`). Moving session writes to the `gh-federation` GitHub App
 identity makes route C enforceable by GitHub itself: CODEOWNERS plus a required owner review on
 route C paths and repos, which the App identity cannot satisfy. Until this lands, route C rests on
-session discipline plus the phase 1 audit. **Default pending confirmation** — this depends on the
+session discipline plus the phase 1 audit. It depends on the
 gh-federation Worker/D1 deploy, which is an owner step.
 
 **Widen route A as it proves out.** Automerge has credentials in eight repos but has not been
