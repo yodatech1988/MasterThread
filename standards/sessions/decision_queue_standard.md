@@ -186,13 +186,39 @@ normally and filed with a wrong stamp — a stamp-drift problem, not a resolutio
 
 - **Check the milliseconds first.** A whole-second `resolvedAt` means a session wrote it; that is the
   case worth pursuing. A millisecond stamp means the page wrote it, and the owner was there.
-- **Never act on a resolution you doubt, and never reopen one you cannot prove.** Those are different
-  actions with opposite risks: holding costs nothing, a wrong reopen destroys an answer. Surface it to
-  the owner and leave the card as it stands.
+- **Report it. Never reopen it — under any signature, including the whole-second one.** A session
+  having typed the resolution is a standard violation, but the words may still be exactly what the
+  owner said out loud, and reopening erases a real decision just as surely as reopening a clicked one.
+  There is no fingerprint that licenses an automatic reopen. Holding and reopening have opposite
+  risks: holding costs nothing.
+- **Reopening costs more than the answer.** When a session reopened a correctly-answered card on
+  2026-09-17, the owner's reply was *"Did I do something wrong?"* — the machinery made him doubt his
+  own correct use of the approve button. Restoring his answer for him is not the repair either: that
+  would be one more session typing into `resolution`, which is the violation being counted. Leave the
+  card open, say plainly on it that it was reopened in error, and let him re-approve with one click.
 - A resolved card still never authorises an irreversible action on its own (see below). "The answer is
   genuine" and "doing this is what he wants" are separate questions — on 2026-09-17 a card genuinely
   answered "delete the files" would also have reset every player's purchased storage level, which the
   question had not put to him in those terms.
+
+### An unattended job must never hold a destructive default
+
+The 5-minute card watcher every session runs (see above) is a **recurring, unattended** job. Whatever
+default it carries executes on a timer with nobody reading the result first.
+
+On 2026-09-17 two sessions independently built watchers that instructed themselves to *reopen* any
+card matching the false fingerprint. Both were primed to overwrite the owner's genuine answers
+automatically, every five minutes, with no human in the loop. **Neither had fired yet when the
+diagnostic was overturned. That was luck, not design.**
+
+So, for any recurring job that touches the queue:
+
+- Its default action is **report**. Writing is for the cases the standard names explicitly — an action
+  card the owner has claimed, or a relay of an answer to the lane that owns it.
+- A watcher may never reopen, resolve, or edit `resolution` on a signature it detected itself.
+- When a diagnostic a watcher depends on is corrected, **delete and rebuild the job**, do not reason
+  about whether it would have mattered. A watcher carrying a retracted premise is a live hazard for as
+  long as it exists.
 
 ### How this section got corrected
 
