@@ -33,6 +33,7 @@ agent with `claude --print` until **both** of these hold:
 
    ```
    ^date -u\b
+   ^sleep 60$                      (the one re-read of a BLOCKED/UNKNOWN merge state)
    ^gh pr (view|list|checks)\b
    ^gh run view\b                  (--log-failed, to attribute a red check)
    ^gh api repos/[^ ]+/branches/[^ ]+/protection\b
@@ -108,6 +109,13 @@ If `decisions_dir` is missing or empty, stop and say so. Never sweep from memory
      `baseRefName`. A stacked PR merged from a card lands in the side branch, not main, and looks
      "MERGED" while its content is nowhere live (ops-infra #17, 2026-09-17: carded with a "check it
      says main" step, merged 26 seconds after its parent). Report it as "waiting on a retarget".
+   - **What a PR contains is read, never remembered.** Its file count, its file list and any "docs
+     only" / "contains code" statement come from `gh pr view <n> --json files,changedFiles` in this
+     run. Flag every path outside `docs/` by name. (2026-09-17: cards written from an earlier sweep
+     said "two new files, documents only"; the PRs had three, and one had six including three
+     Python files under `tools/`. Two were merged on the wrong description.)
+   - **A `BLOCKED` or `UNKNOWN` merge state is re-read after 60 seconds before it is written down.**
+     Both are what GitHub shows while required checks re-run after a push or a base move.
    - A red check is attributed from its log (`gh run view <id> --log-failed`), never guessed:
      "content" or a named infrastructure cause. If you cannot read the log, say "unattributed".
 4. **Session waits.** From `sessions_dir`, list rows updated in the last 24h whose `waitingOn` is
