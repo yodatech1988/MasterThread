@@ -30,6 +30,59 @@ Each entry:
 
 ## Entries
 
+### A "Done" answer on a card is a claim, not a state - 2026-09-17 (seen enough to promote)
+- **False assumption:** that an owner answering an action card "Done - I ran it" / "Merged" means the
+  click-file ran or the PR merged.
+- **Rule candidate:** always re-read live state (`gh`, the disk, the script's completion log) before
+  building on a "done" answer, and never let an owed click share the one-click decision flow. An
+  action card leaves the list only after a session verifies it.
+- **Where it belongs:** promoted - `standards/sessions/decision_queue_standard.md` "Action cards";
+  the Decision Queue page (v12) implements it; `blocked-work-sweep` section 2 checks for it.
+- **Seen:** 3 - 2026-09-17 14:59Z (`action-1`, `action-2`), 17:17Z and 17:20Z (the three re-filed
+  action cards, each cleared within seconds). Each time branch protection was unchanged, no
+  `AEGIS-Protect-Default-Branches.*.log` existed, PR #81 was still OPEN/BLOCKED and six worktrees
+  were still on disk. Two sessions verified independently. Reopening the same one-click card a
+  second time just got it cleared again - the fix was the page, not another reminder.
+
+### Check the prerequisite before asking for the click - 2026-09-17
+- **False assumption:** that flipping the Actions token to write on MasterThread, ops-infra,
+  ops-platform and ops-policies would unblock review on their open PRs.
+- **Rule candidate:** before recommending a permission or settings fix for CI, confirm the job has
+  somewhere to run (`gh api repos/<o>/<r>/actions/runners`). With zero runners the flip turns a loud
+  `startup_failure` into a silent forever-queue - the be-rcon failure mode.
+- **Where it belongs:** not yet promoted - `blocked-work-sweep` step 6 carries it meanwhile.
+- **Seen:** 1 - card `actions-token-flip-4-repos-hold-or-run-2026-09-17` (owner chose hold).
+
+### "Held" in one document, decided in another - 2026-09-17
+- **False assumption:** that ops-infra `docs/PLAN.md` "Decision A is held" meant the owner had not
+  chosen between Tailscale and Cloudflare.
+- **Rule candidate:** before filing (or re-asking) an owner decision, read the program's place of
+  record - here the authority artifact, whose header says it wins - and check the same repo for
+  text already written against the outcome. File a confirm-the-record card with the evidence, not a
+  fresh choose-one card.
+- **Where it belongs:** not yet promoted - belongs in the queued "decisions of record" standard.
+- **Seen:** 1 - card `ops-infra-decision-a-tailscale-vs-cloudflare-conflict-2026-09-17`: two sessions
+  and two PM reopen attempts treated it as undecided; the artifact recorded the 2026-09-15 choice
+  with the domain purchase and accepted trade-off. (The owner then began reconsidering it in chat
+  with another session - a recorded decision can still be reopened, but by him, knowingly.)
+
+### Read back after every store write - 2026-09-17
+- **False assumption:** that a correction entry saying "setting status to open now" had set it.
+- **Rule candidate:** always re-read a Decision Queue document after writing it and confirm the
+  field changed; pin with `if_version`. A note about a write is not the write.
+- **Where it belongs:** not yet promoted - `decision_queue_standard.md` "Editing an existing card
+  safely" is the natural home on a second occurrence.
+- **Seen:** 1 - the decision-A card carried two corrections announcing a reopen while `status` still
+  read `resolved` (versions 5-7).
+
+### One blocker, many symptoms: report by root cause - 2026-09-17
+- **False assumption:** none - rule candidate from something that went right.
+- **Rule candidate:** when asked "what is blocked", group by cause and lead with the single action
+  that unblocks the most. Six MasterThread PRs, a "not merged" card and a "protection failed" card
+  were one missing owner click; ten CLEAN-but-unmerged PRs were one unstaffed merge seat.
+- **Where it belongs:** `claude-agents/blocked-work-sweep.md` step 5.
+- **Seen:** 1 - this session's two sweeps.
+
 ### Admin Cost Report API gotchas — 2026-09-15 (seen enough to promote)
 - **False assumption:** that the Anthropic Admin Cost Report API returns amounts in dollars, that
   `ending_at` is optional, and that a large `limit` value is honored.

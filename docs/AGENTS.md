@@ -151,6 +151,7 @@ them would mean inventing rules, which none of these do.
 | `github-org-repo-inventory` | haiku | `gh repo list yodatech1988` fact table — name/visibility/last-push/archived |
 | `discord-bot-key-age-reporter` | haiku | Real DPAPI key-file ages for the two named Discord bot keys; the second key's actual path differs from the assumed one — found and corrected during build |
 | `ovh-vps-usage-reporter` | haiku | Wraps `OvhApiKey.ps1 GET /vps` (scope `/vps/*`, no `DELETE`), fact-only |
+| `blocked-work-sweep` | sonnet | Headless-capable, not yet headless-approved - see its "Headless prerequisites" (`Bash, Read, Grep`). Compares what the Decision Queue / Fleet Status claim against live `gh`/disk state; reports blockers by root cause and drafts the queue writes for its caller. Grounded in `decision_queue_standard.md` "Action cards" and the 2026-09-17 LESSONS entries |
 | `workshop-mod-inventory` | haiku | Lists real `module.json` files across `aegis-mods`/`aegis-poi`; found `aegis-poi` has no real modules yet, only test fixtures |
 
 ## Adding a new one
