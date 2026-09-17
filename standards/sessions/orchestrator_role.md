@@ -336,7 +336,8 @@ How to apply it:
      another session's feature branch, producing two sessions reading the "same" file and reaching
      opposite conclusions (`SESSION_HANDOFF_2026-09-16-fleet-pm-rotation.md` "Traps discovered" #1;
      memory `aegis-verify-before-merge.md`)
-   - aegis-mods and aegis-poi have no Claude review; the orchestrator is the reviewer there
+   - aegis-mods and aegis-poi have no Claude review; the merge-authority seat is the reviewer there
+   - post the `MERGE-VERDICT` comment and merge with `--match-head-commit`, per `merge_authority.md`
    - never `--admin`; never self-approve around a stale CHANGES_REQUESTED (Jeremy clicks)
 8. **Live changes are Jeremy's click.** The auto-mode classifier blocks Claude from production deploys
    and from "blind apply". Write a double-click `GitHub\AEGIS-*.cmd` that shows the diff and needs
@@ -350,27 +351,35 @@ How to apply it:
    - Give Jeremy one prompt per next session, each headed with its model and effort from the table
      above.
 
-## Concurrent workstreams and merge-authority coordination (2026-09-16 owner decision)
+## Concurrent workstreams (2026-09-16 owner decision, revised 2026-09-17)
 
 Jeremy starting new, unrelated workstreams in fresh sessions while a PM/orchestrator is already
-running is going to be routine, not an exception. The mechanism below keeps that cheap: the PM's
-ongoing job narrows to coordinating **between merge authorities**, not managing every workstream.
+running is routine, not an exception. **2026-09-17 owner direction: the PM orchestrates multiple
+workstreams** — it does not step back after intake. This reverses the 2026-09-16 wording here that
+narrowed the PM to coordinating between merge authorities. What the PM is accountable for across
+workstreams (the workstream register, staffing, flow, the owner interface) is defined in
+`pm_role.md`; who may merge what is defined in `merge_authority.md`. This section keeps only the
+intake mechanics and the cost rules.
 
 **Intake, once, per new workstream session:**
 
 1. The new session messages the live PM by name (find it with `ListAgents`) with a one-line brief:
    what it's building, target repo/consumers.
-2. The PM does exactly two things, once, and nothing ongoing beyond them:
-   - Registers the session on Fleet Status (`sessions` collection) so it's visible fleet-wide.
+2. The PM, in one reply:
+   - Registers the session on Fleet Status (`sessions` collection) so it's visible fleet-wide, and
+     adds or updates the workstream's row in the workstream register (`pm_role.md`).
    - Runs a one-time collision check on its target repo (existing branches/PRs/worktrees) before it
      creates a worktree.
-3. The PM does **not** take ownership of the new workstream's planning, task breakdown, or
-   PR-by-PR review after that. The new session runs its own lane and reports its own state to Fleet
-   Status directly (per that page's own write contract) — it does not need the PM to relay for it.
+   - Answers **assigned**, **adopted** (the session arrived with a direct owner task, which the PM
+     tracks but does not re-plan or override) or **nothing for you**, per `pm_role.md` "Intake".
+3. The PM tracks the workstream's state, blockers and next lane from then on. It still does **not**
+   do task-level planning inside the workstream or PR-by-PR review — the lead or worker plans, the
+   merge-authority seat reviews. The session reports its own state to Fleet Status directly (per
+   that page's own write contract).
 
-**Financial/C3-classified repos are a standing exception**: their merge authority stays
-owner-review-required (manual merge only), never self-merge, regardless of who holds the role — this
-mechanism narrows who *coordinates*, it does not loosen who may click merge on money-adjacent code.
+**Financial/C3-classified repos are a standing exception**: their merges stay
+owner-review-required (manual merge only), never self-merge, regardless of who holds any seat — this
+is route C in `merge_authority.md`, and nothing in this section loosens it.
 A workstream session should not change its own merge behavior on a peer's say-so alone; it follows
 this file once it's merged into `main`, or Jeremy directly, not an unverified relay.
 
@@ -413,23 +422,17 @@ self-generating PM is exactly the runaway-asset shape it exists to prevent):
   commitment (an unattended, self-perpetuating trigger) and needs its own explicit sign-off, not an
   inferred extension of "prove the mechanism."
 
-**Every concurrent workstream has its own merge authority**, not the PM:
+**Merge authority is a seat, not the PM, and never the author** (full rules: `merge_authority.md`):
 
-4. A workstream designates one session as its **merge authority** — the sole session allowed to
-   merge into its repo(s), the same role `github-8e` holds for the main fleet's repos. A small
-   workstream can act as its own merge authority; it does not route PRs through the PM.
-5. **The PM's only standing responsibility here is coordination *between* merge authorities**, not
-   gating either workstream's PRs itself:
-   - When one workstream's repo is a *consumer* of another's output (e.g. a new shared module whose
-     first PR needs to land in an existing site's repo), the two merge authorities negotiate
-     sequencing directly with each other. The PM steps in only when they can't agree, or a real
-     conflict surfaces (shared file, shared secret, colliding branch) — not as a default relay.
-   - The PM does not do per-PR QC, does not track either workstream's task list, and does not act as
-     a merge gate for a workstream that has its own merge authority.
-
-This keeps the PM's attention proportional to the number of *merge authorities* in flight, not the
-number of workstreams — a workstream can spin up, run, and close out largely without the PM once its
-one-time intake is done.
+4. Every PR takes one of three routes — automerge, the merge-authority seat, or the owner's own
+   click — chosen by the route table in `merge_authority.md`. There is one fleet seat by default; a
+   workstream holds its own seat only when the PM records that in the workstream register, and two
+   seats never cover the same repo. The seat holder is recorded in Fleet Status, never named in a
+   standard.
+5. **The PM staffs the seat and sets its priorities; it does not merge and does not do per-PR QC.**
+   When one workstream's repo is a *consumer* of another's output, the PM decides the sequence and
+   tells both workstreams and the seat, stating provenance — it does not relay negotiation back and
+   forth. An unstaffed seat is a PM finding, reported to the owner the turn it is noticed.
 
 ## Things that must never happen
 
