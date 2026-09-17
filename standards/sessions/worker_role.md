@@ -5,6 +5,12 @@ as one PR. The orchestrator (`orchestrator_role.md`) assigns the lane, and the w
 file. `session_plan_standard.md` still applies. The orchestrator's prompt only needs a **lane card**
 (template at the bottom); everything else is here.
 
+Read `lessons_learned_2026-09-16.md` (same directory) alongside this file at session startup — it
+records why several rules below exist, grounded in real, verified incidents rather than
+hypotheticals. In particular: "Before starting" item 3 below (never work in a repo's shared
+checkout) is there partly because that round found a shared checkout can silently present an
+unmerged branch as the adopted standard to every session reading it.
+
 ## Before starting
 
 1. Read only what the lane card lists. Don't re-survey other repos.
