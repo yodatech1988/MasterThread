@@ -14,7 +14,7 @@
 set -u
 list="${1:?watchlist file required}"
 interval="${2:-60}"
-declare -A last
+declare -A last stale
 
 probe() {
   local kind="$1"; shift
@@ -37,9 +37,21 @@ while true; do
     set -- $line
     key="$line"
     now="$(probe "$@")"
+    # Transient readings are not events: for an OPEN PR GitHub reports mergeStateStatus UNKNOWN for a
+    # minute or so after the base branch moves (a MERGED PR reads UNKNOWN forever - never filter that), and a failed gh call reads UNREADABLE. Keep the last real value
+    # and wait for the next poll. Only tolerate this for 10 polls in a row, so a PR or API that
+    # stays unreadable is still reported instead of going silent.
+    case "$now" in
+      "OPEN "*" UNKNOWN "*|UNREADABLE*)
+        if [ "$first" != 1 ] && [ "${stale[$key]:-0}" -lt 10 ]; then
+          stale[$key]=$(( ${stale[$key]:-0} + 1 )); continue
+        fi ;;
+      *) stale[$key]=0 ;;
+    esac
     if [ "${last[$key]-__unset__}" != "$now" ]; then
-      # UNREADABLE is reported once, then again only when it recovers - a gh blip is not an event.
-      if [ "$first" = 1 ]; then echo "WATCHING  $key => $now"
+      # A key with no previous value is either the first pass or a line added to the watchlist
+      # while running - both are "now watching", not a change (and must not trip `set -u`).
+      if [ "$first" = 1 ] || [ -z "${last[$key]+x}" ]; then echo "WATCHING  $key => $now"
       else echo "CHANGED   $key => $now   (was: ${last[$key]})"; fi
       last[$key]="$now"
     fi
