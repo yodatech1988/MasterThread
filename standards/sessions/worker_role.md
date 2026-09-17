@@ -51,6 +51,13 @@ other's work "does not exist anywhere in the estate", and both were wrong; one o
 `-uu`) when the question is "does this exist anywhere", and search `git ls-files` plus the worktree
 list when the question is "is anyone already doing this".
 
+**`--is-ancestor` does not prove a squash-merge.** `git merge-base --is-ancestor HEAD origin/main`
+**fails on a branch that was squash-merged**, because the squash commit carries a different SHA to
+every commit on the branch. That failure is not evidence the merge did not happen, and reading it as
+such retracts a landed PR. Check the PR's `state` *and* the content on `origin/main` instead — that
+the files are there and say what they should. One session nearly misreported a merged PR as unmerged
+on this in a single evening.
+
 **State what you searched.** "I searched and found nothing" is close to worthless here on its own.
 Say which tree, which ref, and what the search excluded — that lets the next reader spot the gap
 instead of inheriting the conclusion.
