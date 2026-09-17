@@ -103,3 +103,17 @@ the instruction can be a mistaken/premature relay — and the only way to tell w
 actual source (here: asking whether #60 needed updating, or whether the relay was wrong), not defaulting
 to trusting whichever one arrived more recently or more confidently. Recency and confidence are not
 evidence.
+
+## Gap found 2026-09-17: nothing told a worker to stop after delivering
+
+`worker_role.md` had "Before starting" and "Delivering," but nothing in between "the PR is up" and
+"the next lane begins" — a worker that finished a lane had no standing instruction to do anything
+other than either idle or keep going on whatever it noticed next. In a round where the PM itself was
+reachable only intermittently (usage reading `UNKNOWN`, 429s), that gap is exactly where self-guided
+scope creep happens: not through a bad decision, just through the absence of a rule saying "ask
+first." Jeremy's framing, direct: he wants documenting lessons + caching session state + waiting for
+the PM's next card to be **the natural default** on completion, with continuing on new work an
+explicit PM instruction, never a self-guided default. Added as `worker_role.md` "After delivering —
+end of workstream" rather than a new standalone doc, since every worker already reads that file at
+startup and this is a direct continuation of its existing "Delivering" section, not a separate
+concern.
