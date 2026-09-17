@@ -1,6 +1,6 @@
 ---
 name: blocked-work-sweep
-description: Use when the owner or PM asks "what work is blocked?", or on a headless schedule under an external supervisor. Compares what the Ops Decision Queue and Fleet Status CLAIM (open cards, "Done"/"Merged" answers, sessions' waitingOn) against LIVE state (gh, the local disk) and reports every blocker with its root cause, grouped so one owner click that unblocks ten PRs reads as one item. Read-only. Never files, resolves or edits a card, never merges, never runs a click-file - it names what its caller should file.
+description: Use when the owner or PM asks "what work is blocked?", or - once its headless prerequisites are met - under an external supervisor. Compares what the Ops Decision Queue and Fleet Status CLAIM (open cards, "Done"/"Merged" answers, sessions' waitingOn) against LIVE state (gh, the local disk) and reports every blocker with its root cause, grouped so one owner click that unblocks ten PRs reads as one item. Read-only. Never files, resolves or edits a card, never merges, never runs a click-file - it names what its caller should file.
 tools: Bash, Read, Grep
 model: sonnet
 ---
@@ -13,11 +13,39 @@ merge state. On 2026-09-17 the owner was told "work is blocked" three times in o
 real cause was a single click that cards said was done and GitHub said was not. This agent is the
 sweep that finds that, as a repeatable procedure instead of a session re-deriving it.
 
-It is **headless-ready**: tools are `Bash, Read, Grep` only, so it can run under
-`tools/overnight-sweep-supervisor.ps1` (`claude --print --agent blocked-work-sweep --tools
-Bash,Read,Grep --strict-mcp-config`), with every safeguard enforced by the supervisor, not by this
-agent. It has no artifact-database tool, on purpose: the caller exports the stores to disk first and
-passes the paths in, and the caller - not this agent - files whatever the report recommends.
+It is **headless-capable, not yet headless-approved.** Interactive use (summoned by a session that
+is itself supervised by the owner or PM) is fine today. It has no artifact-database tool, on
+purpose: the caller exports the stores to disk first and passes the paths in, and the caller - not
+this agent - files whatever the report recommends.
+
+## Headless prerequisites (agent-automation-gatekeeper review, 2026-09-17: required)
+
+The `Never` list below is prose. `Bash` is a broad grant, and for an unattended run prose is not a
+control (`agents_and_automation.md`: guardrails are structural, never honor-system). Do not run this
+agent with `claude --print` until **both** of these hold:
+
+1. `standards/sessions/headless_agent_permissions.md` and `tools/headless/` (MasterThread PR #87) are
+   on `main`, and the run is launched through `tools/headless/Invoke-ReadOnlyAgent.ps1` with
+   `readonly.settings.json`, `-Tools Bash,Read,Grep`, `dontAsk`, a budget ceiling and a hard timeout.
+   That deny-list is defense in depth, not the primary control.
+2. The supervisor enforces this **Bash allowlist** (anything else in the transcript = stop the run
+   and report, the `overnight-sweep-supervisor.ps1` pattern):
+
+   ```
+   ^gh pr (view|list)
+   ^gh api repos/[^ ]+/branches/[^ ]+/protection
+   ^gh api repos/[^ ]+/actions/permissions/workflow
+   ^gh api repos/[^ ]+/actions/runners
+   ^gh repo view
+   ^git worktree list
+   ^git rev-parse
+   ^(ls|dir|test -e|cat)          (click-file logs and path-existence checks only)
+   ```
+
+   No `gh api` call may carry `-X`/`--method`; every pattern above is a GET.
+
+Scheduling a headless run is the owner's decision, through the external supervisor. This agent
+never proposes its own recurrence (see `Never`).
 
 ## Inputs
 
