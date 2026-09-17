@@ -1,0 +1,44 @@
+# Runs the agent-roster drift checks added for audit findings R4/R6/R10
+# (docs/AGENT_ROSTER_AUDIT_2026-09-17.md, MasterThread PR #84):
+#   - `python tools/generate_agents_md.py --check` -- docs/AGENTS.md vs claude-agents/*.md
+#     (and roster_meta.json, once that file exists).
+#   - the tools/tests/ unit tests for both check scripts.
+#
+# RUNNER CHOICE -- read before changing `runs-on`. This org deliberately does not fund
+# GitHub-hosted Actions minutes and normally pins repo CI to its own self-hosted VPS runner
+# (`runs-on: [self-hosted, vps]`, see claude-agents/ci.yml). MasterThread currently has ZERO
+# registered self-hosted runners (`gh api repos/yodatech1988/MasterThread/actions/runners
+# --jq .total_count` => 0) -- `self-hosted` here would queue forever with no visible failure,
+# which is worse than the workflow not existing. `ubuntu-latest` is used instead so a failure is
+# loud (the job actually runs and reports), at the deliberate cost of consuming GitHub-hosted
+# minutes if this job ever runs on a repo where that matters. Because of that cost tradeoff, this
+# job must NOT be added to branch protection's required status checks -- it's a courtesy signal
+# on the PR, not a merge gate, until MasterThread gets its own runner (at which point this comment
+# and the runs-on line should both change together).
+name: agents-roster-check
+
+on:
+  pull_request:
+    paths:
+      - "docs/AGENTS.md"
+      - "claude-agents/**"
+      - "tools/**"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: generate_agents_md.py --check
+        run: python tools/generate_agents_md.py --check
+
+      - name: Unit tests (tools/tests/)
+        run: python -m unittest discover -s tools/tests -v

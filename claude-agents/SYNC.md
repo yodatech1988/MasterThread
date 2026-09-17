@@ -49,3 +49,31 @@ not something to silently resolve by copying over it.
 hand-written — see `tools/generate_agents_md.py`. Run it after adding, editing, or removing any
 file here, and commit the regenerated table in the same PR as the file change. Never hand-edit the
 Global table directly; the next regeneration will overwrite a hand-edit without warning.
+
+## Checking for drift
+
+Two read-only checks, neither of which writes or copies anything — added for audit findings
+R4/R6/R10 (`docs/AGENT_ROSTER_AUDIT_2026-09-17.md`, MasterThread PR #84):
+
+- **`python tools/generate_agents_md.py --check`** — verifies `docs/AGENTS.md` against this
+  directory's frontmatter (and against `claude-agents/roster_meta.json` when that file exists).
+  Fails if a `claude-agents/*.md` file has no row anywhere in `docs/AGENTS.md`, a row's Model cell
+  disagrees with the file's `model:` frontmatter, a row in a *global* section (heading mentions
+  `~/.claude/agents/`) has no matching file here, or a `roster_meta.json` entry and its row's
+  Role/Headless cells disagree. It parses whatever tables already exist — it does not require
+  `docs/AGENTS.md` to have been produced by this script's own `--write`.
+- **`python tools/check_agent_sync.py`** — compares the real `~/.claude/agents/*.md` files
+  against this directory and reports local-only, repo-only, and content-differing filenames.
+  Add `--repo-local <path-to-GitHub-root>` to also scan sibling repo clones for the same
+  agent-definition file existing under more than one repo's own `.claude/agents/` with different
+  content (repo-local agents, not the global mirror -- e.g. `mod-boot-test-runner.md`, copied into
+  `aegis-mods`, `aegis-poi`, and `aegis-pricing`).
+
+Both exit non-zero when they find something to report, and both are safe to run any time — they
+never modify `~/.claude/agents/`, this directory, or any other repo's checkout. CI
+(`.github/workflows/agents-roster-check.yml`) runs the first one plus the `tools/tests/` unit
+tests on every PR that touches `docs/AGENTS.md`, `claude-agents/**`, or `tools/**`; that workflow
+runs on `ubuntu-latest` (MasterThread has no self-hosted runner registered yet) and is a courtesy
+signal, not a required status check, until that changes. `check_agent_sync.py`'s live-machine
+comparison can only run locally, since `~/.claude/agents/` doesn't exist in CI — treat it as
+something to run by hand before or after a sync, not something CI enforces.
