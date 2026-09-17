@@ -49,7 +49,9 @@ while true; do
       *) stale[$key]=0 ;;
     esac
     if [ "${last[$key]-__unset__}" != "$now" ]; then
-      if [ "$first" = 1 ]; then echo "WATCHING  $key => $now"
+      # A key with no previous value is either the first pass or a line added to the watchlist
+      # while running - both are "now watching", not a change (and must not trip `set -u`).
+      if [ "$first" = 1 ] || [ -z "${last[$key]+x}" ]; then echo "WATCHING  $key => $now"
       else echo "CHANGED   $key => $now   (was: ${last[$key]})"; fi
       last[$key]="$now"
     fi
