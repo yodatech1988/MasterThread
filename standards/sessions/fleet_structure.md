@@ -17,6 +17,9 @@ just have set 6 workers."*
 | Worker | one per live workstream | its lead | Never idle — see below. Runs subagents beneath it. |
 | Peer review + merge authority | 1 | the PM | One combined seat. Reviews, then merges. |
 
+What the PM is accountable for across workstreams is in `pm_role.md`; the review + merge seat's
+routes, procedure and enforcement are in `merge_authority.md`.
+
 A **workstream** is a named, durable piece of production with an owner and a backlog — not a task.
 Workers are assigned to workstreams, and the number of workers is whatever the live workstreams
 require.
