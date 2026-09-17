@@ -47,7 +47,7 @@ Paid perks, Ko-fi tiers, priority queue and skin tokens all stay paused. This pl
 | D4 | Discord role / donor wall | **None** | This keeps the "no counter-value" position clean. A private thank-you DM or email is fine. |
 | D5 | Where the money is shown | A **"Server funded through: <Month YYYY>"** line, plus a monthly costs-vs-donations post | This makes "server duration" concrete and honest, and needs no payment API. |
 | D6 | Surplus | Rolls forward into future months of hosting and API costs only | The page says this up front. |
-| D7 | Shutdown | If the network shuts down, any unspent balance goes to the final hosting bills. No refunds after 30 days. | The page says this up front. PayPal/Stripe refunds within 30 days are handled on request. |
+| D7 | Shutdown and refunds | **Donations are final and non-refundable.** If the network shuts down, any unspent balance goes to the final hosting bills. | **Changed 2026-09-17, Jeremy's call**, replacing the earlier 30-day refund window. Nothing required that window: PayPal's User Agreement obliges a seller to publish a refund policy only "where required by law" and disclaims any duty of its own (donations are also excluded from Purchase Protection), a completed voluntary gift is presumed irrevocable under US law, the FTC cooling-off rule covers sales of goods/services rather than donations, and charitable-solicitation refund-disclosure rules apply to registered charities. The page says "final" outright rather than going silent, since silence reads as "maybe". A refund can still be issued voluntarily; chargebacks run through the card network regardless. |
 | D8 | Claude API spend | Donations **do not raise** the zero-cost-first spend cap on their own. Any cap increase is still Jeremy's call. | Matches the cost rule in core `docs/_project-context.md`. |
 
 ---
@@ -156,8 +156,9 @@ documented for the parked Venmo/Cash App plan (§7 V5).
 > a donation surplus (none collected yet) · updated monthly with a costs-vs-donations summary.
 >
 > Donations are one-time, go to the server operator personally, and are **not tax-deductible**.
-> Any surplus pays for future months of hosting, infrastructure, and API costs. Refunds are
-> available within 30 days on request.
+> Any surplus pays for future months of hosting, infrastructure, and API costs. **Donations are
+> final and non-refundable** — give only what you can spare. If the network ever shuts down,
+> whatever is left pays the final hosting bills.
 >
 > *AEGIS Directive is a community project, not affiliated with or authorized by Bohemia Interactive a.s.*
 
