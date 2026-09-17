@@ -1,0 +1,1464 @@
+<title>Ops Decision Queue</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --paper: #f2f4f7;
+    --paper-raised: #ffffff;
+    --ink: #161b22;
+    --ink-soft: #4c5661;
+    --ink-faint: #7c8791;
+    --line: #d7dde3;
+    --line-soft: #e6eaee;
+    --steel: #2c5770;
+    --steel-strong: #1d3f52;
+    --steel-soft: #e4edf1;
+    --amber: #96631a;
+    --amber-strong: #7a4f10;
+    --amber-soft: #f7ecd9;
+    --amber-line: #e3cfa0;
+    --green: #2f6f4e;
+    --green-soft: #e5f1ea;
+    --green-line: #bfdccb;
+    --red: #a23b3b;
+    --code-bg: #eef1f4;
+    --shadow: 0 1px 2px rgba(22,27,34,0.04), 0 6px 20px rgba(22,27,34,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10141a; --paper-raised: #161b23; --ink: #e7ecf1; --ink-soft: #a7b1bb;
+      --ink-faint: #707a84; --line: #2a323c; --line-soft: #1f2731;
+      --steel: #7fb1cd; --steel-strong: #a9cee3; --steel-soft: #182833;
+      --amber: #dca158; --amber-strong: #efc07f; --amber-soft: #2a2315; --amber-line: #4a3a1e;
+      --green: #7bc19c; --green-soft: #16261e; --green-line: #285138;
+      --red: #d98484;
+      --code-bg: #1a2029;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10141a; --paper-raised: #161b23; --ink: #e7ecf1; --ink-soft: #a7b1bb;
+    --ink-faint: #707a84; --line: #2a323c; --line-soft: #1f2731;
+    --steel: #7fb1cd; --steel-strong: #a9cee3; --steel-soft: #182833;
+    --amber: #dca158; --amber-strong: #efc07f; --amber-soft: #2a2315; --amber-line: #4a3a1e;
+    --green: #7bc19c; --green-soft: #16261e; --green-line: #285138;
+    --red: #d98484;
+    --code-bg: #1a2029;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    font-size: 16px; line-height: 1.55;
+    padding: clamp(24px, 5vw, 56px) 20px 80px;
+  }
+  main { max-width: 780px; margin: 0 auto; }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  a { color: var(--steel-strong); }
+  button { font-family: inherit; }
+  button:focus-visible, textarea:focus-visible, input:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--steel); outline-offset: 2px; border-radius: 4px;
+  }
+
+  header { display: flex; flex-direction: column; gap: 10px; padding-bottom: 22px; margin-bottom: 26px; border-bottom: 1px solid var(--line); }
+  .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-faint); }
+  h1 { font-size: clamp(1.6rem, 4vw, 2.1rem); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+  .lede { color: var(--ink-soft); margin: 4px 0 0; max-width: 60ch; }
+
+  .counts { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 4px; font-size: 0.85rem; }
+  .counts span { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+  section.group { margin-bottom: 30px; }
+  .group-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+  .group-head h2 { font-size: 0.95rem; margin: 0; }
+  .group-head .hint { font-size: 0.82rem; color: var(--ink-faint); }
+
+  .cards { display: flex; flex-direction: column; gap: 12px; }
+
+  .card {
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;
+    border-left: 3px solid var(--steel);
+  }
+  .card.owner-required { border-left-color: var(--amber); }
+  .card.resolved { border-left-color: var(--green); opacity: 0.85; }
+
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .card-title { font-size: 1.02rem; font-weight: 600; margin: 0; text-wrap: balance; }
+  .tag-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-family: 'IBM Plex Mono', monospace; font-size: 0.66rem; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 5px; padding: 3px 7px; white-space: nowrap; }
+  .tag.category { color: var(--ink-faint); background: var(--code-bg); }
+  .tag.urgent { color: var(--amber-strong); background: var(--amber-soft); border: 1px solid var(--amber-line); }
+  .tag.auto { color: var(--steel-strong); background: var(--steel-soft); }
+  .tag.done { color: var(--green); background: var(--green-soft); border: 1px solid var(--green-line); }
+  .tag.source { color: var(--ink-faint); background: transparent; border: 1px dashed var(--line); }
+
+  .context { font-size: 0.92rem; color: var(--ink-soft); max-width: 64ch; }
+
+  .suggestion {
+    background: var(--steel-soft); border-radius: 8px; padding: 10px 13px; font-size: 0.9rem;
+  }
+  .suggestion b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--steel-strong); margin-bottom: 4px; }
+  .suggestion .rationale { color: var(--ink-faint); font-size: 0.84rem; margin-top: 5px; }
+
+  .best-practice {
+    border: 1px dashed var(--line); border-radius: 8px; padding: 10px 13px; font-size: 0.9rem;
+  }
+  .best-practice b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); margin-bottom: 4px; }
+  .best-practice .divergence {
+    margin-top: 8px; padding: 8px 10px; background: var(--amber-soft); border: 1px solid var(--amber-line);
+    border-radius: 6px; color: var(--amber-strong); font-size: 0.85rem;
+  }
+  .best-practice .divergence b { color: var(--amber-strong); background: none; padding: 0; margin: 0 4px 0 0; display: inline; }
+
+  .options { display: flex; flex-direction: column; gap: 6px; }
+  .option-btn {
+    text-align: left; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 8px;
+    padding: 9px 12px; font-size: 0.88rem; color: var(--ink); cursor: pointer; transition: border-color .12s;
+  }
+  .option-btn:hover { border-color: var(--steel); }
+  .option-btn.chosen { border-color: var(--steel); background: var(--steel-soft); font-weight: 600; }
+  .option-btn .rec-mark {
+    display: inline-block; margin-left: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem;
+    font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--steel-strong);
+    border: 1px solid var(--steel); border-radius: 4px; padding: 1px 5px; vertical-align: middle; white-space: nowrap;
+  }
+  .pick-hint { font-size: 0.82rem; color: var(--ink-faint); }
+
+  textarea.comment {
+    width: 100%; min-height: 56px; resize: vertical; font-family: inherit; font-size: 0.88rem;
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 11px; background: var(--paper-raised);
+    color: var(--ink);
+  }
+  textarea.comment::placeholder { color: var(--ink-faint); }
+
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 0.86rem; font-weight: 600; border-radius: 8px;
+    padding: 8px 14px; cursor: pointer; border: 1px solid transparent; transition: filter .12s;
+  }
+  .btn:hover { filter: brightness(0.96); }
+  .btn:disabled { opacity: 0.55; cursor: default; }
+  .btn.primary { background: var(--steel); color: #fff; }
+  .btn.owner-primary { background: var(--amber); color: #fff; }
+  .btn.ghost { background: transparent; border-color: var(--line); color: var(--ink-soft); }
+  .btn.ghost:hover { border-color: var(--ink-faint); }
+  /* Any resolving button turns red once armed, regardless of its base style
+     (owner-primary/primary/ghost) -- 2026-09-17: the arm/confirm pattern now
+     applies to every action that writes a resolution, not just "approve
+     recommended", so this can no longer be scoped to .owner-primary alone. */
+  .btn.armed { background: var(--red) !important; color: #fff !important; border-color: var(--red) !important; }
+
+  .quiet-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.86rem; color: var(--ink-faint); }
+  .quiet-row .link-btn { background: none; border: none; padding: 0; color: var(--steel-strong); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font-size: 0.86rem; }
+
+  .resolution-line { font-size: 0.88rem; color: var(--ink-soft); }
+  .resolution-line b { color: var(--ink); }
+  .resolution-line .comment-echo { display: block; margin-top: 4px; font-style: italic; color: var(--ink-faint); }
+
+  details.resolved-wrap summary { cursor: pointer; font-size: 0.88rem; color: var(--ink-faint); list-style: none; display: flex; align-items: center; gap: 6px; }
+  details.resolved-wrap summary::-webkit-details-marker { display: none; }
+  details.resolved-wrap summary::before { content: '▸'; font-size: 0.7em; transition: transform .12s; }
+  details.resolved-wrap[open] summary::before { transform: rotate(90deg); }
+
+  .empty { padding: 26px 20px; text-align: center; color: var(--ink-faint); font-size: 0.9rem; border: 1px dashed var(--line); border-radius: 12px; }
+
+  .add-form-wrap { margin-top: 30px; }
+  .add-form-wrap summary { cursor: pointer; font-size: 0.88rem; color: var(--steel-strong); list-style: none; display: inline-flex; align-items: center; gap: 5px; }
+  .add-form-wrap summary::-webkit-details-marker { display: none; }
+  .add-form-wrap summary::before { content: '+'; font-family: 'IBM Plex Mono', monospace; }
+  .add-form {
+    margin-top: 12px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .add-form label { font-size: 0.78rem; font-family: 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint); display: block; margin-bottom: 3px; }
+  .add-form input[type=text], .add-form textarea {
+    width: 100%; font-family: 'IBM Plex Sans', sans-serif; font-size: 0.9rem; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink);
+  }
+  .add-form textarea { min-height: 50px; resize: vertical; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; color: var(--ink-soft); }
+  .checkbox-row input { width: 15px; height: 15px; }
+
+  .status-banner { font-size: 0.82rem; color: var(--ink-faint); margin-top: 6px; min-height: 1.2em; }
+  .status-banner.error { color: var(--red); }
+  .status-banner.armed { color: var(--amber-strong); font-weight: 600; }
+
+  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--ink-faint); }
+
+  @media (max-width: 480px) {
+    .card-top { flex-direction: column; }
+  }
+
+  nav.pack {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px;
+  }
+  nav.pack a {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.74rem; text-decoration: none;
+    color: var(--ink-soft); background: var(--paper-raised); border: 1px solid var(--line);
+    border-radius: 100px; padding: 5px 12px; display: inline-flex; align-items: center; gap: 5px;
+  }
+  nav.pack a:hover { border-color: var(--steel); color: var(--steel-strong); }
+  nav.pack a.current { color: var(--steel-strong); background: var(--steel-soft); border-color: var(--steel); font-weight: 600; }
+
+  .recent-strip { margin-bottom: 24px; }
+  .recent-strip .strip-head {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--green); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .recent-strip .strip-head::before { content: '\2713'; }
+  .recent-item {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    background: var(--green-soft); border: 1px solid var(--green-line); border-radius: 8px;
+    padding: 8px 12px; font-size: 0.86rem; margin-bottom: 6px;
+  }
+  .recent-item:last-child { margin-bottom: 0; }
+  .recent-item b { color: var(--ink); font-weight: 600; }
+  .recent-item .answer { color: var(--ink-soft); margin-left: 6px; }
+  .recent-item .when { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; color: var(--ink-faint); white-space: nowrap; flex: none; }
+
+  .corrections { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 8px; }
+  .correction-item { font-size: 0.84rem; color: var(--ink-soft); margin-bottom: 6px; }
+  .correction-item:last-child { margin-bottom: 0; }
+  .correction-item b { color: var(--ink); font-weight: 600; }
+  .correction-item .was { color: var(--ink-faint); font-style: italic; margin-top: 2px; }
+  .followup-banner {
+    margin-top: 8px; padding: 8px 11px; background: var(--amber-soft); border: 1px solid var(--amber-line);
+    border-radius: 7px; font-size: 0.86rem; color: var(--amber-strong);
+  }
+  .followup-banner b { color: var(--amber-strong); }
+
+  /* ---- device gate ---- */
+  .device-banner {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 22px; font-size: 0.86rem;
+  }
+  .device-banner.setup { background: var(--steel-soft); border: 1px solid var(--steel); color: var(--ink); }
+  .device-banner.locked { background: var(--amber-soft); border: 1px solid var(--amber-line); color: var(--amber-strong); }
+  .device-banner.mobile { background: var(--amber-soft); border: 1px solid var(--amber-line); color: var(--amber-strong); }
+  .device-banner.approved { background: var(--green-soft); border: 1px solid var(--green-line); color: var(--green); }
+  .device-banner p { margin: 0; max-width: 52ch; }
+  .device-banner .btn { flex: none; }
+
+  .gate-note {
+    font-size: 0.8rem; color: var(--ink-faint); font-style: italic; margin-top: -2px;
+  }
+
+  /* ---- timeline (resolved-card changelog, its own view) ---- */
+  .timeline-intro { color: var(--ink-faint); font-size: 0.88rem; margin: 0 0 26px; max-width: 60ch; }
+  .timeline-day { margin-bottom: 8px; }
+  .timeline-date {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--ink-faint); margin: 30px 0 14px;
+  }
+  .timeline-day:first-child .timeline-date { margin-top: 0; }
+  .timeline { list-style: none; margin: 0; padding: 0 0 0 24px; position: relative; }
+  .timeline::before { content: ''; position: absolute; left: 4px; top: 6px; bottom: 6px; width: 2px; background: var(--line); }
+  .timeline-item { position: relative; margin-bottom: 16px; }
+  .timeline-item:last-child { margin-bottom: 0; }
+  .timeline-item::before {
+    content: ''; position: absolute; left: -24px; top: 5px; width: 11px; height: 11px;
+    border-radius: 50%; background: var(--green); border: 2px solid var(--paper);
+    box-shadow: 0 0 0 1px var(--green-line);
+  }
+  .timeline-item.followup::before { background: var(--amber); box-shadow: 0 0 0 1px var(--amber-line); }
+  .timeline-time { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: var(--ink-faint); display: block; margin-bottom: 5px; }
+  .timeline-card {
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;
+    border-left: 3px solid var(--green);
+  }
+  .timeline-item.followup .timeline-card { border-left-color: var(--amber); }
+
+  /* ---- action cards: a click the owner owes; leaves the list only after a session verifies it ---- */
+  .tag.action { color: #fff; background: var(--amber); }
+  .tag.checking { color: var(--steel-strong); background: var(--steel-soft); border: 1px solid var(--steel); }
+  .card.checking { border-left-color: var(--steel); }
+  .check-banner { padding: 9px 12px; border-radius: 8px; font-size: 0.88rem; }
+  .check-banner.waiting { background: var(--steel-soft); color: var(--ink); }
+  .check-banner.failed { background: var(--amber-soft); border: 1px solid var(--amber-line); color: var(--amber-strong); }
+  .check-banner b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; }
+  .context.steps { white-space: pre-line; }
+  .context a { word-break: break-all; }
+  .path-chip {
+    display: inline-flex; align-items: center; gap: 6px; max-width: 100%; vertical-align: middle;
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px 2px 8px; margin: 2px 0;
+  }
+  .path-chip code { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--ink); word-break: break-all; user-select: all; }
+  .path-chip button {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.04em;
+    border: 1px solid var(--line); background: var(--paper-raised); color: var(--steel-strong);
+    border-radius: 4px; padding: 2px 7px; cursor: pointer; flex: none;
+  }
+  .path-chip button:hover { border-color: var(--steel); }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(0);
+    background: var(--green-soft); border: 1px solid var(--green-line); color: var(--green);
+    padding: 10px 16px; border-radius: 10px; font-size: 0.86rem; box-shadow: var(--shadow);
+    z-index: 50; display: flex; gap: 10px; align-items: center; opacity: 0; transition: opacity .3s;
+    pointer-events: none;
+  }
+  #toast.show { opacity: 1; pointer-events: auto; }
+  #toast a { color: var(--green); font-weight: 600; }
+
+  /* ---- scannable cards (2026-09-17 owner request): one sentence, a few bullets,
+     the recommendation, the buttons -- everything longer sits behind one disclosure ---- */
+  .mini-label {
+    display: block; font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--ink-faint); margin-bottom: 4px; font-weight: 600;
+  }
+  .in-short { max-width: 64ch; }
+  .in-short p { margin: 0; font-size: 1rem; line-height: 1.45; color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
+  .points-wrap { max-width: 64ch; }
+  .points {
+    margin: 0; padding: 0 0 0 1.15em; display: flex; flex-direction: column; gap: 6px;
+    font-size: 0.92rem; line-height: 1.45; color: var(--ink-soft);
+  }
+  .points li { overflow-wrap: anywhere; padding-left: 2px; }
+  .points li::marker { color: var(--steel); }
+  .in-short a, .points a, .bg-text a { word-break: break-all; }
+
+  details.bg { border-top: 1px dashed var(--line); padding-top: 10px; }
+  details.bg > summary {
+    cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--ink-faint);
+  }
+  details.bg > summary:hover { color: var(--steel-strong); }
+  details.bg > summary::-webkit-details-marker { display: none; }
+  details.bg > summary::before { content: '▸'; font-size: 0.8em; transition: transform .12s; }
+  details.bg[open] > summary::before { transform: rotate(90deg); }
+  @media (prefers-reduced-motion: reduce) { details.bg > summary::before { transition: none; } }
+  .bg-body { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+  .bg-text { white-space: pre-line; font-size: 0.88rem; color: var(--ink-soft); max-width: 68ch; overflow-wrap: anywhere; }
+  .bg-part.diverge {
+    padding: 8px 10px; background: var(--amber-soft); border: 1px solid var(--amber-line); border-radius: 6px;
+  }
+  .bg-part.diverge .mini-label, .bg-part.diverge .bg-text { color: var(--amber-strong); }
+  .bg-part .corrections { border-top: none; margin-top: 0; padding-top: 0; }
+</style>
+
+<main>
+  <nav class="pack">
+    <a href="#" data-view="queue">🗳️ Decision Queue</a>
+    <a href="#timeline" data-view="timeline">📜 Timeline</a>
+    <a href="https://claude.ai/artifact/AAiVG3MxK1r3yNgm8tzMmf">🛰️ Fleet Status</a>
+    <a href="https://claude.ai/artifact/U23uudrKWTT1RJ8rrews4N">🗂️ Ops Roster</a>
+  </nav>
+
+  <header>
+    <span class="eyebrow">AEGIS · Ops → Owner</span>
+    <h1>Ops Decision Queue</h1>
+    <p class="lede">The approval dashboard for AEGIS's "must-be-reviewed-by-Jeremy" gate. Ops raises
+      anything it isn't sure it should call unilaterally, or that the classifier routes here directly.
+      Items marked <b style="color:var(--amber-strong)">needs you</b> stay open until you give a
+      positive confirmation — nothing here auto-approves itself. Everything else is ops's call, already
+      framed as its recommendation, proceeding unless you say otherwise.</p>
+    <div class="counts" id="counts"></div>
+  </header>
+
+  <div id="device-gate"></div>
+  <div id="app"></div>
+
+  <details class="add-form-wrap">
+    <summary>Add a decision</summary>
+    <form class="add-form" id="add-form">
+      <div>
+        <label for="f-title">Title</label>
+        <input type="text" id="f-title" required placeholder="e.g. Enable weekend double-loot event">
+      </div>
+      <div>
+        <label for="f-summary">In short: the question, in one plain sentence</label>
+        <input type="text" id="f-summary" maxlength="240" placeholder="e.g. Should the weekend double-loot event run this Saturday?">
+      </div>
+      <div>
+        <label for="f-points">What matters: up to 5 bullets, one per line (put a link or path on its own line)</label>
+        <textarea id="f-points" placeholder="Costs nothing extra&#10;Undo is one config line&#10;https://github.com/owner/repo/pull/12/files?diff=split"></textarea>
+      </div>
+      <div>
+        <label for="f-context">Background (shown collapsed)</label>
+        <textarea id="f-context" placeholder="What's the situation, and why is it coming up now?"></textarea>
+      </div>
+      <div>
+        <label for="f-suggestion">Suggested resolution</label>
+        <textarea id="f-suggestion" placeholder="What would ops do if left to decide?"></textarea>
+      </div>
+      <div>
+        <label for="f-best-practice">Best practice says (required)</label>
+        <textarea id="f-best-practice" placeholder="What does established practice say, and where from? Name the specific MasterThread/standards or _security-public/policies doc if one applies, or the recognized general practice if not. If genuinely nothing applies, say that plainly -- don't invent one." required></textarea>
+      </div>
+      <div>
+        <label for="f-divergence">If our suggestion diverges from best practice, explain why (leave blank if it doesn't)</label>
+        <textarea id="f-divergence" placeholder="Why are we recommending something different from established practice here?"></textarea>
+      </div>
+      <div>
+        <label for="f-category">Category</label>
+        <input type="text" id="f-category" placeholder="e.g. economy/pricing, security/access">
+      </div>
+      <label class="checkbox-row"><input type="checkbox" id="f-owner-required"> This genuinely needs Jeremy's own call, not ops's</label>
+      <div class="actions">
+        <button type="submit" class="btn primary">Add to queue</button>
+      </div>
+      <div class="status-banner" id="add-status"></div>
+    </form>
+  </details>
+
+  <footer>
+    Backed by this artifact's shared store — any session can add a decision via <span class="mono">write_db</span>
+    on the <span class="mono">decisions</span> collection; resolutions land back the same way via
+    <span class="mono">read_db</span>. Nothing here is a live action by itself — it's a record of what was
+    decided and why.<br><br>
+    <b>Every card requires a <span class="mono">bestPractice</span> field</b> (2026-09-16 standing
+    requirement), distinct from <span class="mono">suggestedResolution</span>:
+    <span class="mono">suggestedResolution</span> is what we'd do here;
+    <span class="mono">bestPractice</span> is what established practice actually says, with its
+    reasoning and source — name the specific <span class="mono">MasterThread/standards/</span> or
+    <span class="mono">_security-public/policies/</span> doc if one applies, or the recognized general
+    practice if it doesn't. If our suggestion diverges from it, say so explicitly in
+    <span class="mono">divergenceNote</span> and explain why — that divergence is the most useful thing
+    on the card, it's where Jeremy most needs to weigh in. Where genuinely no standard covers the
+    situation, write that plainly rather than inventing one.<br><br>
+    <b>A card with <span class="mono">options</span> requires a recommendation</b> (2026-09-16 standing
+    requirement): <span class="mono">recommendedOption</span> (integer index into
+    <span class="mono">options</span>), <span class="mono">recommendedBy</span>, and
+    <span class="mono">recommendedRationale</span>. Ops makes the call, Jeremy reviews and approves
+    or overrides it — a card with options and no recommendation pushes the analysis back onto him,
+    which is exactly what this corrects. Cards without <span class="mono">options</span> (free-text
+    resolution only) aren't affected. <b>The recommendation is shown, never preselected</b>
+    (2026-09-17 owner decision, "No pre-highlight"): the recommended option carries an
+    "ops recommends" label and the reasoning sits in the box above the options, but no option starts
+    highlighted and <b>Approve</b> stays disabled until he clicks the one he wants. Every recorded
+    answer is therefore a pick he made.<br><br>
+    <b>Write cards to be scanned, not read: <span class="mono">summary</span> +
+    <span class="mono">points</span></b> (2026-09-17 owner request — Jeremy: "the new cards are big
+    section of text, I struggle with that format"). Every card SHOULD carry
+    <span class="mono">summary</span> (string): one plain sentence that is the question he is being
+    asked, no jargon or internal shorthand, under ~200 characters — shown first as "In short". And
+    <span class="mono">points</span> (array of strings, at most 5, one line each): only what he needs
+    to know to answer — shown as the "What matters" bullets. Any link or path he must use goes on its
+    own bullet (URLs become links, Windows paths get a Copy button). The long explanation goes in
+    <span class="mono">details</span> (or legacy <span class="mono">context</span>) and is shown
+    collapsed under "Background and sources" at the bottom of the card, line breaks kept.
+    <span class="mono">bestPractice</span> stays required and
+    <span class="mono">divergenceNote</span> still applies, but both are shown inside that same
+    collapsed section, along with any <span class="mono">corrections</span>. Keep each
+    <span class="mono">options</span> label short enough to read at a glance (aim under ~90
+    characters); the reasoning belongs in <span class="mono">recommendedRationale</span>, which stays
+    visible, not in the label. Action cards are the one exception: their
+    <span class="mono">context</span> is the numbered steps, so it stays visible — add
+    <span class="mono">summary</span> on top. Cards without <span class="mono">summary</span> /
+    <span class="mono">points</span> still render — the first sentence of
+    <span class="mono">context</span> stands in as the summary and the rest sits in the collapsed
+    section — so nothing breaks, it just reads worse.<br><br>
+    <b>Approval device lock, honestly:</b> resolving an item is only enabled on the one browser paired
+    below, and disabled on anything the page detects as a phone/tablet. That's a client-side speed bump
+    against an accidental phone tap while headless, not real security — anyone with DevTools access to the
+    paired browser (or its local storage) could still bypass it, and there is no server-side check behind
+    it. Treat it as a policy nudge, not a lock.<br><br>
+    <b>Confirming any action is two clicks, in-page — never a native browser dialog.</b> (2026-09-16
+    fix: the first version used <span class="mono">window.confirm()</span>, which a sandboxed artifact
+    view can silently block — the click did nothing, with no visible error, which is exactly as
+    confusing as it sounds. 2026-09-17: this was initially only wired to the "approve recommended"
+    button; every button that writes a resolution or override now arms/confirms the same way —
+    <b>Approve</b>, <b>Decide differently</b>, <b>Resolve</b>, <b>Mark reviewed as-is</b>, and
+    <b>Submit override</b> all included.) The first click arms it (button turns red, reads "Click
+    again to confirm", disarms itself after 8 seconds if you don't follow through, and any armed
+    button on a card disarms automatically if you pick a different option first); the second click
+    actually writes the resolution. No modal, nothing that depends on the browser allowing
+    popups/dialogs in this context. The option you picked is remembered per card while the page
+    refreshes itself (2026-09-17 fix: a refresh used to drop your pick, so Approve could write an
+    answer you had not chosen). A confirm stays armed across a
+    refresh only for the option it was armed for and only inside its 8 seconds; if a card's options
+    change, your pick and any armed confirm on it are dropped.<br><br>
+    <b>Resolved items live on the <a href="#timeline">Timeline</a>, not on this page.</b> (2026-09-17
+    update — Jeremy asked for finished decisions off the main queue and into a visual changelog
+    instead.) The queue view above only ever shows what's still open; saving a decision pops a brief
+    confirmation toast linking straight to the Timeline, then the card disappears from the open list.
+    Nothing is deleted or hidden — the Timeline is the complete, permanent history, grouped by the day
+    it was resolved, newest day first. A card with <span class="mono">followUpPending: true</span>
+    gets an amber marker instead of green on the Timeline, so an answer with unfinished work (an owner
+    click, a build, a merge still pending) stays visually distinct even though it lives in the same
+    place as everything else. "Resolved" and "done" are not the same word here.<br><br>
+    <b>Action cards (<span class="mono">kind: "action"</span>) are clicks only Jeremy can make, and
+    answering one runs nothing.</b> (2026-09-17 owner decision, after action cards were marked Done
+    three times in one day while GitHub and the disk showed no change.) They have no options and no
+    preselected answer. The one button, <b>I did it - check it</b>, writes
+    <span class="mono">claimedAt</span> (and <span class="mono">claimComment</span>) and leaves
+    <span class="mono">status: "open"</span>; the card shows as <b>Checking</b>. A session then reads
+    live state. If it took: the session sets <span class="mono">status: "resolved"</span>,
+    <span class="mono">resolution</span> (what was verified, with the evidence),
+    <span class="mono">verifiedBy</span>, <span class="mono">verifiedAt</span>,
+    <span class="mono">resolvedAt</span>. If it did not: the session clears
+    <span class="mono">claimedAt</span> and writes <span class="mono">checkResult</span>,
+    <span class="mono">checkedBy</span>, <span class="mono">checkedAt</span>, and the card returns to
+    his list with that finding on top. This is the ONE case where a session writes
+    <span class="mono">resolved</span> - only on an action card, only after his claim, only with
+    recorded evidence. Put the steps in <span class="mono">context</span> (line breaks are kept):
+    what to click, in what order, what he will see, how to undo. Any session that sees a card in
+    Checking should verify it; the PM sweeps for them. If an action card does carry
+    <span class="mono">options</span> (older cards, or one filed without
+    <span class="mono">kind</span> whose first option is a completion claim), none of them is ever
+    preselected and none can resolve it: "Done, ..." options fold into the one claim button (several
+    of them are listed so he can say which in the box), "Not now" gets no button, and anything else
+    ("It looked wrong") becomes a two-click <b>report</b> button that writes
+    <span class="mono">checkResult</span> (the option text plus his comment),
+    <span class="mono">checkedBy: "owner"</span>, <span class="mono">checkedAt</span>, clears
+    <span class="mono">claimedAt</span>, and leaves the card open for a session to pick up.<br><br>
+    <b>Never silently overwrite a resolved card.</b> If a resolution needs correcting after the
+    fact, append to its <span class="mono">corrections</span> array —
+    <span class="mono">{ note, correctedBy, correctedAt, previousResolution }</span> — and update
+    <span class="mono">resolution</span> to the corrected value; don't just replace
+    <span class="mono">resolution</span> in place. The card then shows both the current answer and
+    the correction trail. Always pin writes to a resolved card with <span class="mono">if_version</span>
+    and re-read on a conflict rather than forcing — Jeremy answers cards live, and a forced write can
+    clobber his own answer.
+  </footer>
+</main>
+
+<script>
+(function () {
+  const app = document.getElementById('app');
+  const counts = document.getElementById('counts');
+  const deviceGate = document.getElementById('device-gate');
+  let db = null;
+  let docs = [];
+  let pending = new Set();
+  let pairedDevice = null; // {deviceId, label, pairedAt} from settings/approval-device, or null if unset
+  let pairedDeviceLoaded = false;
+
+  // The option the owner picked on each card, by card id. Page-level on purpose: the cards are
+  // rebuilt on every db snapshot and once a minute, and a pick kept only in a per-render closure
+  // silently fell back to the recommended option, so Approve could write an answer he did not
+  // choose. `key` is the options list the pick was made against; a changed list drops the pick.
+  const chosenByCard = new Map(); // id -> { idx, key }
+  // The one confirm currently armed, so a rebuild between the two clicks neither loses it nor
+  // lets it fire for a different option than the one it was armed for.
+  let armedState = null; // { id, action, choice, until }
+  let armTimers = [];
+
+  function optionsKey(d) { return JSON.stringify(Array.isArray(d.options) ? d.options : []); }
+  function chosenIndex(d) {
+    const opts = Array.isArray(d.options) ? d.options : [];
+    const c = chosenByCard.get(d.id);
+    if (c && c.key === optionsKey(d) && opts[c.idx] !== undefined) return c.idx;
+    if (c) chosenByCard.delete(d.id);
+    // No pick yet. The recommendation is deliberately NOT a default (2026-09-17 owner decision,
+    // card decision-cards-stop-preselecting-recommendation-2026-09-17: "No pre-highlight"), so
+    // every recorded answer is an option he clicked himself.
+    return null;
+  }
+  function pruneCardState(openList) {
+    const openIds = new Set(openList.map(d => d.id));
+    Array.from(chosenByCard.keys()).forEach(id => { if (!openIds.has(id)) chosenByCard.delete(id); });
+    if (armedState && !openIds.has(armedState.id)) armedState = null;
+  }
+
+  function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // Card text with destinations made usable (2026-09-17 owner ask: never just name the place):
+  // https URLs become links that open in a new tab, Windows paths become a copyable chip.
+  function rich(text) {
+    let h = esc(text);
+    h = h.replace(/https?:\/\/[^\s<]+[^\s<.,;:)\]]/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+    h = h.replace(/[A-Za-z]:\\(?:[^\s<\\]+\\)*[^\s<\\]*[^\s<\\.,;:)\]]/g, pth => `<span class="path-chip"><code>${pth}</code><button type="button" data-copy="${pth}">Copy</button></span>`);
+    return h;
+  }
+  document.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest && ev.target.closest('[data-copy]');
+    if (!btn) return;
+    const text = btn.getAttribute('data-copy');
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; }
+    if (!ok) {
+      // Clipboard can be blocked in a sandboxed view: select the path so Ctrl+C works.
+      const code = btn.parentElement.querySelector('code');
+      const r = document.createRange(); r.selectNodeContents(code);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    }
+    btn.textContent = ok ? 'Copied' : 'Selected - press Ctrl+C';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 2500);
+  });
+
+  function ageMinutes(iso) {
+    if (!iso) return Infinity;
+    const ms = Date.now() - new Date(iso).getTime();
+    return isFinite(ms) && ms > 0 ? ms / 60000 : 0;
+  }
+  function relTime(iso) {
+    const m = ageMinutes(iso);
+    if (!isFinite(m)) return '';
+    if (m < 1) return 'just now';
+    if (m < 60) return Math.round(m) + 'm ago';
+    const h = m / 60;
+    if (h < 24) return Math.round(h) + 'h ago';
+    const days = Math.round(h / 24);
+    return days + (days === 1 ? ' day ago' : ' days ago');
+  }
+  // Resolved cards no longer age through stages on this page (2026-09-17: Jeremy
+  // asked for finished decisions off the main queue entirely) -- they move straight
+  // to the Timeline view (#timeline) and stay there permanently, grouped by day.
+
+  // -- This-computer-only gate -----------------------------------------
+  // Two independent, both client-side, both bypassable by anyone with
+  // DevTools on the paired browser -- see the footer note on the page.
+  // 1) A device id in localStorage, paired to one browser via a shared-db
+  //    doc (first "claim" wins; re-claimable from a new browser on purpose,
+  //    so losing local storage doesn't lock Jeremy out permanently).
+  // 2) A live check that this isn't a phone/tablet-shaped viewport, so even
+  //    the paired browser can't approve from a small/touch screen.
+  const DEVICE_KEY = 'aegis-decision-queue-device-id';
+  let localDeviceId = null;
+  try {
+    localDeviceId = localStorage.getItem(DEVICE_KEY);
+    if (!localDeviceId) {
+      localDeviceId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+      localStorage.setItem(DEVICE_KEY, localDeviceId);
+    }
+  } catch (e) {
+    localDeviceId = null; // storage blocked (private window, locked-down policy) -- gate stays closed
+  }
+
+  function isMobileViewport() {
+    try {
+      return window.matchMedia('(pointer: coarse), (max-width: 700px)').matches;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function isApprovalDevice() {
+    return !!(localDeviceId && pairedDevice && pairedDevice.deviceId === localDeviceId);
+  }
+
+  function canApprove() {
+    return isApprovalDevice() && !isMobileViewport();
+  }
+
+  // In-page replacement for window.prompt (a sandboxed artifact view can
+  // silently block native dialogs -- see the confirm-flow note below, which
+  // hit exactly this). Renders a small inline form inside the banner passed
+  // in, resolves with the typed value or null on cancel.
+  function inlineTextPrompt(container, labelText, defaultValue) {
+    return new Promise((resolveP) => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px';
+      wrap.innerHTML = `
+        <span style="font-size:0.86rem">${esc(labelText)}</span>
+        <input type="text" style="flex:1;min-width:160px;font-family:inherit;font-size:0.86rem;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:var(--paper-raised);color:var(--ink)">
+        <button type="button" class="btn primary" style="font-size:0.78rem;padding:5px 10px">OK</button>
+        <button type="button" class="btn ghost" style="font-size:0.78rem;padding:5px 10px">Cancel</button>
+      `;
+      const input = wrap.querySelector('input');
+      input.value = defaultValue || '';
+      container.appendChild(wrap);
+      input.focus();
+      input.select();
+      const finish = (val) => { wrap.remove(); resolveP(val); };
+      wrap.querySelectorAll('.btn')[0].addEventListener('click', () => finish(input.value || defaultValue || ''));
+      wrap.querySelectorAll('.btn')[1].addEventListener('click', () => finish(null));
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); finish(input.value || defaultValue || ''); }
+        if (ev.key === 'Escape') { ev.preventDefault(); finish(null); }
+      });
+    });
+  }
+
+  async function claimDevice() {
+    if (!db || !localDeviceId) return;
+    const label = await inlineTextPrompt(deviceGate, 'Label this computer:', pairedDevice ? '' : 'Jeremy — this computer');
+    if (label === null) return; // cancelled
+    try {
+      await db.doc('settings/approval-device').set({
+        deviceId: localDeviceId,
+        label: label || 'unlabeled computer',
+        pairedAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      deviceGate.insertAdjacentHTML('beforeend', `<p class="gate-note" style="color:var(--red)">Could not pair this device (${esc(e && e.code || 'error')}). Try again.</p>`);
+    }
+  }
+
+  function renderDeviceGate() {
+    if (!pairedDeviceLoaded) { deviceGate.innerHTML = ''; return; }
+
+    if (!pairedDevice) {
+      deviceGate.innerHTML = `
+        <div class="device-banner setup">
+          <p><b>No approval device set yet.</b> Until one is paired, nothing here can be resolved from
+          any browser. If this is Jeremy's computer, pair it now.</p>
+          <button class="btn primary" id="claim-btn">Pair this computer</button>
+        </div>`;
+      document.getElementById('claim-btn').addEventListener('click', claimDevice);
+      return;
+    }
+
+    if (isApprovalDevice() && !isMobileViewport()) {
+      deviceGate.innerHTML = `
+        <div class="device-banner approved">
+          <p>Approvals are live on this computer (paired as "${esc(pairedDevice.label)}").</p>
+          <button class="btn ghost" id="claim-btn" style="font-size:0.78rem;padding:5px 10px">Re-pair a different computer</button>
+        </div>`;
+      document.getElementById('claim-btn').addEventListener('click', claimDevice);
+      return;
+    }
+
+    if (isMobileViewport()) {
+      deviceGate.innerHTML = `
+        <div class="device-banner mobile">
+          <p><b>Approvals are off on this screen.</b> Phone/tablet views are read-only by design — open
+          this on your desktop browser to act on anything below.</p>
+        </div>`;
+      return;
+    }
+
+    deviceGate.innerHTML = `
+      <div class="device-banner locked">
+        <p>Read-only here — approvals are paired to "${esc(pairedDevice.label)}" only. If this is now
+        Jeremy's real computer, re-pairing replaces the old one.</p>
+        <button class="btn ghost" id="claim-btn" style="font-size:0.78rem;padding:5px 10px">Claim this computer instead</button>
+      </div>`;
+    document.getElementById('claim-btn').addEventListener('click', claimDevice);
+  }
+
+  function currentView() {
+    return location.hash === '#timeline' ? 'timeline' : 'queue';
+  }
+
+  function syncNav() {
+    document.querySelectorAll('nav.pack a[data-view]').forEach(a => {
+      a.classList.toggle('current', a.getAttribute('data-view') === currentView());
+    });
+  }
+
+  function render() {
+    syncNav();
+    if (currentView() === 'timeline') {
+      deviceGate.innerHTML = '';
+      renderTimeline();
+      return;
+    }
+
+    renderDeviceGate();
+    const locked = !canApprove();
+    const open = docs.filter(d => d.status !== 'resolved');
+    const ownerOpen = open.filter(d => d.ownerRequired).sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''));
+    const opsOpen = open.filter(d => !d.ownerRequired).sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||''));
+    const resolvedCount = docs.filter(d => d.status === 'resolved').length;
+
+    counts.innerHTML = `
+      <span><i class="dot" style="background:var(--amber)"></i>${ownerOpen.length} need you</span>
+      <span><i class="dot" style="background:var(--steel)"></i>${opsOpen.length} ops-recommended</span>
+      <span><a href="#timeline"><i class="dot" style="background:var(--green)"></i>${resolvedCount} resolved — view timeline</a></span>
+    `;
+
+    let html = '';
+
+    if (!docs.length) {
+      html += `<div class="empty">No decisions queued. Ops adds items here as they come up — nothing to review right now.</div>`;
+    } else if (!ownerOpen.length && !opsOpen.length) {
+      html += `<div class="empty">Nothing open right now. Resolved items live on the <a href="#timeline">Timeline</a>.</div>`;
+    }
+
+    if (ownerOpen.length) {
+      html += `<section class="group"><div class="group-head"><h2>Needs your attention</h2><span class="hint">${ownerOpen.length} open</span></div><div class="cards">`;
+      html += ownerOpen.map(d => isActionCard(d) ? cardAction(d, locked) : cardOwner(d, locked)).join('');
+      html += `</div></section>`;
+    }
+
+    if (opsOpen.length) {
+      html += `<section class="group"><div class="group-head"><h2>Ops is proceeding with these</h2><span class="hint">no action needed unless you want to change one</span></div><div class="cards">`;
+      html += opsOpen.map(d => cardOps(d, locked)).join('');
+      html += `</div></section>`;
+    }
+
+    const uiState = captureCardUi();
+    pruneCardState(open);
+    // Timers from the cards being replaced would otherwise disarm the rebuilt buttons.
+    armTimers.forEach(clearTimeout);
+    armTimers = [];
+    app.innerHTML = html;
+    restoreCardUi(uiState);
+    if (!locked) wireCard(ownerOpen.concat(opsOpen));
+  }
+
+  function dayLabel(key) {
+    if (key === 'unknown') return 'Undated';
+    const d = new Date(key + 'T00:00:00Z');
+    return d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' });
+  }
+
+  function timelineItem(d) {
+    const followUp = !!d.followUpPending;
+    return `
+    <li class="timeline-item${followUp ? ' followup' : ''}">
+      <span class="timeline-time">${esc(relTime(d.resolvedAt))}</span>
+      <div class="timeline-card">
+        <div class="card-top">
+          <h3 class="card-title">${esc(d.title)}</h3>
+          <div class="tag-row"><span class="tag done">Resolved</span>${metaTags(d)}</div>
+        </div>
+        ${inShortBlock(d, false)}
+        <div class="resolution-line"><b>Decision:</b> ${esc(d.resolution || '—')}
+          ${d.comment ? `<span class="comment-echo">${esc(d.comment)}</span>` : ''}
+        </div>
+        ${correctionsBlock(d)}
+        ${followUp ? `<div class="followup-banner"><b>Follow-up still open:</b> ${esc(d.followUpNote || 'action named in the resolution has not been completed yet')}</div>` : ''}
+        ${backgroundBlock(d, { points: true })}
+      </div>
+    </li>`;
+  }
+
+  function renderTimeline() {
+    const resolved = docs.filter(d => d.status === 'resolved').sort((a,b) => (b.resolvedAt||'').localeCompare(a.resolvedAt||''));
+
+    counts.innerHTML = `
+      <span><i class="dot" style="background:var(--green)"></i>${resolved.length} resolved decisions</span>
+      <span><a href="#">← back to the queue</a></span>
+    `;
+
+    if (!resolved.length) {
+      app.innerHTML = `<div class="empty">Nothing resolved yet. Decided items will show up here as a dated timeline once you act on something in the <a href="#">queue</a>.</div>`;
+      return;
+    }
+
+    const groups = [];
+    let lastKey = null;
+    resolved.forEach(d => {
+      const dt = d.resolvedAt ? new Date(d.resolvedAt) : null;
+      const key = dt && !isNaN(dt) ? dt.toISOString().slice(0, 10) : 'unknown';
+      if (key !== lastKey) { groups.push({ key, items: [] }); lastKey = key; }
+      groups[groups.length - 1].items.push(d);
+    });
+
+    let html = `<p class="timeline-intro">A chronological, visual record of every decided item — what
+      ops asked, what you decided, and any correction made afterward. Grouped by the day it was
+      resolved, most recent day first. Nothing here is ever deleted.</p>`;
+    html += groups.map(g => `
+      <section class="timeline-day">
+        <h2 class="timeline-date">${esc(dayLabel(g.key))}</h2>
+        <ol class="timeline">${g.items.map(timelineItem).join('')}</ol>
+      </section>
+    `).join('');
+
+    app.innerHTML = html;
+  }
+
+  function showToast(msg, linkHref, linkText) {
+    let t = document.getElementById('toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'toast';
+      document.body.appendChild(t);
+    }
+    t.innerHTML = esc(msg) + (linkHref ? ` <a href="${esc(linkHref)}">${esc(linkText || 'view')}</a>` : '');
+    t.classList.add('show');
+    clearTimeout(t._hideTimer);
+    t._hideTimer = setTimeout(() => t.classList.remove('show'), 6000);
+  }
+
+  function metaTags(d) {
+    let t = '';
+    if (d.category) t += `<span class="tag category">${esc(d.category)}</span>`;
+    if (d.source) t += `<span class="tag source">${esc(d.source)}</span>`;
+    return t;
+  }
+
+  // ---- Scannable card pieces (2026-09-17 owner request: "the new cards are big section of
+  // text, I struggle with that format"). A card now reads top to bottom as: one sentence
+  // (summary), a few bullets (points), the recommendation, the buttons. Everything long --
+  // details/context, bestPractice, divergenceNote, corrections -- sits behind ONE collapsed
+  // "Background and sources" disclosure. Nothing is dropped; it only moves.
+  // Every string here is untrusted db text: it goes through esc() or rich() (which escapes first).
+
+  // Legacy fallback for cards with no `summary`: the first sentence of `context`.
+  function firstSentence(text) {
+    const s = String(text ?? '').trim();
+    if (!s) return '';
+    let cut = s.length;
+    ['. ', '? '].forEach(sep => {
+      const i = s.indexOf(sep);
+      if (i !== -1 && i + 1 < cut) cut = i + 1; // keep the punctuation mark
+    });
+    const nl = s.indexOf('\n');
+    if (nl !== -1 && nl < cut) cut = nl;
+    let out = s.slice(0, cut).trim();
+    if (out.length > 220) out = out.slice(0, 217).replace(/\s+\S*$/, '') + '…';
+    return out;
+  }
+
+  function summaryText(d, allowFallback) {
+    if (typeof d.summary === 'string' && d.summary.trim()) return d.summary.trim();
+    return allowFallback ? firstSentence(d.context) : '';
+  }
+
+  function inShortBlock(d, allowFallback) {
+    const s = summaryText(d, allowFallback);
+    return s ? `<div class="in-short"><span class="mini-label">In short</span><p>${rich(s)}</p></div>` : '';
+  }
+
+  function pointsBlock(d) {
+    const pts = Array.isArray(d.points) ? d.points.filter(p => typeof p === 'string' && p.trim()) : [];
+    if (!pts.length) return '';
+    return `<div class="points-wrap"><span class="mini-label">What matters</span><ul class="points">${pts.map(p => `<li>${rich(p.trim())}</li>`).join('')}</ul></div>`;
+  }
+
+  function correctionsBlock(d) {
+    const corrections = Array.isArray(d.corrections) ? d.corrections : [];
+    if (!corrections.length) return '';
+    return `<div class="corrections">${corrections.map(c => `
+          <div class="correction-item"><b>Corrected${c.correctedAt ? ' ' + esc(relTime(c.correctedAt)) : ''}${c.correctedBy ? ' by ' + esc(c.correctedBy) : ''}:</b> ${esc(c.note || '')}${c.previousResolution ? `<div class="was">was: "${esc(c.previousResolution)}"</div>` : ''}</div>
+        `).join('')}</div>`;
+  }
+
+  // Which "Background and sources" disclosures the owner has opened, by card id. The page
+  // re-renders on every db snapshot and once a minute; without this a disclosure he opened
+  // would snap shut whenever any other card changed.
+  const openBackground = new Set();
+  app.addEventListener('toggle', (ev) => {
+    const el = ev.target;
+    if (!el || !el.getAttribute || !el.hasAttribute('data-bg')) return;
+    const id = el.getAttribute('data-bg');
+    if (el.open) openBackground.add(id); else openBackground.delete(id);
+  }, true); // toggle does not bubble -- capture it
+
+  // opts.contextShown: the card already shows `context` in full (action cards), so only
+  //   `details` goes under Background. Otherwise Background = details, else context; and if a
+  //   card carries BOTH, context is still listed so nothing shown before becomes unreachable.
+  // opts.corrections: include the corrections trail (the timeline shows it outside instead).
+  function backgroundBlock(d, opts) {
+    const o = opts || {};
+    const details = typeof d.details === 'string' ? d.details.trim() : '';
+    const context = typeof d.context === 'string' ? d.context.trim() : '';
+    const part = (label, text, cls) => `<div class="bg-part${cls ? ' ' + cls : ''}"><span class="mini-label">${esc(label)}</span><div class="bg-text">${rich(text)}</div></div>`;
+    let body = '';
+    if (o.points) body += pointsBlock(d); // timeline: bullets live in here, not on the card face
+    if (details) body += part('Background', details);
+    if (!o.contextShown && context && context !== details) body += part(details ? 'Original context' : 'Background', context);
+    if (d.bestPractice) body += part('Best practice says', d.bestPractice);
+    if (d.divergenceNote) body += part('Where we diverge', d.divergenceNote, 'diverge');
+    if (o.corrections) {
+      const c = correctionsBlock(d);
+      if (c) body += `<div class="bg-part"><span class="mini-label">Corrections</span>${c}</div>`;
+    }
+    if (!body) return '';
+    return `<details class="bg" data-bg="${esc(d.id)}"${openBackground.has(d.id) ? ' open' : ''}><summary>Background and sources</summary><div class="bg-body">${body}</div></details>`;
+  }
+
+  // Half-typed text must survive a re-render too (it did not before 2026-09-17: every snapshot
+  // and the one-minute timer rebuilt the cards and wiped the comment boxes). UI state only --
+  // nothing here writes to the store.
+  function captureCardUi() {
+    const st = { text: {}, overrideOpen: [], focus: null };
+    app.querySelectorAll('.card[data-id]').forEach(el => {
+      const id = el.getAttribute('data-id');
+      el.querySelectorAll('textarea.comment').forEach(t => {
+        const key = id + '|' + (t.closest('[data-role="override-box"]') ? 'override' : 'comment');
+        if (t.value) st.text[key] = t.value;
+        if (document.activeElement === t) st.focus = { key, start: t.selectionStart, end: t.selectionEnd };
+      });
+      const box = el.querySelector('[data-role="override-box"]');
+      if (box && !box.hidden) st.overrideOpen.push(id);
+    });
+    return st;
+  }
+  function restoreCardUi(st) {
+    if (!st) return;
+    app.querySelectorAll('.card[data-id]').forEach(el => {
+      const id = el.getAttribute('data-id');
+      const box = el.querySelector('[data-role="override-box"]');
+      if (box && st.overrideOpen.indexOf(id) !== -1) box.hidden = false;
+      el.querySelectorAll('textarea.comment').forEach(t => {
+        const key = id + '|' + (t.closest('[data-role="override-box"]') ? 'override' : 'comment');
+        if (st.text[key] !== undefined) t.value = st.text[key];
+        if (st.focus && st.focus.key === key && !t.disabled) {
+          try { t.focus({ preventScroll: true }); t.setSelectionRange(st.focus.start, st.focus.end); } catch (e) { /* focus is a nicety */ }
+        }
+      });
+    });
+  }
+
+  function cardOwner(d, locked) {
+    const dis = locked ? ' disabled' : '';
+    const hasRec = Array.isArray(d.options) && typeof d.recommendedOption === 'number' && d.options[d.recommendedOption] !== undefined;
+    const chosenIdx = chosenIndex(d); // his pick, or null: nothing is ever preselected
+    const opts = Array.isArray(d.options) && d.options.length
+      ? `<div class="options" data-role="options">${d.options.map((o,i) => `<button type="button" class="option-btn${i === chosenIdx ? ' chosen' : ''}" data-opt="${i}"${locked ? ' disabled' : ''}>${esc(o)}${hasRec && i === d.recommendedOption ? '<span class="rec-mark">ops recommends</span>' : ''}</button>`).join('')}</div>`
+      : '';
+
+    if (hasRec) {
+      // Ops has already made a call: one option is preselected, framed as a
+      // recommendation to approve or override -- not a bare list to choose from.
+      return `
+      <div class="card owner-required" data-id="${esc(d.id)}" data-recommended="${d.recommendedOption}">
+        <div class="card-top">
+          <h3 class="card-title">${esc(d.title)}</h3>
+          <div class="tag-row"><span class="tag urgent">Needs you</span>${metaTags(d)}</div>
+        </div>
+        ${inShortBlock(d, true)}
+        ${pointsBlock(d)}
+        <div class="suggestion"><b>Ops recommends${d.recommendedBy ? ' — ' + esc(d.recommendedBy) : ''}</b>${esc(d.options[d.recommendedOption])}${d.recommendedRationale ? `<div class="rationale">${esc(d.recommendedRationale)}</div>` : ''}</div>
+        ${opts}
+        <textarea class="comment" placeholder="Add context, or explain an override"${dis}></textarea>
+        <div class="actions">
+          <button class="btn owner-primary" data-action="approve-recommended"${locked || chosenIdx === null ? ' disabled' : ''}>Approve</button>
+          <span class="pick-hint" data-role="pick-hint"${chosenIdx === null ? '' : ' hidden'}>Click the option you want first.</span>
+        </div>
+        <p class="gate-note">Nothing is selected for you. Pick an option, then click Approve twice: the first click arms it (turns red), the second writes the option you picked.</p>
+        ${locked ? `<p class="gate-note">Open this on your paired computer to act on this.</p>` : ''}
+        <div class="status-banner"></div>
+        ${backgroundBlock(d, { corrections: true })}
+      </div>`;
+    }
+
+    const opts2 = opts;
+    return `
+    <div class="card owner-required" data-id="${esc(d.id)}">
+      <div class="card-top">
+        <h3 class="card-title">${esc(d.title)}</h3>
+        <div class="tag-row"><span class="tag urgent">Needs you</span>${metaTags(d)}</div>
+      </div>
+      ${inShortBlock(d, true)}
+      ${pointsBlock(d)}
+      ${d.suggestedResolution ? `<div class="suggestion"><b>Ops suggests</b>${esc(d.suggestedResolution)}${d.rationale ? `<div class="rationale">${esc(d.rationale)}</div>` : ''}</div>` : ''}
+      ${opts2}
+      <textarea class="comment" placeholder="Add context, or explain your call"${dis}></textarea>
+      <div class="actions">
+        ${d.suggestedResolution ? `<button class="btn owner-primary" data-action="approve"${dis}>Approve ops's suggestion</button>` : ''}
+        <button class="btn ghost" data-action="custom"${dis}>${d.suggestedResolution ? 'Decide differently' : 'Resolve'}</button>
+      </div>
+      <p class="gate-note">Click twice to confirm: first click arms the button (turns red), second click writes it.</p>
+      ${locked ? `<p class="gate-note">Open this on your paired computer to act on this.</p>` : ''}
+      <div class="status-banner"></div>
+      ${backgroundBlock(d, { corrections: true })}
+    </div>`;
+  }
+
+  // Action card (kind: "action"): a click only the owner can make. Answering it runs
+  // nothing, so the button only records a claim (claimedAt); the card stays in the open
+  // list as "checking" until a session verifies live state and resolves it, or writes
+  // checkResult and clears claimedAt when the action did not take (2026-09-17 owner decision,
+  // card action-cards-done-without-doing-design-2026-09-17).
+  // A card filed without kind:"action" whose answers are completion claims ("Done - I ran it",
+  // "Merged.") is still an owed click, and must never get a preselected "Done" (2026-09-17: six
+  // such cards were cleared in one 8-second run for actions nobody had taken).
+  function isActionCard(d) {
+    if (d.kind === 'action') return true;
+    if (d.kind === 'decision') return false;
+    const first = Array.isArray(d.options) && d.options.length ? String(d.options[0]) : '';
+    return COMPLETION_CLAIM.test(first);
+  }
+  const COMPLETION_CLAIM = /^\s*(done|merged|i (ran|did|have|sent|clicked)|sent|ran it)\b/i;
+  // An action card filed with options (older cards, or one caught by the test above) used to lose
+  // every option, including the only way to say "it looked wrong". Options are split three ways:
+  //  - completion claims ("Done, ...") never become buttons: the single claim button stands in
+  //    for them, and when there are several they are listed so he can say which in the comment;
+  //  - "Not now" needs no button: doing nothing already means that;
+  //  - anything else ("It looked wrong") becomes a secondary two-click button that reports a
+  //    problem. It never resolves the card: it writes checkResult and leaves the card open.
+  function actionOptionSplit(d) {
+    const out = { claims: [], reports: [] };
+    (Array.isArray(d.options) ? d.options : []).forEach((o, i) => {
+      const text = String(o);
+      if (COMPLETION_CLAIM.test(text)) out.claims.push(text);
+      else if (!/^\s*not (now|yet)\b/i.test(text)) out.reports.push({ text, i });
+    });
+    return out;
+  }
+
+  function cardAction(d, locked) {
+    const dis = locked ? ' disabled' : '';
+    const failed = !d.checkResult ? '' : (d.checkedBy === 'owner'
+      ? `<div class="check-banner failed"><b>You reported a problem${d.checkedAt ? ' ' + esc(relTime(d.checkedAt)) : ''} - ops is looking at it</b>${rich(d.checkResult)}</div>`
+      : `<div class="check-banner failed"><b>Last check${d.checkedAt ? ' ' + esc(relTime(d.checkedAt)) : ''}${d.checkedBy ? ' by ' + esc(d.checkedBy) : ''}: it has not happened yet</b>${rich(d.checkResult)}</div>`);
+    const split = actionOptionSplit(d);
+    const whichClaim = split.claims.length > 1
+      ? `<p class="gate-note">When you press the button, say in the box which it was: ${split.claims.map(c => '"' + esc(c) + '"').join(' or ')}.</p>` : '';
+    const reportBtns = split.reports.length
+      ? `<div class="actions">${split.reports.map(r => `<button class="btn ghost" data-action="report" data-opt="${r.i}" style="font-size:0.8rem;padding:5px 10px"${dis}>${esc(r.text)}</button>`).join('')}</div>
+      <p class="gate-note">Reporting a problem also takes two clicks. It does not close this card: it sends what you wrote to ops and the card stays here.</p>` : '';
+    if (d.claimedAt) {
+      return `
+      <div class="card owner-required checking" data-id="${esc(d.id)}">
+        <div class="card-top">
+          <h3 class="card-title">${esc(d.title)}</h3>
+          <div class="tag-row"><span class="tag checking">Checking</span>${metaTags(d)}</div>
+        </div>
+        ${inShortBlock(d, false)}
+        <div class="check-banner waiting"><b>You said you did this ${esc(relTime(d.claimedAt))}</b>A session is reading the live result. This card leaves your list only once that check passes; if it did not take, it comes straight back with what was found.${d.claimComment ? `<span class="comment-echo" style="display:block;margin-top:4px;font-style:italic">${esc(d.claimComment)}</span>` : ''}</div>
+        <div class="actions">
+          <button class="btn ghost" data-action="unclaim" style="font-size:0.8rem;padding:5px 10px"${dis}>Undo - I have not done it yet</button>
+        </div>
+        <div class="status-banner"></div>
+        ${backgroundBlock(d, { points: true, corrections: true })}
+      </div>`;
+    }
+    return `
+    <div class="card owner-required" data-id="${esc(d.id)}">
+      <div class="card-top">
+        <h3 class="card-title">${esc(d.title)}</h3>
+        <div class="tag-row"><span class="tag action">Your click</span>${metaTags(d)}</div>
+      </div>
+      ${failed}
+      ${inShortBlock(d, false)}
+      ${pointsBlock(d)}
+      ${d.context ? `<p class="context steps">${rich(d.context)}</p>` : ''}
+      <textarea class="comment" placeholder="Optional: what you saw, or why not now"${dis}></textarea>
+      <div class="actions">
+        <button class="btn owner-primary" data-action="claim"${dis}>I did it - check it</button>
+      </div>
+      ${whichClaim}
+      ${reportBtns}
+      <p class="gate-note">Pressing this does not run anything. Do the step above first; this only tells ops to go and verify it. Nothing to press if you are not doing it now - the card simply stays here.</p>
+      ${locked ? `<p class="gate-note">Open this on your paired computer to act on this.</p>` : ''}
+      <div class="status-banner"></div>
+      ${backgroundBlock(d, { contextShown: true, corrections: true })}
+    </div>`;
+  }
+
+  async function writeClaim(d, el, banner, data, toast) {
+    if (pending.has(d.id) || !db) return;
+    pending.add(d.id);
+    el.querySelectorAll('button:not([data-copy])').forEach(b => b.disabled = true);
+    banner.classList.remove('error', 'armed');
+    banner.textContent = 'Saving…';
+    try {
+      await db.doc('decisions/' + d.id).update(data);
+      showToast(toast);
+    } catch (e) {
+      banner.textContent = 'Could not save (' + (e && e.code || 'error') + '). Try again.';
+      banner.classList.add('error');
+      el.querySelectorAll('button:not([data-copy])').forEach(b => b.disabled = false);
+    } finally {
+      pending.delete(d.id);
+    }
+  }
+
+  function cardOps(d, locked) {
+    const dis = locked ? ' disabled' : '';
+    return `
+    <div class="card" data-id="${esc(d.id)}">
+      <div class="card-top">
+        <h3 class="card-title">${esc(d.title)}</h3>
+        <div class="tag-row"><span class="tag auto">Ops recommends</span>${metaTags(d)}</div>
+      </div>
+      ${inShortBlock(d, true)}
+      ${pointsBlock(d)}
+      ${d.suggestedResolution ? `<div class="suggestion"><b>Proceeding with</b>${esc(d.suggestedResolution)}${d.rationale ? `<div class="rationale">${esc(d.rationale)}</div>` : ''}</div>` : ''}
+      <div class="quiet-row">
+        <span>No action needed —</span>
+        <button type="button" class="link-btn" data-action="show-override"${dis}>stop this / override</button>
+      </div>
+      <div data-role="override-box" hidden>
+        <textarea class="comment" placeholder="What should happen instead?"${dis}></textarea>
+        <div class="actions" style="margin-top:8px">
+          <button class="btn primary" data-action="override"${dis}>Submit override</button>
+        </div>
+        <p class="gate-note">Click twice to confirm: first click arms the button (turns red), second click writes it.</p>
+      </div>
+      <div class="actions" style="margin-top:2px">
+        <button class="btn ghost" data-action="approve" style="font-size:0.8rem;padding:5px 10px"${dis}>Mark reviewed as-is</button>
+      </div>
+      <p class="gate-note">"Mark reviewed as-is" also needs two clicks to confirm (arms red on the first).</p>
+      ${locked ? `<p class="gate-note">Open this on your paired computer to act on this.</p>` : ''}
+      <div class="status-banner"></div>
+      ${backgroundBlock(d, { corrections: true })}
+    </div>`;
+  }
+
+  function wireCard(list) {
+    document.querySelectorAll('.card[data-id]').forEach(el => {
+      const id = el.getAttribute('data-id');
+      const d = list.find(x => x.id === id);
+      if (!d) return;
+      const banner = el.querySelector('.status-banner');
+      // Scoped to a direct child so this can't pick up the nested override-box
+      // textarea in an ops-recommended card (that one belongs only to the
+      // "Submit override" path, wired separately below).
+      const commentBox = el.querySelector(':scope > textarea.comment');
+
+      const optionsWrap = el.querySelector('[data-role="options"]');
+      const recIdx = el.hasAttribute('data-recommended') ? Number(el.getAttribute('data-recommended')) : null;
+      // Read from page-level state on every use: a closure variable here was reset to the
+      // recommendation by each rebuild (the bug fixed 2026-09-17).
+      const chosenOption = () => {
+        const i = chosenIndex(d);
+        return i === null ? null : d.options[i];
+      };
+      const choiceKey = () => String(chosenIndex(d));
+
+      // Every button on this card that writes a resolution/override shares
+      // this same in-page double-click-to-confirm, replacing window.confirm()
+      // (2026-09-16 fix: a sandboxed artifact view can block native dialogs
+      // silently -- the button looked broken because confirm() just returned
+      // false with no visible feedback at all). 2026-09-17: generalized from
+      // "approve recommended" (the only button that originally had it) to
+      // every action button on the card, and all of a card's armed buttons
+      // disarm together -- picking a different option, or arming a second
+      // button, must not leave a stale confirm live on another one.
+      const disarmers = [];
+      function disarmSiblings(except) {
+        disarmers.forEach(fn => { if (fn !== except) fn(); });
+      }
+      function armedAction(btn, validate, run) {
+        if (!btn) return;
+        const action = btn.getAttribute('data-action') + ':' + (btn.getAttribute('data-opt') || '');
+        let isArmed = false;
+        let timer = null;
+        const originalText = btn.textContent;
+        const mine = () => armedState && armedState.id === id && armedState.action === action;
+        function disarm() {
+          isArmed = false;
+          if (timer) { clearTimeout(timer); timer = null; }
+          if (mine()) armedState = null;
+          btn.textContent = originalText;
+          btn.classList.remove('armed');
+          if (banner) { banner.textContent = ''; banner.classList.remove('armed', 'error'); }
+        }
+        function showArmed(label, ms) {
+          isArmed = true;
+          banner.classList.remove('error');
+          banner.classList.add('armed');
+          banner.textContent = label + ' — click again to confirm.';
+          btn.textContent = 'Click again to confirm';
+          btn.classList.add('armed');
+          timer = setTimeout(disarm, ms);
+          armTimers.push(timer);
+        }
+        disarmers.push(disarm);
+        // The card was rebuilt between his two clicks: keep the confirm armed only if it is
+        // still inside its 8 seconds AND still for the option now displayed. Otherwise drop it.
+        if (mine()) {
+          const left = armedState.until - Date.now();
+          const label = left > 0 && armedState.choice === choiceKey() ? validate() : false;
+          if (label === false) { armedState = null; if (banner) { banner.textContent = ''; banner.classList.remove('armed', 'error'); } }
+          else showArmed(label, left);
+        }
+        btn.addEventListener('click', () => {
+          const label = validate();
+          if (label === false) return; // validate() already set the banner's error text
+          if (!isArmed) {
+            disarmSiblings(disarm);
+            armedState = { id, action, choice: choiceKey(), until: Date.now() + 8000 };
+            showArmed(label, 8000);
+            return;
+          }
+          // Armed for one option, a different one displayed now: never write, start over.
+          const stale = !mine() || armedState.choice !== choiceKey();
+          disarm();
+          if (stale) return;
+          run();
+        });
+      }
+
+      if (optionsWrap) {
+        optionsWrap.querySelectorAll('.option-btn').forEach(b => {
+          b.addEventListener('click', () => {
+            optionsWrap.querySelectorAll('.option-btn').forEach(x => x.classList.remove('chosen'));
+            b.classList.add('chosen');
+            chosenByCard.set(id, { idx: Number(b.getAttribute('data-opt')), key: optionsKey(d) });
+            const approveBtn = el.querySelector('[data-action="approve-recommended"]');
+            if (approveBtn) approveBtn.disabled = false;
+            const hint = el.querySelector('[data-role="pick-hint"]');
+            if (hint) hint.hidden = true;
+            // Changing the option disarms any in-progress confirm -- re-arming
+            // against a stale option would approve the wrong thing.
+            disarmSiblings(null);
+          });
+        });
+      }
+
+      const showOverrideBtn = el.querySelector('[data-action="show-override"]');
+      if (showOverrideBtn) {
+        showOverrideBtn.addEventListener('click', () => {
+          const box = el.querySelector('[data-role="override-box"]');
+          box.hidden = !box.hidden;
+        });
+      }
+
+      armedAction(
+        el.querySelector('[data-action="claim"]'),
+        () => 'Will tell ops you have done this, so a session checks the live result',
+        () => writeClaim(d, el, banner, { claimedAt: new Date().toISOString(), claimComment: commentBox ? commentBox.value : '' }, 'Noted - a session will check it. The card stays until verified.')
+      );
+      el.querySelectorAll('[data-action="report"]').forEach(btn => {
+        const text = String(d.options[Number(btn.getAttribute('data-opt'))]);
+        armedAction(
+          btn,
+          () => 'Will tell ops: "' + text + '" - the card stays open',
+          () => {
+            const note = commentBox ? commentBox.value.trim() : '';
+            writeClaim(d, el, banner, {
+              claimedAt: '', claimComment: '',
+              checkResult: text + (note ? ' - ' + note : ''),
+              checkedBy: 'owner', checkedAt: new Date().toISOString(),
+            }, 'Sent to ops. The card stays open until it is sorted.');
+          }
+        );
+      });
+      const unclaimBtn = el.querySelector('[data-action="unclaim"]');
+      if (unclaimBtn) unclaimBtn.addEventListener('click', () => writeClaim(d, el, banner, { claimedAt: '', claimComment: '' }, 'Undone - the card is back to waiting for your click.'));
+
+      armedAction(
+        el.querySelector('[data-action="approve"]'),
+        () => (d.suggestedResolution ? 'Will approve: "' + d.suggestedResolution + '"' : 'Will mark reviewed, no change'),
+        () => resolve(d, el, banner, d.suggestedResolution || 'Reviewed, no change', commentBox ? commentBox.value : '')
+      );
+
+      armedAction(
+        el.querySelector('[data-action="approve-recommended"]'),
+        () => {
+          if (!chosenOption()) {
+            banner.textContent = 'Pick an option first.';
+            banner.classList.add('error');
+            return false;
+          }
+          const overridden = chosenOption() !== d.options[recIdx];
+          return (overridden ? 'Will override with: ' : 'Will approve: ') + '"' + chosenOption() + '"';
+        },
+        () => resolve(d, el, banner, chosenOption(), commentBox ? commentBox.value : '')
+      );
+
+      armedAction(
+        el.querySelector('[data-action="custom"]'),
+        () => {
+          const text = chosenOption() || (commentBox ? commentBox.value.trim() : '');
+          if (!text) {
+            banner.textContent = 'Pick an option or write your call in the comment box first.';
+            banner.classList.add('error');
+            return false;
+          }
+          return 'Will resolve with: "' + text.slice(0, 80) + (text.length > 80 ? '…' : '') + '"';
+        },
+        () => {
+          const text = chosenOption() || (commentBox ? commentBox.value.trim() : '');
+          resolve(d, el, banner, text, chosenOption() ? (commentBox ? commentBox.value : '') : '');
+        }
+      );
+
+      armedAction(
+        el.querySelector('[data-action="override"]'),
+        () => {
+          const box = el.querySelector('[data-role="override-box"] textarea');
+          const text = box ? box.value.trim() : '';
+          if (!text) {
+            banner.textContent = 'Say what should happen instead first.';
+            banner.classList.add('error');
+            return false;
+          }
+          return 'Will override with: "' + text.slice(0, 80) + (text.length > 80 ? '…' : '') + '"';
+        },
+        () => {
+          const box = el.querySelector('[data-role="override-box"] textarea');
+          const text = box ? box.value.trim() : '';
+          resolve(d, el, banner, text, '');
+        }
+      );
+    });
+  }
+
+  async function resolve(d, el, banner, resolutionText, commentText) {
+    if (pending.has(d.id) || !db) return;
+    pending.add(d.id);
+    el.querySelectorAll('button:not([data-copy])').forEach(b => b.disabled = true);
+    banner.classList.remove('error', 'armed');
+    banner.textContent = 'Saving…';
+    try {
+      await db.doc('decisions/' + d.id).update({
+        status: 'resolved',
+        resolution: resolutionText,
+        comment: commentText || '',
+        resolvedAt: new Date().toISOString(),
+      });
+      showToast('Saved — moved to the timeline.', '#timeline', 'View timeline');
+    } catch (e) {
+      banner.textContent = 'Could not save (' + (e && e.code || 'error') + '). Try again.';
+      banner.classList.add('error');
+      el.querySelectorAll('button:not([data-copy])').forEach(b => b.disabled = false);
+    } finally {
+      pending.delete(d.id);
+    }
+  }
+
+  const addForm = document.getElementById('add-form');
+  const addStatus = document.getElementById('add-status');
+  addForm.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    if (!db) { addStatus.textContent = 'Store unavailable right now.'; addStatus.classList.add('error'); return; }
+    const title = document.getElementById('f-title').value.trim();
+    if (!title) return;
+    const submitBtn = addForm.querySelector('button[type=submit]');
+    submitBtn.disabled = true;
+    addStatus.classList.remove('error');
+    addStatus.textContent = 'Adding…';
+    try {
+      await db.collection('decisions').add({
+        title,
+        summary: document.getElementById('f-summary').value.trim(),
+        points: document.getElementById('f-points').value.split(/\r?\n/).map(x => x.trim()).filter(Boolean).slice(0, 5),
+        context: document.getElementById('f-context').value.trim(),
+        suggestedResolution: document.getElementById('f-suggestion').value.trim(),
+        bestPractice: document.getElementById('f-best-practice').value.trim(),
+        divergenceNote: document.getElementById('f-divergence').value.trim(),
+        category: document.getElementById('f-category').value.trim(),
+        ownerRequired: document.getElementById('f-owner-required').checked,
+        source: 'added from the page',
+        status: 'open',
+        createdAt: new Date().toISOString(),
+      });
+      addForm.reset();
+      addStatus.textContent = 'Added.';
+    } catch (e) {
+      addStatus.textContent = 'Could not add (' + (e && e.code || 'error') + ').';
+      addStatus.classList.add('error');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  async function boot() {
+    try {
+      db = (window.claude && window.claude.use) ? await window.claude.use('db') : null;
+    } catch (e) {
+      db = null;
+    }
+    if (!db) {
+      app.innerHTML = '<div class="empty">The shared store isn\'t available in this view, so the queue can\'t load. Try opening this page directly on claude.ai.</div>';
+      return;
+    }
+    db.doc('settings/approval-device').onSnapshot(
+      snap => {
+        pairedDevice = snap.exists ? snap.data() : null;
+        pairedDeviceLoaded = true;
+        render();
+      },
+      () => { pairedDeviceLoaded = true; render(); }
+    );
+    db.collection('decisions').limit(200).onSnapshot(
+      snap => {
+        docs = snap.docs.map(s => ({ id: s.id, ...s.data() }));
+        render();
+      },
+      err => {
+        app.innerHTML = '<div class="empty">Couldn\'t load the queue (' + esc(err.code) + '). Reloading the page usually fixes it.</div>';
+      }
+    );
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(render, 150);
+    });
+  }
+  window.addEventListener('hashchange', render);
+  boot();
+  // Re-render on a timer too, so relative timestamps ("3m ago") stay fresh
+  // without depending on new data arriving.
+  setInterval(render, 60000);
+})();
+</script>
+

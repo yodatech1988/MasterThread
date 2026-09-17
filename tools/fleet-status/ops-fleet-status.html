@@ -1,0 +1,883 @@
+<!doctype html>
+<title>Ops Fleet Status</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --paper: #f2f4f7;
+    --paper-raised: #ffffff;
+    --ink: #161b22;
+    --ink-soft: #4c5661;
+    --ink-faint: #7c8791;
+    --line: #d7dde3;
+    --line-soft: #e6eaee;
+    --steel: #2c5770;
+    --steel-strong: #1d3f52;
+    --steel-soft: #e4edf1;
+    --amber: #96631a;
+    --amber-strong: #7a4f10;
+    --amber-soft: #f7ecd9;
+    --amber-line: #e3cfa0;
+    --green: #2f6f4e;
+    --green-soft: #e5f1ea;
+    --green-line: #bfdccb;
+    --red: #a23b3b;
+    --red-strong: #7d2b2b;
+    --red-soft: #f7e2e1;
+    --red-line: #e6bcba;
+    --code-bg: #eef1f4;
+    --shadow: 0 1px 2px rgba(22,27,34,0.04), 0 6px 20px rgba(22,27,34,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #10141a; --paper-raised: #161b23; --ink: #e7ecf1; --ink-soft: #a7b1bb;
+      --ink-faint: #707a84; --line: #2a323c; --line-soft: #1f2731;
+      --steel: #7fb1cd; --steel-strong: #a9cee3; --steel-soft: #182833;
+      --amber: #dca158; --amber-strong: #efc07f; --amber-soft: #2a2315; --amber-line: #4a3a1e;
+      --green: #7bc19c; --green-soft: #16261e; --green-line: #285138;
+      --red: #d98484; --red-strong: #eeb0b0; --red-soft: #2b1a1a; --red-line: #4d2828;
+      --code-bg: #1a2029;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10141a; --paper-raised: #161b23; --ink: #e7ecf1; --ink-soft: #a7b1bb;
+    --ink-faint: #707a84; --line: #2a323c; --line-soft: #1f2731;
+    --steel: #7fb1cd; --steel-strong: #a9cee3; --steel-soft: #182833;
+    --amber: #dca158; --amber-strong: #efc07f; --amber-soft: #2a2315; --amber-line: #4a3a1e;
+    --green: #7bc19c; --green-soft: #16261e; --green-line: #285138;
+    --red: #d98484; --red-strong: #eeb0b0; --red-soft: #2b1a1a; --red-line: #4d2828;
+    --code-bg: #1a2029;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    font-size: 16px; line-height: 1.55;
+    padding: clamp(24px, 5vw, 56px) 20px 80px;
+  }
+  main { max-width: 920px; margin: 0 auto; }
+  .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+  a { color: var(--steel-strong); }
+
+  header { display: flex; flex-direction: column; gap: 10px; padding-bottom: 22px; margin-bottom: 22px; border-bottom: 1px solid var(--line); }
+  .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-faint); }
+  h1 { font-size: clamp(1.6rem, 4vw, 2.1rem); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+  .lede { color: var(--ink-soft); margin: 4px 0 0; max-width: 64ch; }
+
+  .tally {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px;
+    overflow: hidden; margin-top: 16px;
+  }
+  .tally div { background: var(--paper-raised); padding: 10px 13px; }
+  .tally .n { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .tally .l { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+  .tally .n.crit { color: var(--red); }
+  .tally .n.warn { color: var(--amber); }
+  .tally .n.ok { color: var(--green); }
+
+  .risk-banner {
+    margin-top: 20px; background: var(--red-soft); border: 1px solid var(--red-line);
+    border-left: 4px solid var(--red); border-radius: 10px; padding: 14px 18px;
+  }
+  .risk-banner.clear { background: var(--green-soft); border-color: var(--green-line); border-left-color: var(--green); }
+  .risk-banner h2 {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--red-strong); margin: 0 0 8px;
+  }
+  .risk-banner.clear h2 { color: var(--green); }
+  .risk-item { font-size: 0.9rem; margin-bottom: 8px; }
+  .risk-item:last-child { margin-bottom: 0; }
+  .risk-item b { font-family: 'IBM Plex Mono', monospace; color: var(--ink); }
+  .risk-item .where { color: var(--ink-soft); display: block; margin-top: 2px; }
+  .risk-banner .clear-text { margin: 0; font-size: 0.9rem; color: var(--ink-soft); }
+
+  section.team { margin-top: 32px; }
+  .team-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .team-head h2 { font-size: 1.05rem; margin: 0; }
+  .team-head .lead-tag { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: var(--steel-strong); background: var(--steel-soft); border-radius: 5px; padding: 2px 7px; }
+  .team-head .hint { font-size: 0.82rem; color: var(--ink-faint); margin-left: auto; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; background: var(--paper-raised); font-size: 0.87rem; min-width: 680px; }
+  thead th {
+    text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 0.64rem; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 500; padding: 10px 12px;
+    border-bottom: 1px solid var(--line); background: var(--line-soft); white-space: nowrap;
+  }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; color: var(--ink-soft); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.sid { font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--ink); white-space: nowrap; }
+  td.lane { color: var(--ink); min-width: 180px; }
+  td.wait { font-size: 0.85rem; }
+  td.wait.flagged { color: var(--amber-strong); font-weight: 500; }
+
+  .chip {
+    display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem; font-weight: 600;
+    letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; white-space: nowrap;
+  }
+  .chip.done { background: var(--green-soft); color: var(--green); }
+  .chip.in-flight { background: var(--steel-soft); color: var(--steel-strong); }
+  .chip.blocked { background: var(--red-soft); color: var(--red); }
+  .chip.parked { background: var(--amber-soft); color: var(--amber-strong); }
+
+  .stale { font-size: 0.72rem; color: var(--ink-faint); font-style: italic; }
+
+  .empty { padding: 26px 20px; text-align: center; color: var(--ink-faint); font-size: 0.9rem; border: 1px dashed var(--line); border-radius: 12px; margin-top: 20px; }
+
+  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 0.8rem; color: var(--ink-faint); }
+  footer code { font-family: 'IBM Plex Mono', monospace; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  footer h4 { font-size: 0.78rem; color: var(--ink); margin: 16px 0 4px; }
+  footer h4:first-child { margin-top: 0; }
+
+  @media (max-width: 480px) {
+    .team-head .hint { margin-left: 0; }
+  }
+
+  /* ---- pack nav ---- */
+  nav.pack {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px;
+  }
+  nav.pack a {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.74rem; text-decoration: none;
+    color: var(--ink-soft); background: var(--paper-raised); border: 1px solid var(--line);
+    border-radius: 100px; padding: 5px 12px; display: inline-flex; align-items: center; gap: 5px;
+  }
+  nav.pack a:hover { border-color: var(--steel); color: var(--steel-strong); }
+  nav.pack a.current { color: var(--steel-strong); background: var(--steel-soft); border-color: var(--steel); font-weight: 600; }
+
+  /* ---- freshness ---- */
+  .freshness { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; margin-top: 10px; }
+  .freshness .ok { color: var(--green); }
+  .freshness .warn { color: var(--amber); }
+  .freshness .crit { color: var(--red); }
+  tr.stale-row td { opacity: 0.6; }
+  .age-tag { font-size: 0.72rem; }
+  .age-tag.warn { color: var(--amber-strong); }
+  .age-tag.crit { color: var(--red); font-weight: 600; }
+
+  /* ---- panels ---- */
+  section.panel { margin-top: 34px; }
+  .panel-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .panel-head h2 { font-size: 1.05rem; margin: 0; }
+  .panel-head .hint { font-size: 0.82rem; color: var(--ink-faint); margin-left: auto; }
+
+  .tier-strip { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .tier-chip {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; background: var(--paper-raised);
+    border: 1px solid var(--line); border-radius: 7px; padding: 5px 10px;
+  }
+  .tier-chip b { color: var(--ink); }
+
+  .queue-entry, .blocked-entry, .health-entry {
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 15px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 10px;
+  }
+  .queue-entry:last-child, .blocked-entry:last-child, .health-entry:last-child { margin-bottom: 0; }
+  .queue-entry.excluded, .queue-entry.blocked { border-left: 3px solid var(--red); }
+  .queue-entry.depends { border-left: 3px solid var(--amber); }
+  .entry-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .entry-title { font-weight: 600; font-size: 0.92rem; }
+  .entry-title .repo { font-family: 'IBM Plex Mono', monospace; font-weight: 400; color: var(--ink-faint); font-size: 0.8rem; }
+  .entry-detail { font-size: 0.85rem; color: var(--ink-soft); }
+  .entry-meta { font-size: 0.78rem; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; }
+
+  .health-entry .status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .health-entry.ok .status-dot { background: var(--green); }
+  .health-entry.warn .status-dot { background: var(--amber); }
+  .health-entry.crit .status-dot { background: var(--red); }
+
+  .waited { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; color: var(--amber-strong); }
+
+  /* A change perceptible from across a room, not just correct in the DOM. */
+  @keyframes panel-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 transparent; }
+    15%, 45%, 75% { box-shadow: 0 0 0 4px var(--steel); }
+    30%, 60%, 90% { box-shadow: 0 0 0 0 transparent; }
+  }
+  .panel-flash { animation: panel-pulse 2.4s ease-in-out 1; border-radius: 12px; }
+  @media (prefers-reduced-motion: reduce) { .panel-flash { animation: none; outline: 3px solid var(--steel); } }
+
+  /* ---- wallboard / display mode (?wallboard=1), for a fixed second-monitor view ---- */
+  body.wallboard { font-size: 20px; }
+  body.wallboard main { max-width: none; display: flex; flex-direction: column; padding: 0 32px; }
+  body.wallboard nav.pack { order: 1; font-size: 0.9rem; opacity: 0.7; }
+  body.wallboard header { order: 2; padding-bottom: 14px; margin-bottom: 14px; }
+  body.wallboard header .lede { display: none; } /* explanatory copy, not needed at a glance */
+  body.wallboard h1 { font-size: 2.1rem; }
+  body.wallboard #winddown { order: 3; }
+  body.wallboard #risk { order: 4; }
+  body.wallboard .risk-banner h2 { font-size: 1.1rem; }
+  body.wallboard .risk-item { font-size: 1.15rem; }
+  body.wallboard #panel-blocked { order: 5; }
+  body.wallboard #panel-blocked .panel-head h2 { font-size: 1.4rem; }
+  body.wallboard .blocked-entry { font-size: 1.05rem; padding: 16px 20px; }
+  body.wallboard .blocked-entry .waited { font-size: 0.95rem; }
+  body.wallboard #teams { order: 6; }
+  body.wallboard .team-head h2 { font-size: 1.1rem; }
+  body.wallboard table { font-size: 1rem; }
+  body.wallboard .chip { font-size: 0.8rem; padding: 4px 9px; }
+  /* Everything else (goals/usage/costs/queue/health/prs) still present, still live,
+     just visually quieter -- detail worth having but not the loudest thing on the wall. */
+  body.wallboard #panel-goals,
+  body.wallboard #panel-usage,
+  body.wallboard #panel-costs,
+  body.wallboard #panel-queue,
+  body.wallboard #panel-health,
+  body.wallboard #panel-prs { order: 7; font-size: 0.82rem; opacity: 0.88; }
+  body.wallboard #panel-goals .panel-head h2,
+  body.wallboard #panel-usage .panel-head h2,
+  body.wallboard #panel-costs .panel-head h2,
+  body.wallboard #panel-queue .panel-head h2,
+  body.wallboard #panel-health .panel-head h2,
+  body.wallboard #panel-prs .panel-head h2 { font-size: 1rem; }
+  body.wallboard footer { display: none; } /* the write-contract reference doc, not for glancing */
+  body.wallboard .freshness { font-size: 1rem; }
+
+  .winddown-banner {
+    background: var(--paper-raised); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 14px 18px; margin-bottom: 20px;
+  }
+  .winddown-banner .wd-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .winddown-banner h2 { font-size: 0.95rem; margin: 0; }
+  .winddown-banner .wd-count { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--ink-soft); }
+  .winddown-bar { height: 8px; background: var(--red-soft); border-radius: 4px; overflow: hidden; }
+  .winddown-bar i { display: block; height: 100%; background: var(--green); }
+  .winddown-teams { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; font-size: 0.85rem; color: var(--ink-soft); }
+  .winddown-teams b { color: var(--ink); }
+  .winddown-list { margin-top: 10px; font-size: 0.82rem; color: var(--ink-faint); }
+</style>
+
+<main>
+  <nav class="pack">
+    <a class="current">🛰️ Fleet Status</a>
+    <a href="https://claude.ai/artifact/1fMqNA1zdQKsq1FDEFvyzf">🗳️ Decision Queue</a>
+    <a href="https://claude.ai/artifact/U23uudrKWTT1RJ8rrews4N">🗂️ Ops Roster</a>
+  </nav>
+
+  <header>
+    <span class="eyebrow">AEGIS · Fleet → Owner</span>
+    <h1>Ops Fleet Status</h1>
+    <p class="lede">Live, not a point-in-time report — each session writes its own row directly, no
+      relay through the PM. Sibling to the <a href="https://claude.ai/artifact/1fMqNA1zdQKsq1FDEFvyzf">Ops
+      Decision Queue</a>: that page is where you answer things, this one is what's actually running.</p>
+    <div class="tally" id="tally"></div>
+    <div class="freshness" id="freshness"></div>
+  </header>
+
+  <div id="winddown"></div>
+  <div id="risk"></div>
+  <div id="teams"></div>
+
+  <section class="panel" id="panel-goals"></section>
+  <section class="panel" id="panel-usage"></section>
+  <section class="panel" id="panel-costs"></section>
+  <section class="panel" id="panel-queue"></section>
+  <section class="panel" id="panel-blocked"></section>
+  <section class="panel" id="panel-health"></section>
+  <section class="panel" id="panel-prs"></section>
+
+  <footer>
+    <h4>liveness, honestly, per panel (2026-09-16)</h4>
+    <b>Genuinely live</b> (subscribed via <code>onSnapshot</code>, updates the instant any session
+    writes, no polling): sessions/teams, the risk banner, the wind-down banner, goals/tasks,
+    blocked, health, costs, the merge queue and open-PRs panels. All of them will reflect a write
+    within about a second of it happening — the mechanism is real.<br><br>
+    <b>What "live" does and doesn't mean here:</b> the transport is live for every panel above, but
+    several of them have no session continuously writing to them — they update instantly
+    <i>when</i> someone writes, but nothing writes on a timer. Usage and Cost Inventory say this
+    explicitly in their own panels now (point-in-time facts, not live meters) rather than implying
+    a freshness they don't have.<br><br>
+    <b>Confirmed stale right now:</b> the merge-queue and open-PRs panels were seeded from one
+    static sweep and haven't been confirmed as under active write since — they carry their own
+    age-based warning banner rather than looking current by default.<br><br>
+    <b>What breaks as the fleet consolidates to 8 seats:</b> nothing about the <code>sessions</code>
+    panel itself — any active session can still write its own doc regardless of headcount. What's
+    genuinely at risk: panels whose only writer is a single named session (the merge queue depends
+    entirely on github-8e; if that seat doesn't survive consolidation, that panel freezes with no
+    replacement writer, silently, unless someone either keeps writing it or the page is told to
+    flag it). This page does not currently detect "my last writer stopped existing" on its own —
+    that would need each panel's writer to be tracked explicitly, which isn't built. Treat any
+    single-writer panel as at risk during the transition and verify by hand rather than trusting
+    the "live" label alone until that's addressed.<br><br>
+    <b>Change signal:</b> a panel whose underlying data actually changed pulses once
+    (a brief colored glow around its border, ~2.5s) so a change landing while you're looking at the
+    other monitor is still noticeable when you look back — not just correct in the DOM. No pulse
+    fires on first load, only on a real change after that.<br><br>
+    <b>Display mode:</b> append <code>?wallboard=1</code> to this page's URL (or use the display-mode
+    link in the top nav) for a large-type, distance-readable layout — same live data, re-laid-out,
+    nothing hidden except this reference footer and the launcher/context copy. A companion launcher
+    script opens it that way on a second monitor without any terminal step.
+
+    <h4>sessions</h4>
+    Each session keeps its status current by writing its own document directly:
+    <code>db.doc('sessions/&lt;session-name&gt;').set({ session, team, lane, state, committed,
+    uncommitted, waitingOn, nextStep, updatedAt })</code> — <code>state</code> is one of
+    <code>done</code> / <code>in-flight</code> / <code>blocked</code> / <code>parked</code>,
+    <code>team</code> one of <code>Team A</code> / <code>Team B</code> / <code>Independent</code>.
+    Leave <code>uncommitted</code> empty when there's nothing at risk. A row past ~30 minutes old
+    dims and flags itself stale automatically — that's read from <code>updatedAt</code>, not
+    self-reported, so it can't go silently wrong the way an unreported instruction did tonight.
+    When a session is stood down as part of the fleet's consolidation, set
+    <code>woundDown: true</code> and <code>woundDownAt</code> on its own doc rather than deleting
+    it — the wind-down banner above reads real per-session state, not an assumption about which
+    team goes away.
+
+    <h4>queue (github-8e writes this)</h4>
+    <code>db.doc('queue/&lt;repo&gt;-&lt;pr&gt;').set({ repo, pr, tier, qcVerdict, qcSummary,
+    authorSession, mergeMethod, dependsOn: [], excluded: false, excludedReason, liveWarning,
+    updatedAt })</code> — omit <code>dependsOn</code>/<code>liveWarning</code> when not applicable;
+    set <code>excluded: true</code> with a reason for anything held out of the queue entirely.
+
+    <h4>blocked (anyone can write; cross-link, don't duplicate)</h4>
+    <code>db.doc('blocked/&lt;slug&gt;').set({ title, source, waitingSince, description,
+    decisionQueueUrl, updatedAt })</code> — if the item already has a card on the Decision Queue,
+    link it via <code>decisionQueueUrl</code> instead of restating it here.
+
+    <h4>health (any session can update its own topic)</h4>
+    <code>db.doc('health/&lt;topic&gt;').set({ topic, status, detail, updatedAt })</code> —
+    <code>status</code> is one of <code>ok</code> / <code>warn</code> / <code>crit</code>. Read this
+    before trusting a PR's green or red checks tonight — several are currently meaningless due to
+    known runner-infra gaps, noted here rather than rediscovered per-PR.
+
+    <h4>prs (any session can refresh its repo's entries)</h4>
+    <code>db.doc('prs/&lt;repo&gt;-&lt;pr&gt;').set({ repo, pr, title, qcState, url, updatedAt })</code>
+    — <code>qcState</code> is one of <code>pending</code> / <code>pass</code> / <code>fail</code> /
+    <code>n/a</code>.
+
+    <h4>goals + tasks (the 93-task work tree, individually tracked)</h4>
+    <code>goals/&lt;phase&gt;</code> holds phase metadata only:
+    <code>{ phase, name, exit, updatedAt }</code>. Each of the 93 tasks is its OWN document —
+    <code>db.doc('tasks/&lt;id&gt;').set({ id, phase, title, owner, size, hold, deps: [], note,
+    status, updatedAt })</code> — so any session can update one task's status without touching the
+    other 92. <code>owner</code> is <code>you</code> / <code>agent</code> / <code>both</code>;
+    <code>status</code> is <code>done</code> or <code>unknown</code> — never invent
+    <code>in-progress</code>/<code>blocked</code>/etc. unless the source plan itself records it;
+    absence of evidence stays <code>unknown</code>, visibly, not a guessed "not started."
+
+    <h4>costs (any session can update its own system's row)</h4>
+    <code>db.doc('costs/&lt;slug&gt;').set({ system, bucket, monthlyCost, measured, source, notes,
+    updatedAt })</code> — <code>bucket</code> is one of <code>subscription</code> /
+    <code>measured</code> / <code>unreachable</code> / <code>not-built</code>;
+    <code>monthlyCost</code> is a number in dollars or <code>null</code> if genuinely unknown — never
+    a guess presented as real; <code>measured: false</code> with a number means an estimate, labeled
+    as one. Real API figures only — never derive a dollar amount from transcript token counts (the
+    4.7× over-report problem applies to money the same as it does to the usage panel).
+  </footer>
+</main>
+
+<script>
+(function () {
+  const tally = document.getElementById('tally');
+  const risk = document.getElementById('risk');
+  const teams = document.getElementById('teams');
+  const freshnessEl = document.getElementById('freshness');
+  const panelQueue = document.getElementById('panel-queue');
+  const panelBlocked = document.getElementById('panel-blocked');
+  const panelHealth = document.getElementById('panel-health');
+  const panelPrs = document.getElementById('panel-prs');
+  const panelGoals = document.getElementById('panel-goals');
+  const panelUsage = document.getElementById('panel-usage');
+  const panelCosts = document.getElementById('panel-costs');
+  let db = null;
+  let docs = [];
+  let queueDocs = [];
+  let blockedDocs = [];
+  let healthDocs = [];
+  let prDocs = [];
+  let goalDocs = [];
+  let taskDocs = [];
+  let costDocs = [];
+  const prevSignatures = {};
+  function flashIfChanged(key, el, signature) {
+    if (!el) return;
+    const prev = prevSignatures[key];
+    prevSignatures[key] = signature;
+    if (prev === undefined) return; // first render, nothing to compare against yet
+    if (prev === signature) return; // no real change
+    el.classList.remove('panel-flash');
+    void el.offsetWidth; // restart the animation if it's mid-run
+    el.classList.add('panel-flash');
+  }
+  let usageDoc = null;
+
+  function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function ageMinutes(iso) {
+    if (!iso) return Infinity;
+    const ms = Date.now() - new Date(iso).getTime();
+    if (!isFinite(ms) || ms < 0) return 0;
+    return ms / 60000;
+  }
+
+  function relTime(iso) {
+    if (!iso) return 'never';
+    const m = ageMinutes(iso);
+    if (!isFinite(m)) return 'never';
+    if (m < 1) return 'just now';
+    if (m < 60) return Math.round(m) + 'm ago';
+    const h = m / 60;
+    if (h < 48) return Math.round(h) + 'h ago';
+    return Math.round(h / 24) + 'd ago';
+  }
+
+  // Liveness of the transport (onSnapshot) is not the same as freshness of
+  // the content -- a session that stops updating its doc looks identical to
+  // one that's fine, unless age is shown and old rows visibly degrade.
+  function staleClass(iso) {
+    const m = ageMinutes(iso);
+    if (m >= 120) return 'crit';
+    if (m >= 30) return 'warn';
+    return '';
+  }
+
+  function renderFreshness() {
+    if (!docs.length) { freshnessEl.textContent = ''; return; }
+    const oldest = docs.reduce((a, b) => ageMinutes(a.updatedAt) > ageMinutes(b.updatedAt) ? a : b);
+    const cls = staleClass(oldest.updatedAt) || 'ok';
+    const label = cls === 'crit' ? 'stale' : cls === 'warn' ? 'aging' : 'current';
+    freshnessEl.innerHTML = `<span class="${cls}">oldest row: ${esc(oldest.session)}, ${esc(relTime(oldest.updatedAt))} (${label})</span>`;
+  }
+
+  const SEVERITY = { blocked: 0, parked: 1, 'in-flight': 2, done: 3 };
+  const TEAM_ORDER = ['Team A', 'Team B', 'Independent'];
+
+  // 2026-09-16: Jeremy consolidating the fleet to one team -- 1 PM + 6 workers
+  // + 1 peer-review/merge seat. Not a hardcoded team-A-vs-B split: any session
+  // can mark its own doc `woundDown: true` when it's stood down, so this
+  // reads real data, not an assumption about which team goes away.
+  const TARGET_SEATS = 8;
+
+  function renderWinddown() {
+    const el = document.getElementById('winddown');
+    if (!docs.length) { el.innerHTML = ''; return; }
+    const active = docs.filter(d => !d.woundDown);
+    const wound = docs.filter(d => d.woundDown);
+    const needToWindDown = Math.max(0, docs.length - TARGET_SEATS);
+    const pct = needToWindDown === 0 ? 100 : Math.min(100, Math.round(wound.length / needToWindDown * 100));
+    const byTeam = {};
+    active.forEach(d => { const t = TEAM_ORDER.includes(d.team) ? d.team : 'Independent'; byTeam[t] = (byTeam[t] || 0) + 1; });
+
+    let html = `<div class="winddown-banner">
+      <div class="wd-head">
+        <h2>Fleet consolidation — ${docs.length} reporting → ${TARGET_SEATS}-seat target</h2>
+        <span class="wd-count">${active.length} active · ${wound.length} wound down</span>
+      </div>
+      <div class="winddown-bar"><i style="width:${pct}%"></i></div>
+      <div class="winddown-teams">${Object.keys(byTeam).sort().map(t => `<span><b>${esc(byTeam[t])}</b> active — ${esc(t)}</span>`).join('')}</div>`;
+    if (wound.length) {
+      html += `<div class="winddown-list">Wound down: ${wound.map(d => esc(d.session) + (d.woundDownAt ? ' (' + esc(relTime(d.woundDownAt)) + ')' : '')).join(', ')}</div>`;
+    }
+    html += `</div>`;
+    el.innerHTML = html;
+    flashIfChanged('winddown', el, active.length + '|' + wound.length + '|' + wound.map(d => d.session).sort().join(','));
+  }
+
+  function render() {
+    renderFreshness();
+    renderWinddown();
+    const byState = { done: 0, 'in-flight': 0, blocked: 0, parked: 0 };
+    docs.forEach(d => { if (byState[d.state] !== undefined) byState[d.state]++; });
+    const atRisk = docs.filter(d => (d.uncommitted || '').trim().length > 0);
+
+    tally.innerHTML = `
+      <div><span class="n ok">${byState.done}</span><span class="l">done</span></div>
+      <div><span class="n">${byState['in-flight']}</span><span class="l">in flight</span></div>
+      <div><span class="n warn">${byState.parked}</span><span class="l">parked</span></div>
+      <div><span class="n crit">${byState.blocked}</span><span class="l">blocked</span></div>
+      <div><span class="n ${atRisk.length ? 'crit' : 'ok'}">${atRisk.length}</span><span class="l">at risk</span></div>
+    `;
+
+    if (!docs.length) {
+      risk.innerHTML = '';
+      teams.innerHTML = '<div class="empty">No sessions reporting yet. Each session writes its own row here as it starts or its state changes.</div>';
+      return;
+    }
+
+    if (atRisk.length) {
+      risk.innerHTML = `
+        <div class="risk-banner">
+          <h2>Would be lost right now — ${atRisk.length} session${atRisk.length > 1 ? 's' : ''}</h2>
+          ${atRisk.map(d => `
+            <div class="risk-item">
+              <b>${esc(d.session)}</b> — ${esc(d.uncommitted)}
+              <span class="where">${d.waitingOn ? 'waiting on: ' + esc(d.waitingOn) : ''}</span>
+            </div>
+          `).join('')}
+        </div>`;
+    } else {
+      risk.innerHTML = `
+        <div class="risk-banner clear">
+          <h2>Would be lost right now</h2>
+          <p class="clear-text">Nothing. Every reporting session has its work committed and pushed, or
+            written to a durable file outside session context.</p>
+        </div>`;
+    }
+
+    const byTeam = {};
+    docs.forEach(d => {
+      const t = TEAM_ORDER.includes(d.team) ? d.team : 'Independent';
+      (byTeam[t] = byTeam[t] || []).push(d);
+    });
+
+    teams.innerHTML = TEAM_ORDER.filter(t => byTeam[t] && byTeam[t].length).map(t => {
+      const rows = byTeam[t].slice().sort((a, b) => {
+        const sa = SEVERITY[a.state] ?? 4, sb = SEVERITY[b.state] ?? 4;
+        return sa !== sb ? sa - sb : (a.session || '').localeCompare(b.session || '');
+      });
+      return `
+      <section class="team">
+        <div class="team-head">
+          <h2><span class="lead-tag">${esc(t)}</span></h2>
+          <span class="hint">${rows.length} session${rows.length > 1 ? 's' : ''}</span>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Session</th><th>Lane</th><th>State</th><th>Committed</th><th>Waiting on</th><th>Next step</th></tr></thead>
+          <tbody>
+            ${rows.map(d => `
+              <tr class="${staleClass(d.updatedAt) === 'crit' ? 'stale-row' : ''}">
+                <td class="sid">${esc(d.session)}${d.role ? '<br><span class="stale">' + esc(d.role) + '</span>' : ''}</td>
+                <td class="lane"><b>${esc(d.lane || '—')}</b></td>
+                <td><span class="chip ${esc(d.state || '')}">${esc(d.state || '?')}</span><br><span class="age-tag ${staleClass(d.updatedAt)}">${esc(relTime(d.updatedAt))}${staleClass(d.updatedAt) === 'crit' ? ' — stale' : ''}</span></td>
+                <td class="out">${esc(d.committed || '—')}</td>
+                <td class="wait${(d.state === 'blocked' || d.state === 'parked') && d.waitingOn ? ' flagged' : ''}">${esc(d.waitingOn || 'nothing')}</td>
+                <td class="out">${esc(d.nextStep || '—')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table></div>
+      </section>`;
+    }).join('');
+    const teamsSignature = docs.map(d => [d.session, d.state, d.committed, d.uncommitted, d.woundDown].join(':')).sort().join('|');
+    flashIfChanged('teams', teams, teamsSignature);
+    flashIfChanged('risk', risk, docs.filter(d => (d.uncommitted||'').trim()).map(d => d.session).sort().join(','));
+  }
+
+  function renderQueue() {
+    if (!queueDocs.length) {
+      panelQueue.innerHTML = `<div class="panel-head"><h2>Merge queue</h2></div><div class="empty">Nothing queued.</div>`;
+      return;
+    }
+    const active = queueDocs.filter(d => !d.excluded);
+    const excluded = queueDocs.filter(d => d.excluded);
+    const byTier = {};
+    active.forEach(d => { const t = d.tier ?? '?'; byTier[t] = (byTier[t] || 0) + 1; });
+    const tierStrip = Object.keys(byTier).sort().map(t => `<span class="tier-chip">tier <b>${esc(t)}</b> × ${byTier[t]}</span>`).join('');
+
+    const oldest = queueDocs.reduce((a, b) => ageMinutes(a.updatedAt) > ageMinutes(b.updatedAt) ? a : b);
+    const qStale = staleClass(oldest.updatedAt);
+    let html = `<div class="panel-head"><h2>Merge queue</h2><span class="hint">${active.length} queued${excluded.length ? ', ' + excluded.length + ' excluded' : ''} · read-only, tracks github-8e's queue</span></div>`;
+    if (qStale) {
+      html += `<p class="entry-meta ${qStale === 'crit' ? '' : ''}" style="color:${qStale === 'crit' ? 'var(--red)' : 'var(--amber-strong)'};margin-bottom:10px">${qStale === 'crit' ? '⚠ Stale' : 'Aging'} — last updated ${esc(relTime(oldest.updatedAt))}. This was seeded from a one-time sweep; treat entries as a snapshot, not confirmed current, until github-8e is writing here directly.</p>`;
+    }
+    html += `<div class="tier-strip">${tierStrip}</div>`;
+    html += active.slice().sort((a,b) => (a.tier ?? 9) - (b.tier ?? 9) || (a.repo||'').localeCompare(b.repo||'')).map(d => `
+      <div class="queue-entry${d.dependsOn && d.dependsOn.length ? ' depends' : ''}${d.liveWarning ? ' blocked' : ''}">
+        <div class="entry-top">
+          <span class="entry-title">${esc(d.repo)} <span class="repo">#${esc(d.pr)}</span></span>
+          <span class="tier-chip">tier ${esc(d.tier ?? '?')}</span>
+        </div>
+        <div class="entry-detail">${esc(d.qcSummary || '')}</div>
+        ${d.dependsOn && d.dependsOn.length ? `<div class="entry-meta">depends on: ${d.dependsOn.map(esc).join(', ')}</div>` : ''}
+        ${d.liveWarning ? `<div class="entry-meta" style="color:var(--red)">${esc(d.liveWarning)}</div>` : ''}
+        <div class="entry-meta">QC: ${esc(d.qcVerdict || '?')} · author: ${esc(d.authorSession || 'unknown')}</div>
+      </div>`).join('');
+
+    if (excluded.length) {
+      html += `<div style="margin-top:16px"><div class="panel-head" style="margin-bottom:8px"><h2 style="font-size:0.9rem">Excluded entirely</h2></div>`;
+      html += excluded.map(d => `
+        <div class="queue-entry excluded">
+          <div class="entry-top"><span class="entry-title">${esc(d.repo)} <span class="repo">#${esc(d.pr)}</span></span></div>
+          <div class="entry-detail">${esc(d.excludedReason || 'excluded')}</div>
+        </div>`).join('');
+      html += `</div>`;
+    }
+    panelQueue.innerHTML = html;
+    flashIfChanged('queue', panelQueue, queueDocs.map(d => [d.id, d.qcVerdict, d.excluded].join(':')).sort().join('|'));
+  }
+
+  function renderBlocked() {
+    if (!blockedDocs.length) {
+      panelBlocked.innerHTML = `<div class="panel-head"><h2>Waiting on you</h2></div><div class="empty">Nothing waiting on you right now.</div>`;
+      return;
+    }
+    const sorted = blockedDocs.slice().sort((a,b) => ageMinutes(b.waitingSince) - ageMinutes(a.waitingSince));
+    let html = `<div class="panel-head"><h2>Waiting on you</h2><span class="hint">${sorted.length} item${sorted.length > 1 ? 's' : ''}</span></div>`;
+    html += sorted.map(d => `
+      <div class="blocked-entry">
+        <div class="entry-top">
+          <span class="entry-title">${esc(d.title)}</span>
+          <span class="waited">waiting ${esc(relTime(d.waitingSince))}</span>
+        </div>
+        <div class="entry-detail">${esc(d.description || '')}</div>
+        <div class="entry-meta">from: ${esc(d.source || 'unknown')}${d.decisionQueueUrl ? ` · <a href="${esc(d.decisionQueueUrl)}">answer in the Decision Queue →</a>` : ''}</div>
+      </div>`).join('');
+    panelBlocked.innerHTML = html;
+    flashIfChanged('blocked', panelBlocked, blockedDocs.map(d => d.id).sort().join('|'));
+  }
+
+  function renderHealth() {
+    if (!healthDocs.length) {
+      panelHealth.innerHTML = `<div class="panel-head"><h2>Estate health</h2></div><div class="empty">No health topics reported yet.</div>`;
+      return;
+    }
+    const order = { crit: 0, warn: 1, ok: 2 };
+    const sorted = healthDocs.slice().sort((a,b) => (order[a.status] ?? 3) - (order[b.status] ?? 3));
+    let html = `<div class="panel-head"><h2>Estate health</h2><span class="hint">read this before trusting a PR's green or red check</span></div>`;
+    html += sorted.map(d => `
+      <div class="health-entry ${esc(d.status || '')}">
+        <div class="entry-top">
+          <span class="entry-title"><span class="status-dot"></span>${esc(d.topic)}</span>
+          <span class="entry-meta">${esc(relTime(d.updatedAt))}</span>
+        </div>
+        <div class="entry-detail">${esc(d.detail || '')}</div>
+      </div>`).join('');
+    panelHealth.innerHTML = html;
+    flashIfChanged('health', panelHealth, healthDocs.map(d => [d.id, d.status].join(':')).sort().join('|'));
+  }
+
+  function renderPrs() {
+    if (!prDocs.length) {
+      panelPrs.innerHTML = `<div class="panel-head"><h2>Open PRs by repo</h2></div><div class="empty">No PRs reported yet.</div>`;
+      return;
+    }
+    const byRepo = {};
+    prDocs.forEach(d => { (byRepo[d.repo] = byRepo[d.repo] || []).push(d); });
+    const repos = Object.keys(byRepo).sort();
+    const oldestPr = prDocs.reduce((a, b) => ageMinutes(a.updatedAt) > ageMinutes(b.updatedAt) ? a : b);
+    const prStale = staleClass(oldestPr.updatedAt);
+    let html = `<div class="panel-head"><h2>Open PRs by repo</h2><span class="hint">${prDocs.length} open across ${repos.length} repo${repos.length > 1 ? 's' : ''} (subset that had a QC verdict at sweep time — not the full inventory)</span></div>`;
+    if (prStale) {
+      html += `<p class="entry-meta" style="color:${prStale === 'crit' ? 'var(--red)' : 'var(--amber-strong)'};margin-bottom:10px">${prStale === 'crit' ? '⚠ Stale' : 'Aging'} — from a one-time sweep, last updated ${esc(relTime(oldestPr.updatedAt))}. Merges since then aren't reflected here.</p>`;
+    }
+    html += `<div class="table-wrap"><table><thead><tr><th>Repo</th><th>PR</th><th>Title</th><th>QC</th></tr></thead><tbody>`;
+    repos.forEach(r => {
+      byRepo[r].slice().sort((a,b) => a.pr - b.pr).forEach((d, i) => {
+        html += `<tr>
+          <td class="sid">${i === 0 ? esc(r) : ''}</td>
+          <td class="mono">#${esc(d.pr)}</td>
+          <td class="lane">${d.url ? `<a href="${esc(d.url)}">${esc(d.title || '')}</a>` : esc(d.title || '')}</td>
+          <td><span class="chip ${d.qcState === 'pass' ? 'done' : d.qcState === 'fail' ? 'blocked' : d.qcState === 'pending' ? 'parked' : 'in-flight'}">${esc(d.qcState || 'n/a')}</span></td>
+        </tr>`;
+      });
+    });
+    html += `</tbody></table></div>`;
+    panelPrs.innerHTML = html;
+    flashIfChanged('prs', panelPrs, prDocs.map(d => [d.id, d.qcState].join(':')).sort().join('|'));
+  }
+
+  let goalsFilter = '';
+
+  function renderGoals() {
+    if (!goalDocs.length || !taskDocs.length) {
+      panelGoals.innerHTML = `<div class="panel-head"><h2>Long-term alignment goals</h2></div>
+        <div class="empty">Empty on purpose. The PM's full-estate advisory review is producing a real
+        objective set, dependency structure, and prioritized realignment — this panel seeds from that
+        when it lands, not from a guess in the meantime.</div>`;
+      return;
+    }
+    const phases = goalDocs.slice().sort((a,b) => Number(a.phase) - Number(b.phase));
+    const totalTasks = taskDocs.length;
+    const totalDone = taskDocs.filter(t => t.status === 'done').length;
+    const totalHold = taskDocs.filter(t => t.hold && t.status !== 'done').length;
+    const q = goalsFilter.trim().toLowerCase();
+
+    let html = `<div class="panel-head"><h2>Long-term alignment goals</h2><span class="hint">${totalDone} of ${totalTasks} tasks done · ${totalHold} awaiting your approval/passkey</span></div>`;
+    html += `<p class="entry-detail" style="margin-bottom:10px">From the "Autonomous ops cycle" work tree — all 93 tasks, individually tracked (own document each, in the <span class="mono">tasks</span> collection, not just a phase rollup). Status is only what the plan itself records as done — everything else is <b>unknown</b>, deliberately, not "not started."</p>`;
+    html += `<input type="text" id="goals-filter" placeholder="Filter by task id or title (e.g. 1.9, or &quot;audit log&quot;)" value="${esc(goalsFilter)}" style="width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:0.88rem;padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--paper-raised);color:var(--ink);margin-bottom:14px">`;
+
+    const driftTask = taskDocs.find(t => t.id === '0.9');
+    if (driftTask && !q) {
+      html += `<div class="health-entry warn" style="margin-bottom:14px">
+        <div class="entry-top"><span class="entry-title"><span class="status-dot"></span>Plan-vs-reality drift</span></div>
+        <div class="entry-detail">Task 0.9 ("${esc(driftTask.title)}") is marked done — true, the five ops-* repos
+        exist on disk. But they were never registered in MasterThread's docs/REPOS.md ledger, so the ledger
+        undercounts the real estate. A completed plan task doesn't always mean the org's records caught up.</div>
+      </div>`;
+    }
+
+    html += phases.map(p => {
+      const allTasks = taskDocs.filter(t => t.phase === p.phase).sort((a,b) => a.id.localeCompare(b.id, undefined, {numeric:true}));
+      const tasks = q ? allTasks.filter(t => t.id.toLowerCase().includes(q) || (t.title||'').toLowerCase().includes(q)) : allTasks;
+      if (q && !tasks.length) return '';
+      const done = allTasks.filter(t => t.status === 'done').length;
+      const pct = allTasks.length ? Math.round(done / allTasks.length * 100) : 0;
+      return `
+      <details class="health-entry" style="cursor:default"${q ? ' open' : ''}>
+        <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span class="entry-title">Phase ${esc(p.phase)} — ${esc(p.name)}</span>
+          <span class="entry-meta">${done} / ${allTasks.length}</span>
+        </summary>
+        <div class="entry-detail" style="margin-top:8px"><b>Done when:</b> ${esc(p.exit || '')}</div>
+        <div style="height:5px;background:var(--line-soft);border-radius:3px;margin:8px 0;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--steel)"></div>
+        </div>
+        <table style="width:100%;font-size:0.82rem;border-collapse:collapse;margin-top:6px">
+          <tbody>
+          ${tasks.map(t => {
+            const isDone = t.status === 'done';
+            const isUnknown = !t.status || t.status === 'unknown';
+            const mark = isDone ? '✓' : (isUnknown ? '?' : '○');
+            const color = isDone ? 'var(--green)' : (isUnknown ? 'var(--ink-faint)' : 'var(--amber)');
+            return `
+            <tr style="border-top:1px solid var(--line-soft)">
+              <td style="padding:5px 6px 5px 0;white-space:nowrap;font-family:'IBM Plex Mono',monospace;color:${color}">${mark} ${esc(t.id)}</td>
+              <td style="padding:5px 6px">${esc(t.title)}${t.note ? `<br><span class="entry-meta">${esc(t.note)}</span>` : ''}</td>
+              <td style="padding:5px 6px;white-space:nowrap;font-family:'IBM Plex Mono',monospace;color:var(--ink-faint)">${esc(t.owner)}${t.hold ? ' · <span style="color:var(--amber-strong)">hold</span>' : ''}</td>
+              <td style="padding:5px 0 5px 6px;white-space:nowrap;font-family:'IBM Plex Mono',monospace;color:var(--ink-faint);font-size:0.76rem">${(t.deps||[]).length ? '← ' + t.deps.join(',') : ''}</td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table>
+      </details>`;
+    }).join('');
+    panelGoals.innerHTML = html;
+    const filterInput = document.getElementById('goals-filter');
+    if (filterInput) {
+      filterInput.addEventListener('input', () => { goalsFilter = filterInput.value; renderGoals(); });
+      // Re-focus and restore cursor position after the re-render this listener itself triggers.
+      if (document.activeElement !== filterInput) {
+        const pos = filterInput.value.length;
+        filterInput.focus();
+        filterInput.setSelectionRange(pos, pos);
+      }
+    }
+  }
+
+  function renderUsage() {
+    if (!usageDoc) {
+      panelUsage.innerHTML = `<div class="panel-head"><h2>Usage</h2></div><div class="empty">No reading yet.</div>`;
+      return;
+    }
+    const d = usageDoc;
+    let html = `<div class="panel-head"><h2>Usage</h2><span class="hint">from the usage monitor, not a transcript scrape</span></div>`;
+    html += `<p class="entry-meta" style="color:var(--amber-strong);margin-bottom:10px">Not continuously live: this updates only when a session runs a spot-check, not on a timer. Last checked ${esc(relTime(d.updatedAt))}. No session is currently polling this on a schedule — treat this reading as a point-in-time fact, not a live meter.</p>`;
+    if (d.errorCode) {
+      html += `<div class="empty">Last reading failed (${esc(d.errorCode)}). Not showing a number rather than guessing one.</div>`;
+    } else {
+      html += `<div class="tally">
+        <div><span class="n ${d.fiveHourPct >= 90 ? 'crit' : d.fiveHourPct >= 80 ? 'warn' : 'ok'}">${esc(d.fiveHourPct)}%</span><span class="l">5-hour window</span></div>
+        <div><span class="n ${d.weeklyPct >= 90 ? 'crit' : d.weeklyPct >= 80 ? 'warn' : 'ok'}">${esc(d.weeklyPct)}%</span><span class="l">weekly window</span></div>
+      </div>`;
+    }
+    html += `<p class="entry-meta" style="margin-top:10px">Token-consumption figures derived from transcript scraping are known to over-report by roughly 4.7× in this estate (usage lines repeat across entries and get double-counted) — not shown here for that reason. The two percentages above are read from the usage monitor's own API, not a transcript.</p>`;
+    panelUsage.innerHTML = html;
+  }
+
+  function renderCosts() {
+    if (!costDocs.length) {
+      panelCosts.innerHTML = `<div class="panel-head"><h2>Cost inventory</h2></div><div class="empty">Not seeded yet.</div>`;
+      return;
+    }
+    const bucketOrder = ['subscription', 'measured', 'unreachable', 'not-built'];
+    const bucketLabel = {
+      subscription: 'Already paid — subscription-covered, $0 marginal',
+      measured: 'Metered spend — real measured figures',
+      unreachable: 'Recurring cost — not reachable with current access (manual/estimate only)',
+      'not-built': "Doesn't exist yet — nothing to cost",
+    };
+    const measuredTotal = costDocs.filter(d => d.bucket === 'measured' && typeof d.monthlyCost === 'number').reduce((n, d) => n + d.monthlyCost, 0);
+
+    let html = `<div class="panel-head"><h2>Cost inventory</h2><span class="hint">measured monthly total: $${measuredTotal.toFixed(2)} · everything else labeled, not guessed</span></div>`;
+    html += `<p class="entry-meta" style="color:var(--amber-strong);margin-bottom:10px">Not continuously live: each row updates only when a session checks that system and writes a fresh figure. See the "checked" column per row — this is a set of point-in-time facts, not a live feed.</p>`;
+
+    const ghFlag = costDocs.find(d => d.id === 'github-billing-failure-flag');
+    if (ghFlag) {
+      html += `<div class="health-entry warn" style="margin-bottom:14px">
+        <div class="entry-top"><span class="entry-title"><span class="status-dot"></span>${esc(ghFlag.system)}</span></div>
+        <div class="entry-detail">${esc(ghFlag.notes)}</div>
+      </div>`;
+    }
+    const ciCost = costDocs.find(d => d.id === 'anthropic-ci-review-per-pr');
+    if (ciCost) {
+      html += `<div class="health-entry" style="margin-bottom:14px">
+        <div class="entry-top"><span class="entry-title"><span class="status-dot"></span>${esc(ciCost.system)}</span></div>
+        <div class="entry-detail">${esc(ciCost.notes)}</div>
+      </div>`;
+    }
+
+    bucketOrder.forEach(b => {
+      const rows = costDocs.filter(d => d.bucket === b && d.id !== 'github-billing-failure-flag' && d.id !== 'anthropic-ci-review-per-pr');
+      if (!rows.length) return;
+      html += `<div class="panel-head" style="margin-top:16px;margin-bottom:8px"><h2 style="font-size:0.88rem">${esc(bucketLabel[b] || b)}</h2></div>`;
+      html += `<div class="table-wrap"><table><thead><tr><th>System</th><th>Monthly</th><th>Checked</th><th>Source</th><th>Notes</th></tr></thead><tbody>`;
+      rows.forEach(d => {
+        const costStr = typeof d.monthlyCost === 'number' ? '$' + d.monthlyCost.toFixed(2) : '—';
+        html += `<tr>
+          <td class="sid">${esc(d.system)}</td>
+          <td class="mono">${costStr}${d.measured ? '' : ' <span class="stale">(est.)</span>'}</td>
+          <td class="age-tag ${staleClass(d.updatedAt)}">${esc(relTime(d.updatedAt))}</td>
+          <td class="out" style="font-size:0.78rem">${esc(d.source || '—')}</td>
+          <td class="out" style="font-size:0.78rem">${esc(d.notes || '')}</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+    });
+
+    panelCosts.innerHTML = html;
+    flashIfChanged('costs', panelCosts, costDocs.map(d => [d.id, d.monthlyCost].join(':')).sort().join('|'));
+  }
+
+  function initWallboardMode() {
+    try {
+      const params = new URLSearchParams(location.search);
+      const on = params.get('wallboard') === '1';
+      document.body.classList.toggle('wallboard', on);
+      const navEl = document.querySelector('nav.pack');
+      if (navEl) {
+        const toggle = document.createElement('a');
+        toggle.href = on
+          ? location.pathname + location.search.replace(/[?&]wallboard=1/, '').replace(/^&/, '?')
+          : location.pathname + (location.search ? location.search + '&' : '?') + 'wallboard=1';
+        toggle.textContent = on ? '✖ exit display mode' : '⛶ display mode';
+        navEl.appendChild(toggle);
+      }
+    } catch (e) { /* URL/DOM not available in this view -- fine, default view stands */ }
+  }
+
+  async function boot() {
+    initWallboardMode();
+    try {
+      db = (window.claude && window.claude.use) ? await window.claude.use('db') : null;
+    } catch (e) {
+      db = null;
+    }
+    if (!db) {
+      teams.innerHTML = '<div class="empty">The shared store isn\'t available in this view. Try opening this page directly on claude.ai.</div>';
+      return;
+    }
+    db.collection('sessions').limit(100).onSnapshot(
+      snap => {
+        docs = snap.docs.map(s => ({ id: s.id, ...s.data() }));
+        render();
+      },
+      err => {
+        teams.innerHTML = '<div class="empty">Couldn\'t load fleet status (' + esc(err.code) + '). Reloading usually fixes it.</div>';
+      }
+    );
+    db.collection('queue').limit(200).onSnapshot(snap => { queueDocs = snap.docs.map(s => ({ id: s.id, ...s.data() })); renderQueue(); }, () => {});
+    db.collection('blocked').limit(100).onSnapshot(snap => { blockedDocs = snap.docs.map(s => ({ id: s.id, ...s.data() })); renderBlocked(); }, () => {});
+    db.collection('health').limit(100).onSnapshot(snap => { healthDocs = snap.docs.map(s => ({ id: s.id, ...s.data() })); renderHealth(); }, () => {});
+    db.collection('prs').limit(500).onSnapshot(snap => { prDocs = snap.docs.map(s => ({ id: s.id, ...s.data() })); renderPrs(); }, () => {});
+    db.collection('goals').limit(20).onSnapshot(snap => { goalDocs = snap.docs.map(s => ({ id: s.id, ...s.data() })); renderGoals(); }, () => {});
+    db.collection('tasks').limit(200).onSnapshot(snap => { taskDocs = snap.docs.map(s => ({ id: s.id, ...s.data() })); renderGoals(); }, () => {});
+    db.collection('costs').limit(100).onSnapshot(snap => { costDocs = snap.docs.map(s => ({ id: s.id, ...s.data() })); renderCosts(); }, () => {});
+    db.doc('usage/current').onSnapshot(
+      snap => { usageDoc = snap.exists ? snap.data() : null; renderUsage(); },
+      () => {
+      }
+    );
+  }
+  boot();
+  // Age display must advance even when nothing new is written -- otherwise
+  // "4m ago" silently becomes wrong the moment the clock moves.
+  setInterval(() => { render(); renderGoals(); }, 60000);
+})();
+</script>
+
