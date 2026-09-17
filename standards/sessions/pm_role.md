@@ -37,6 +37,12 @@ The narrowed PM did a one-time intake per workstream and then stepped back. In p
    pauses and rotation.
 6. **Continuity** — its own rotation, and a register good enough that the next PM starts from it.
 
+Staffing and the budget both depend on knowing the fleet's actual membership, which neither
+`ListAgents` (live but with no memory of who arrived or left) nor Fleet Status (self-reported, so
+silent about sessions that never wrote a row) provides on its own. The PM arms the recurring roster
+check in [`fleet_roster_monitor.md`](fleet_roster_monitor.md) at takeover; it reports joins,
+departures and sustained idleness, and only when they change.
+
 ## What the PM does not do
 
 - **Implementation.** No lane work in the PM's own context, including "quick" doc fixes. The PM's
