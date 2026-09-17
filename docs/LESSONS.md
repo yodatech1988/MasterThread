@@ -30,6 +30,20 @@ Each entry:
 
 ## Entries
 
+### A merge card described a PR from an earlier sweep, not from the PR - 2026-09-17
+- **False assumption:** that a path summary taken an hour earlier still described the PRs, and that
+  "canon dossier" meant "documents only".
+- **Rule candidate:** a merge card's file count, file list and "docs only / contains code" line are
+  read with `gh pr view <n> --json files,changedFiles` at filing time, and every path outside
+  `docs/` is named. **A number that moved is a reason to re-read, not a detail:** the filing session
+  saw the additions had grown (569 -> 776 on #111) and did not follow it up.
+- **Where it belongs:** `claude-agents/blocked-work-sweep.md` step 3 (PR #92); sent to the owner of
+  `decision_queue_standard.md` for "Filing a card".
+- **Seen:** 1 - github-b5's cards for site-chernarus #111/#112/#113 said "two new files, documents
+  only". Each had three (a questlines doc was missing), and #113 had six, three of them Python under
+  `tools/quest_grounding/`. The owner merged #111 and #112 on the wrong description before github-ff
+  caught it; MasterThread #82's card also said one file for two.
+
 ### A stacked PR carded before its base is main merges into the side branch - 2026-09-17
 - **False assumption:** that an action card step saying "check the PR page says it merges into
   main; if not, stop" is a safeguard.
