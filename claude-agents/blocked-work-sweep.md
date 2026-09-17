@@ -32,14 +32,14 @@ agent with `claude --print` until **both** of these hold:
    and report, the `overnight-sweep-supervisor.ps1` pattern):
 
    ```
-   ^gh pr (view|list)
-   ^gh api repos/[^ ]+/branches/[^ ]+/protection
-   ^gh api repos/[^ ]+/actions/permissions/workflow
-   ^gh api repos/[^ ]+/actions/runners
-   ^gh repo view
-   ^git worktree list
-   ^git rev-parse
-   ^(ls|dir|test -e|cat)          (click-file logs and path-existence checks only)
+   ^gh pr (view|list)\b
+   ^gh api repos/[^ ]+/branches/[^ ]+/protection\b
+   ^gh api repos/[^ ]+/actions/permissions/workflow\b
+   ^gh api repos/[^ ]+/actions/runners\b
+   ^gh repo view\b
+   ^git worktree list\b
+   ^git rev-parse\b
+   ^(ls|dir|test -e|cat)\b          (click-file logs and path-existence checks only)
    ```
 
    No `gh api` call may carry `-X`/`--method`; every pattern above is a GET.
