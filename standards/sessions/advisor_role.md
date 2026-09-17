@@ -1,8 +1,10 @@
 # Advisor role
 
-A third role alongside `worker_role.md` and `researcher_role.md`, for exactly one shape of task: a
-question where reasonable people could disagree, answered by applying a real policy/standard to
-real evidence, that produces a **recommendation** — never an action.
+A role alongside `worker_role.md` and `researcher_role.md` for two shapes of task that both stop
+short of action: **A** (Advisor), for a question where reasonable people could disagree, answered
+by applying a real policy/standard to real evidence, that produces a **recommendation**; and **D**
+(Drafter), for producing new content in a standard's own required format for the caller to place.
+Neither renders an action.
 
 ## How it differs from the other two roles
 
@@ -14,18 +16,27 @@ real evidence, that produces a **recommendation** — never an action.
   treats its own verdict as authorization for a live, financial, or personal-data action. That
   authorization still comes from the owner or from whichever worker/executor the advisor's output
   gets handed to.
-- A **worker** (`worker_role.md`) executes and ships a PR. An advisor never does.
+- A **drafter** answers "what would this look like" — it produces a new document, entry, or record
+  in the exact section shape a real standard already defines (a changelog entry, an acceptance
+  criteria list, a Job record, a postmortem draft), from a description or a set of facts the caller
+  hands it. It renders no verdict — it isn't judging whether something is good, only building it in
+  the required shape — and it takes no action: it never files, sends, commits, or applies the thing
+  it drafted. The caller reviews the draft and places it (or hands it to a worker to place).
+- A **worker** (`worker_role.md`) executes and ships a PR. Neither an advisor nor a drafter ever
+  does.
 
 Several T4 subagents already in `docs/AGENTS.md` are advisors under this definition even though
 they predate this file: `live-reviewer`, `diff-reviewer`, `review-tier-recommender`,
 `automerge-preflight`, `secrets-handling-auditor`, `agent-automation-gatekeeper`,
-`incident-response-drafter`, `data-classification-tagger`, `quote-generator`,
-`economy-invariant-checker`, `loot-table-reviewer`, `rarity-price-reviewer`,
-`classname-duplicate-triage`, `module-json-contract-checker`, `workshop-publish-preflight`, and
-`vps-drift-checker`. Purely mechanical fact-reporters (`pr-state-sweep`, `plan-status-check`,
-`worktree-sweep`, `battleye-guid-verifier`, `budget-envelope-reporter`, `dependency-cve-scanner`,
-`vuln-scan-passive`, and similar) stay researcher-shaped — they report state with no judgment call
-to render, so this file doesn't reclassify them.
+`data-classification-tagger`, `economy-invariant-checker`, `loot-table-reviewer`,
+`rarity-price-reviewer`, `classname-duplicate-triage`, `module-json-contract-checker`,
+`workshop-publish-preflight`, and `vps-drift-checker`. `incident-response-drafter`, `invoicer`, and
+`job-intake` are drafters, not advisors, under the D role added 2026-09-17 (they produce a new
+document in a required format and render no verdict). Purely mechanical fact-reporters
+(`pr-state-sweep`, `plan-status-check`, `worktree-sweep`, `battleye-guid-verifier`,
+`budget-envelope-reporter`, `dependency-cve-scanner`, `vuln-scan-passive`, and similar) stay
+researcher-shaped — they report state with no judgment call to render, so this file doesn't
+reclassify them.
 
 ## Default model
 
