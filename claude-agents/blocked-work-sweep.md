@@ -104,6 +104,10 @@ If `decisions_dir` is missing or empty, stop and say so. Never sweep from memory
    - A parent PR may carry other PRs: `gh pr list --repo <r> --state merged --base <head-branch>`.
      Branch protection covers default branches only, so a child merged into the parent's branch
      reaches main on the parent's merge. Report children with the parent.
+   - **Never list a PR as an owner click while its base is not the repo's default branch.** Check
+     `baseRefName`. A stacked PR merged from a card lands in the side branch, not main, and looks
+     "MERGED" while its content is nowhere live (ops-infra #17, 2026-09-17: carded with a "check it
+     says main" step, merged 26 seconds after its parent). Report it as "waiting on a retarget".
    - A red check is attributed from its log (`gh run view <id> --log-failed`), never guessed:
      "content" or a named infrastructure cause. If you cannot read the log, say "unattributed".
 4. **Session waits.** From `sessions_dir`, list rows updated in the last 24h whose `waitingOn` is
