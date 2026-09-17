@@ -326,12 +326,18 @@ being re-run to force a clean result.
    confirming the allow-list-primary / deny-list-secondary recommendation above rather than
    contradicting it.
 
-**Not run, per the budget cap**: a clean "allowed command succeeds" run using an actual
-`permissions.allow` entry or `--allowedTools` grant (e.g. `git log -1` with `--allowedTools
-"Bash(git log *)"`) alongside this deny-list — this would confirm the two layers compose as
-described. Flagged as the one still-open empirical check for whoever adopts the recommended
-invocation line for a real agent.
+4. **Allow rule and deny rule together (run later the same day by the coordinating session,
+   github-dc)** — one run, prompt on stdin: `echo "<prompt>" | claude --print --model haiku
+   --output-format json --settings readonly.settings.json --permission-mode dontAsk --allowedTools
+   "Bash(git --version)"`. The prompt directed two Bash calls in order: `git --version`, then `rm
+   ./victim.txt`. Exit 0, 3 turns. Step 1 returned `git version 2.55.0.windows.5`. Step 2 was denied:
+   `permission_denials` holds exactly one entry, `rm ./victim.txt`. `victim.txt` survived. **This
+   confirms the two layers compose as described**: a per-agent allow grant lets the agent do its job
+   under `dontAsk`, and the deny-list still blocks the destructive command in the same session.
+   Practical note: `--allowedTools` is variadic, so a prompt passed as a trailing positional argument
+   is swallowed by it and the CLI exits 1 with "Input must be provided" before any model call. Pass
+   the prompt on stdin, or put it before the flags.
 
-No run hung waiting on a prompt (all three completed with exit 0 well under the 60s timeout), which
+No run hung waiting on a prompt (all four completed with exit 0 well under the 60s timeout), which
 is itself a confirmation that `--permission-prompts none` does what the docs say for a headless
 caller with no host to answer.
