@@ -125,6 +125,91 @@ the actual action the answer called for (an OVH token-scope change, a cost-panel
 happened yet. Don't let a real answer disappear from view before the thing it asked for is actually
 done.
 
+## Auditing the board: telling a real answer from a fabricated one
+
+The rule above — timestamps read from the clock, never typed — already existed on 2026-09-17 and was
+violated on **26 of 126 cards that same day**. A rule that is written down and broken looks exactly
+like a rule that is working, which is the failure mode this whole estate kept hitting that night. So
+this section is not another rule. It is how to **check**, and what the check can and cannot tell you.
+
+**Run this before citing any resolved card as authority for an action.** The board's resolution
+history is weaker evidence than it looks: of 126 cards audited on 2026-09-17, only **58 were cleanly
+resolved**.
+
+### The detector
+
+Pull every card (`action: "list"` on `decisions`, paging until the cursor is exhausted; use `out_dir`
+so large cards do not pass through the conversation), then for each one compute:
+
+1. **The gap** — `resolvedAt` minus `createdAt`.
+2. **The echo** — whether `resolution` is byte-equal to `options[recommendedOption]`, or to any
+   entry in `options`.
+
+Three buckets come out of that:
+
+| Signal | Reading |
+|---|---|
+| Gap under ~60s **and** an exact echo of the card's own recommendation | Near-certain fabrication. A human did not read a long card and answer it in under a minute. |
+| Gap 60-300s with an exact echo | Suspicious. Judge it on the card's substance, not the fingerprint alone. |
+| `resolvedAt` **earlier than** `createdAt` | The timestamps are unusable. `createdAt` was hand-typed; the real creation instant is unknown, so no timing test can run at all. Do not score these either way. |
+
+### What the detector cannot do, and why that matters
+
+**A session transcribing an answer the owner gave verbally produces a record byte-identical to the
+bug.** Card filed, owner answers in chat, session writes his answer in — fast gap, exact option
+match. The stored record cannot distinguish that from a fabrication, and neither can you.
+
+On 2026-09-17 five decision cards were filed at `14:16:13Z` and resolved 23s, 28s, 66s, 72s and 76s
+later, four of them landing on the filer's own recommendation — the strongest fingerprint in the
+store. Their `source` fields say the owner had asked in chat for those questions to go through the
+queue. They were left alone, deliberately: they underpin `merge_authority.md`, and reopening the
+standard that defines a session's own authority on evidence with an innocent explanation would be a
+worse error than leaving it. **Only the owner can settle that class. Ask him; do not adjudicate it.**
+
+So: the echo alone proves nothing. The gap alone proves nothing. What proves it is **a gap no human
+could have used** — a card resolved seconds after it was created, before anyone could have read it.
+
+### The strongest evidence is a burst, not a single card
+
+A single fast resolve is ambiguous. Several, close together, across cards filed by *different
+sessions* on *unrelated subjects*, are not. On 2026-09-17:
+
+```
+22:09:16.127Z  owner claims an unrelated action card   (genuine)
+22:09:27.260Z  card A resolved -> its own recommendation   (filed 21:40, 29 min earlier)
+22:09:51.409Z  card B resolved -> its own recommendation   (filed 22:06, 3 min earlier)
+22:09:55.385Z  card C resolved -> its own recommendation   (filed 22:09:45, 10 s earlier)
+```
+
+Card C is the proof: it was created ten seconds before it was answered. Nobody read it. But note what
+that implies for A and B — they did not resolve at some fixed age, they resolved **at the moment the
+burst fired**, whatever their age. The trigger is a moment, not a property of the card.
+
+**Hypothesis, recorded as a hypothesis and not a conclusion:** an owner interaction on one card may
+resolve other cards that are open at that instant, writing each one's own `recommendedOption` in as
+the answer. If that is what happens, the blast radius of any single owner click is every open card,
+which would also explain the earlier incident where 13 of 21 cards self-resolved. Distinguishing this
+from coincidence needs either the page's code or another observed burst. Do not state it as fact.
+
+### What to do with a hit
+
+- **Never act on it.** A fabricated resolution is the filer's own recommendation wearing the owner's
+  authority — acting on it means acting on your own suggestion laundered into an instruction. One
+  such card on 2026-09-17 recommended archiving three live API credentials; another recommended a
+  destructive, irreversible player-data wipe. Neither was the owner's decision.
+- **Reopen it per the rule above** — `status` in the same write as the `corrections` entry, then
+  re-read to confirm the write landed. Record the exact timestamps and the fabricated text in the
+  note. Do not delete the card and re-file it: the correction trail is the point, because a card whose
+  record claims the owner answered it must not be silently erased.
+- **Reopen only what you can prove.** Where the gap is humanly plausible, surface it to the owner and
+  leave it resolved until he says. A wrong reopen destroys a real answer.
+
+### The cheap structural fix
+
+Most of the 26 unadjudicatable cards exist because `createdAt` was typed rather than read. Every one
+of them is permanently unauditable. Generating `createdAt` at the write — never composing it by hand,
+never rounding it to `:00` — is what keeps the detector usable at all.
+
 ## Correcting a resolved card
 
 Never overwrite a resolved card's `resolution` field in place. If it needs correcting after the
