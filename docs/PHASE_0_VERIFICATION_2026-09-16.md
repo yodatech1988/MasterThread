@@ -1,5 +1,11 @@
 # Phase 0 verification, 2026-09-16
 
+> **Superseded in part by `PHASE_0_VERIFICATION_2026-09-17.md`.** Tasks 0.4 and 0.6 are now
+> live-verified DONE, and 0.7/0.8/0.10 have moved. The Anthropic Console access gap this document
+> records as `CANNOT VERIFY FROM HERE` was closed on 2026-09-17 via the stored Admin API key, not
+> via the Console. Everything below is left exactly as written, as the record of what was knowable
+> that night.
+
 Verification of the "Autonomous ops cycle" work tree's Phase 0 (Lock decisions and accounts, 10
 tasks — [artifact](https://claude.ai/artifact/WZsmRodvsHAbVFj54JghKf)), against live systems where
 any tool access exists, not against the plan's own saved notes. Every Phase 0 task is owner-tier
