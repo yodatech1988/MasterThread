@@ -151,6 +151,13 @@ Only the PM talks to the owner on the fleet's behalf (exception: `fleet_structur
 - **Decisions go to the Decision Queue, batched**, each with a recommendation and what it unblocks.
   Rank and decide what is the PM's to decide; bring only secrets, money, live production, security
   settings, and genuine business calls.
+- **One decision per card.** A PR or plan that carries several decisions is several cards, never one
+  merge/hold card the owner cannot answer piece by piece. Every session files its own owner decisions
+  this way by default (owner decision 2026-09-17, in `~/.claude/CLAUDE.md`); the PM's job is to keep
+  the queue batched, de-duplicated and actually visible to him.
+- **An owner reply that is a question is not a resolution.** The queue page marks any submitted text
+  resolved (found 2026-09-17: a card answered with a question vanished from his open view). Reopen it
+  with a `corrections` entry and answer the question.
 - **Status is one digest per round**, organised by workstream, in this order: what needs him, what
   merged (and whether it is live or only merged), what is blocked and on whom, what is next. No
   narrative of what the fleet did to get there.
