@@ -1,7 +1,7 @@
 # Phase 0 re-verification, 2026-09-17
 
-Supersedes the status column of `PHASE_0_VERIFICATION_2026-09-16.md` for tasks 0.4, 0.6, 0.7, 0.8
-and 0.10. That document's reasoning still stands and is not restated here; what changed is that the
+Supersedes the status column of `PHASE_0_VERIFICATION_2026-09-16.md` for tasks 0.4, 0.5, 0.6, 0.7,
+0.8 and 0.10. That document's reasoning still stands and is not restated here; what changed is that the
 Anthropic Console access gap it repeatedly recorded as `CANNOT VERIFY FROM HERE` **is closed**.
 
 Phase 0 is "Lock decisions and accounts", 10 tasks, from the Autonomous ops cycle work tree
@@ -27,15 +27,15 @@ answers it by another route.
 
 | Task | 09-16 status | 09-17 status | Evidence read live today |
 |---|---|---|---|
+| 0.5 Federation rules, 4 repos | Leaning NOT DONE, gated on a Cloudflare deploy | **DESIGN-ONLY-NOT-DEPLOYED**, and gated on the wrong thing | See below — 0.5 is an Anthropic Console task, not a `gh-federation` one. |
 | 0.4 DayZ Gaming Server workspace exists | CANNOT VERIFY | **DONE** | `GET /v1/organizations/workspaces` returns `DayZ Gaming Server` (`wrkspc_01Ug34xPfn5vuPj6zth5Xf9t`), `archived_at: null`. |
 | 0.6 Create 4 workspaces | NOT DONE | **DONE** | The same call returns all four — `Platform`, `Business`, `Household`, `Finance` — all unarchived. Five workspaces exist in total. |
 | 0.7 Disable API-key creation + spend limits, 5 workspaces | NOT DONE, blocked on 0.6 | **Half impossible, half unblocked and carded** | See below. |
 | 0.8 Hardware key vs TOTP on GitHub | CANNOT VERIFY | **Blocked on a purchase, not on a check** | Owner stated directly on 2026-09-17 that he has not bought the keys yet. |
 | 0.10 Anthropic commercial terms / zero-retention | CANNOT VERIFY | **Reviewed; the ask is carded** | See below. |
 
-0.1, 0.2, 0.3 and 0.9 were live-verified on 2026-09-16 and are not re-checked here. 0.5 (federation
-rules on 4 repos) is unchanged and still needs a verdict on whether the gh-federation Worker/D1
-deploy counts as done — this pass did not settle it.
+0.1, 0.2, 0.3 and 0.9 were live-verified on 2026-09-16 and are not re-checked here. 0.5 now has a
+verdict — see below.
 
 ### 0.6 resolves a contested tick, without a browser
 
@@ -98,6 +98,69 @@ Set against the spend figures above, the channel ZDR would cover currently carri
 traffic, while the sessions that actually touch credentials, the vault and financial repos run on the
 subscription, which ZDR does not reach. The trigger to revisit is not a date but a change in
 behaviour: metered API keys returning to real unattended use.
+
+### 0.5 was being checked against the wrong system, and the verdict is DESIGN-ONLY-NOT-DEPLOYED
+
+The 2026-09-16 pass read 0.5 as being about the **`gh-federation`** repo and gated it on that
+project's Cloudflare Worker/D1 deploy. That was a name collision, and it sent the check in the wrong
+direction twice over.
+
+**What 0.5 actually says**, verbatim from the work tree artifact:
+
+```
+T("0.5","Federation rules for core, services, site-chernarus and website","you","S",0,[],
+  "Already in place, one rule per repo"),
+```
+
+It sits in the artifact's **Accounts** group, between 0.4 and 0.6 — both Anthropic Console tasks —
+and the plan's own decision box reads *"You create the federation issuers, service accounts and
+rules yourself during implementation, from your MFA-protected Console account… No static API keys
+exist anywhere."* So 0.5 means **Anthropic Console workload-identity federation rules**, one per
+repo, so those four repos' Claude workflows authenticate without a stored credential.
+
+`gh-federation` is a different thing entirely: a Cloudflare Worker + D1 pull queue for federated
+**GitHub writes** by bots. Two corrections follow from that:
+
+- **The 09-16 row's "Destination if not done" is wrong**, and has been copied into ~20 worktrees. It
+  sends the owner to `gh-federation`'s PLAN.md for a deploy that had already completed two days
+  before that document was written (Worker live at `gh-federation.jeremybergerai.workers.dev`,
+  `GET /health` → 200, unauthenticated `GET /tasks` → 401, self-test cron still succeeding as of
+  2026-09-17T21:26Z). The real destination is the Anthropic Console.
+- The local `gh-federation` checkout is **5 commits behind origin/master** and still contains
+  `REPLACE_WITH_REAL_D1_DATABASE_ID`. Anyone reading the local copy reaches the same wrong conclusion.
+  Read from `origin/master`.
+
+**The repo side settles the verdict on its own, whatever the Console holds.** Verified directly:
+
+| Repo | Passes federation inputs to the review workflow? | Static token present |
+|---|---|---|
+| core | No — only `runner:` and `automerge: true` | `CLAUDE_CODE_OAUTH_TOKEN` |
+| services | No — only `runner:` and `automerge: true` | `CLAUDE_CODE_OAUTH_TOKEN` |
+| site-chernarus | No — only `automerge: true` | `CLAUDE_CODE_OAUTH_TOKEN` |
+| website | No — only `automerge: true` | *(no secrets at all)* |
+
+`core/.github/workflows/claude-review.yml` does implement a full workload-identity path and accepts
+`federation-rule-id` / `organization-id` / `service-account-id`. **No caller passes any of them**, so
+its credential selector resolves to `method=key` every time. The static credential that federation
+was meant to eliminate is what actually authenticates every review today.
+
+So: the federation code path is real, and **no repo is on it**. A Console rule that no workflow
+references enforces nothing, and deleting it would change nothing. That is not a live control.
+
+**A note on the limit of this check.** The obvious next step — read the Console rules through the
+stored admin key, exactly as this document did for 0.4/0.6 — **does not work here**, and the failure
+is worth recording so nobody burns time on it again:
+
+```
+GET /v1/organizations/federation_rules?beta=true   -> HTTP 403
+"This endpoint requires an OAuth access token with the `org:admin` scope
+ ... Admin API keys are not accepted."
+```
+
+Same for `/v1/organizations/service_accounts`. So the "a credential already on the box answers it"
+lesson above has a real boundary: the admin key covers workspaces, members, keys and cost, but **not**
+federation. Reading those rules needs an owner OAuth login (`ant auth login --scope org:admin`).
+That does not change the verdict, because the repo-side evidence is sufficient on its own.
 
 ## What this leaves for the owner
 
