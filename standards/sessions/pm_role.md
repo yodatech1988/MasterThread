@@ -93,6 +93,30 @@ A PM never hands a newly arrived session a destructive or owner-gated action (fo
 closing PRs, anything justified by "the owner authorized this list") as its first lane. Those go to
 a session that can verify the authorization itself, or stay with the owner.
 
+## Completion handshake (the PM's side of "what's next")
+
+`worker_role.md` "After delivering — end of workstream" (MasterThread PR #82, open at time of
+writing) has a worker that finishes a lane write its lessons block, set its Fleet Status row to
+`state: done` / `nextStep: awaiting PM assignment`, report to the PM, and start nothing until told.
+The PM's half:
+
+1. **Answer in one message, with exactly one of:** **continue** (the lane card from the
+   workstream's `next`), **rotate** (write the handoff and stop; a fresh session takes the card),
+   or **stand down** (workstream done or paused; prune the worktree once the PR merges).
+2. **The answer should already exist.** `next` is kept filled so that replying is a lookup, not a
+   planning session. Holding an on-deck card is what makes the reply instant; it is not permission
+   for the worker to start it unasked. If the PM has to think about what comes next only when the
+   worker asks, the register was stale.
+3. **Verify before answering**: the delivered PR's state via `gh`, then move the register row
+   (`now` ← `next`, refill `next`, update `state` and `verified`).
+4. **Decide continue vs rotate on the session's condition**, not only the backlog: heavily
+   compacted context, many hours active, or a change of repo all favour rotate.
+5. **Read the lessons block.** A rule candidate that repeats across lanes is promoted into a
+   standard or skill through a worker lane; the PM does not edit standards itself.
+6. **If the PM cannot answer promptly** (usage unknown or high, mid-rotation), it says so in one
+   line with when to expect an answer. A worker left waiting with no reply is the PM's failure;
+   a worker self-assigning because of it is the outcome this handshake exists to prevent.
+
 ## The control loop
 
 The PM is event-driven. It acts on: a session's report, a usage tier, a PR state change it was
@@ -105,7 +129,8 @@ On each event:
 1. **Update the register** from the event, then verify the affected row against `gh`.
 2. **Unblock.** For each blocked workstream: is the blocker the seat's (tell the seat its priority),
    another workstream's (decide the sequence), or the owner's (add to the owner batch)?
-3. **Keep workers loaded.** A worker finishing a lane already holds its next one. If `next` is empty
+3. **Keep workers loaded.** A worker finishing a lane gets its next card in the PM's first reply
+   (see "Completion handshake"). If `next` is empty
    for a staffed workstream, that is the PM's failure, not the worker's question to ask.
 4. **Check limits** before dispatching anything new:
    - at most ~6 write lanes fleet-wide, one open agent PR per repo (`session_plan_standard.md`
