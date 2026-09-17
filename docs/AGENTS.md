@@ -78,6 +78,8 @@ running in a different lane; this PR only adds the files and their rows.
 | `legal-precedent-researcher` | sonnet | R | yes | Grounds a regulation/claim/dispute in quoted primary sources (statute text, agency guidance, case law); never concludes applicability | `_security-public/policies/compliance/regulations.md`, `regulatory_fact_questionnaire.md` |
 | `legal-risk-assessor` | sonnet | **A** | yes | Turns facts + sourced research into a risk tier (1–4) and three resolution paths; never picks one | `_security-public/policies/compliance/regulations.md`, `regulatory_fact_questionnaire.md` |
 | `attorney-referral-researcher` | sonnet | R | yes | After a Tier 1/2 lawyer-needed call, researches real attorneys/firms by practice area and jurisdiction; never ranks, contacts, or retains | `_security-public/policies/compliance/regulations.md`, `regulatory_fact_questionnaire.md` |
+| `pm-agent` | sonnet | **A** | yes | Judgment layer for ops-platform's headless PM (triage/digest/escalation text only, Read/Grep only, no dispatch or self-scheduling) | `ops-platform` task 2.25; `aegis-pm-self-generation-limits`; Decision Queue card `headless-pm-cmd-run-mechanism-2026-09-17` |
+| `blocked-work-sweep` | sonnet | R | yes | Compares what the Decision Queue and Fleet Status claim against live `gh`/disk state and reports blockers by root cause; never files or resolves a card | MasterThread PR #86; `decision_queue_standard.md` action-card contract |
 
 "Dormant" = Discord/Patreon automation stays paused per the standing owner decision
 (`docs/REPOS.md`); the definition exists for when that's lifted, and creating the file triggers

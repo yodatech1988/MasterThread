@@ -72,5 +72,7 @@
   "github-org-repo-inventory": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
   "discord-bot-key-age-reporter": {"role": "R", "headless": "needs-local-keys", "readonly": "instruction", "dormant": false},
   "ovh-vps-usage-reporter": {"role": "R", "headless": "needs-local-keys", "readonly": "instruction", "dormant": false},
-  "workshop-mod-inventory": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false}
+  "workshop-mod-inventory": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
+  "pm-agent": {"role": "A", "headless": "yes", "readonly": "tools", "dormant": false},
+  "blocked-work-sweep": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false}
 }
