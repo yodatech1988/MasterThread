@@ -266,3 +266,56 @@ Each entry:
 - **Seen:** 1 — `SESSION_HANDOFF_2026-09-16-ops-cycle-v3.md` item 2: the previously published
   "1,231,965 output tokens" was really 358,775; the dollar total stayed within 3% only because
   cache reads dominate the bill, so the bug was real but masked.
+
+### Nothing governed the space between "PR is up" and "the next lane begins" — 2026-09-17
+- **False assumption or none:** none — a rule candidate from a genuine gap, not a mistake. Owner
+  framing, direct: a worker finishing a lane should document lessons, cache session state, and wait
+  for the PM's next card as the *natural default*, with continuing on new work an explicit PM
+  instruction, never self-guided.
+- **Rule candidate:** a worker session that delivers a lane must not idle and must not self-assign
+  follow-on work it happens to notice in scope; it writes its lessons-learned block, refreshes its
+  Fleet Status row to `state: done` / `nextStep: awaiting PM assignment`, and asks the PM for the
+  next card — same discipline as the existing "never block/poll waiting on a peer's handoff" rule,
+  applied to session completion instead of mid-task blocking.
+- **Where it belongs:** already promoted this round — `standards/sessions/worker_role.md`'s new
+  "After delivering — end of workstream" section (MasterThread PR #82), not deferred to a second
+  occurrence since it came as a direct owner instruction rather than an inferred pattern.
+- **Seen:** 1 — this session (`github-89`), 2026-09-17: practiced immediately after writing it (PR
+  #82 itself, then again after delivering handymansfield PR #54) — reported completion to the PM
+  and stood by rather than picking its own next task both times.
+
+### A lane card's quoted claim misattributed which file held it — 2026-09-17
+- **False assumption:** a PM's lane card said `docs/QB-CI-GUARDRAIL.md` "currently says 'production
+  only, not for sandbox,' which is backwards" — that exact phrase doesn't exist in that doc; it was
+  a paraphrase of a comment actually living in `tools/QuickBooksKey.ps1` (`# production only -- this
+  tool is not for sandbox`). The underlying task was still correct and got done in both files; the
+  specific quote was just attributed to the wrong one.
+- **Rule candidate:** when a lane card quotes or closely paraphrases existing file content as
+  justification for a change, grep for that text in the named file before treating the attribution
+  as fact — a PM's summary of "what a file currently says" is a claim like any other relayed claim,
+  not exempt from the standing verify-before-acting rule just because it names a specific file.
+- **Where it belongs:** not yet promoted — single occurrence, low-impact (caught immediately, no
+  wasted work), adjacent to the existing "verify, don't trust" rule in `CLAUDE.md` rather than a new
+  standalone rule; worth folding in only if a second, costlier instance appears.
+- **Seen:** 1 — handymansfield PR #54's lane card (from PM `github-8b`), this session.
+
+### A real credential tool sat untracked in a shared checkout with no git history — 2026-09-17
+- **False assumption:** none directly assumed by this session, but a real gap found while starting
+  the lane above — `tools/QuickBooksKey.ps1`/`.cmd` (handymansfield's Intuit OAuth credential tool,
+  same DPAPI-key-window pattern as `OvhApiKey.ps1`/`RconKey.ps1`) existed only as untracked files in
+  the shared, non-worktree checkout, never committed to git at all. A machine crash, a `git clean`,
+  or an accidental overwrite in that checkout would have silently destroyed it with no recovery path
+  — the DPAPI-encrypted credential *store* it manages is backed up nowhere either, by design, but
+  the *tool itself* should never have that same fragility.
+- **Rule candidate:** a credential-tool script under `tools/*Key.ps1` (or equivalent) must be
+  committed to git promptly after it's written and working — never left as a durable-in-practice but
+  git-untracked file in a shared checkout. If found untracked, the next session to touch that repo's
+  tooling commits it (even as a standalone "first commit" PR) rather than building on top of an
+  uncommitted file.
+- **Where it belongs:** not yet promoted — single occurrence this round; adjacent to
+  `jeremy-durable-credential-tools.md` (memory) and `worker_role.md`'s shared-checkout rule. Worth
+  folding into one of those, or a new one-line rule in `worker_role.md`'s "Before starting" checklist
+  ("check whether the lane's key files are actually tracked in git before extending them"), if it
+  recurs.
+- **Seen:** 1 — this session (`github-89`) found and fixed it as part of handymansfield PR #54
+  (the tool's first-ever git commit).
