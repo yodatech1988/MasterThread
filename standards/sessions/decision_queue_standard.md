@@ -125,6 +125,108 @@ the actual action the answer called for (an OVH token-scope change, a cost-panel
 happened yet. Don't let a real answer disappear from view before the thing it asked for is actually
 done.
 
+## Auditing the board: telling a session's writing from the owner's answer
+
+The timestamp rule above — clock-read, never typed — already existed on 2026-09-17 and was broken on
+26 of 126 cards that same day. Restating it would repeat the failure it describes. This section is
+the **check** instead, and it is written the way it is because the first version of it was wrong.
+
+### The discriminator that works: milliseconds
+
+`resolvedAt` is written two ways, and they are trivially distinguishable:
+
+- **Page-written** stamps carry milliseconds (`…T22:09:27.260Z`). The owner clicked.
+- **Session-written** stamps are whole seconds (`…T18:30:00Z`), because a session composed them.
+
+Measured across 114 resolved cards on 2026-09-17:
+
+| `resolvedAt` | `resolution` copies an option | `resolution` is free prose |
+|---|---|---|
+| has milliseconds (page) | **41** | 34 |
+| whole seconds (session) | **0** | 38 |
+
+The separation is total. Every option-copy on the board was written by the page.
+
+### The diagnostic that does NOT work, and cost real time
+
+**A resolution being byte-identical to `options[recommendedOption]` is not evidence of anything
+wrong.** The page has an approve-the-recommendation button; pressing it writes that option verbatim.
+An exact echo is the *expected* shape of a genuine answer.
+
+An older note held the opposite — that a real answer from the owner is never byte-identical to ops's
+suggestion. **That is false, and anything built on it is unsafe.** On 2026-09-17 two sessions
+independently used it, both concluded a live auto-resolve defect was firing, and at least one reopened
+a card that had probably been answered for real. Reopening on this fingerprint destroys genuine owner
+input, which is worse than the failure it is trying to prevent.
+
+Fast gaps do not rescue it either. A card answered seconds after filing is what happens when the owner
+is already looking at the board when a session files.
+
+### Bursts are a person working the queue
+
+Several cards resolving within seconds of each other, across different filers, on unrelated subjects,
+is **not** suspicious: the board is sorted by status, not topic, so a person working down it answers
+unrelated things in sequence. The rhythm is the tell — irregular gaps of roughly 2-15 seconds, the
+cadence of reading and clicking. One such run on 2026-09-17 (12 cards, gaps 3.2, 3.0, 2.7, 2.7, 10.9,
+4.3, 2.8, 2.0, 11.0, 14.9, 4.6s) is separately documented as the owner genuinely working through the
+queue. Treat that shape as ordinary.
+
+### The real problem on the board
+
+**38 resolutions were written by sessions, not by the owner** — whole-second stamps, prose in
+`resolution`. That is a session filling in the owner's answer itself, and it is the standing
+violation worth chasing. It is unglamorous and it is real, unlike the defect two sessions thought they
+had found.
+
+Separately, of the 26 cards whose `resolvedAt` precedes `createdAt`, 11 have a page-written
+`resolvedAt` and a hand-typed `createdAt`. The bogus field is `createdAt`. Those cards were answered
+normally and filed with a wrong stamp — a stamp-drift problem, not a resolution problem.
+
+### If you do suspect a card
+
+- **Check the milliseconds first.** A whole-second `resolvedAt` means a session wrote it; that is the
+  case worth pursuing. A millisecond stamp means the page wrote it, and the owner was there.
+- **Report it. Never reopen it — under any signature, including the whole-second one.** A session
+  having typed the resolution is a standard violation, but the words may still be exactly what the
+  owner said out loud, and reopening erases a real decision just as surely as reopening a clicked one.
+  There is no fingerprint that licenses an automatic reopen. Holding and reopening have opposite
+  risks: holding costs nothing.
+- **Reopening costs more than the answer.** When a session reopened a correctly-answered card on
+  2026-09-17, the owner's reply was *"Did I do something wrong?"* — the machinery made him doubt his
+  own correct use of the approve button. Restoring his answer for him is not the repair either: that
+  would be one more session typing into `resolution`, which is the violation being counted. Leave the
+  card open, say plainly on it that it was reopened in error, and let him re-approve with one click.
+- A resolved card still never authorises an irreversible action on its own (see below). "The answer is
+  genuine" and "doing this is what he wants" are separate questions — on 2026-09-17 a card genuinely
+  answered "delete the files" would also have reset every player's purchased storage level, which the
+  question had not put to him in those terms.
+
+### An unattended job must never hold a destructive default
+
+The 5-minute card watcher every session runs (see above) is a **recurring, unattended** job. Whatever
+default it carries executes on a timer with nobody reading the result first.
+
+On 2026-09-17 two sessions independently built watchers that instructed themselves to *reopen* any
+card matching the false fingerprint. Both were primed to overwrite the owner's genuine answers
+automatically, every five minutes, with no human in the loop. **Neither had fired yet when the
+diagnostic was overturned. That was luck, not design.**
+
+So, for any recurring job that touches the queue:
+
+- Its default action is **report**. Writing is for the cases the standard names explicitly — an action
+  card the owner has claimed, or a relay of an answer to the lane that owns it.
+- A watcher may never reopen, resolve, or edit `resolution` on a signature it detected itself.
+- When a diagnostic a watcher depends on is corrected, **delete and rebuild the job**, do not reason
+  about whether it would have mattered. A watcher carrying a retracted premise is a live hazard for as
+  long as it exists.
+
+### How this section got corrected
+
+The first version of it asserted a live auto-resolve defect, with a burst of three cards as evidence.
+It was wrong. What overturned it was a **testable** discriminator — split every resolution by whether
+its stamp has milliseconds — run against the stored data, which no amount of re-reading the cards
+would have produced. Prefer a test that can fail over a pattern that merely looks convincing.
+
 ## Correcting a resolved card
 
 Never overwrite a resolved card's `resolution` field in place. If it needs correcting after the
