@@ -129,6 +129,11 @@ posted with `verdict: owner - <reason>` and a two-line summary of what merging w
 The PM, not the seat, brings them to the owner, batched, through the Decision Queue or a single
 message — never one ping per PR.
 
+Branch protection gates default branches only, so a PR's head branch can have absorbed other PRs
+that nobody reviewed (2026-09-17, ops-infra #16 into #13). The card for such a PR names and links
+every absorbed PR; the rule and the `gh` check for it are in `decision_queue_standard.md`, under
+Action cards.
+
 **Initiation binding.** `AEGIS-Merge-Queue.ps1` (or any successor) must refuse to run unless the
 owner started it: launched from an interactive console he opened, with an owner-typed switch, and
 never from a session's tool call. Its three dialog safeguards stay (default button is Skip, confirm
