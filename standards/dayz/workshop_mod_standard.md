@@ -32,8 +32,8 @@ on the server it was written for. A module built as a Workshop mod works on ever
 be published.
 
 **Where it stands (2026-09-12, evening):** `aegis-mods` exists. `AEGIS_Metrics` (PR #1) and
-`AEGIS_TeddyBear` (PR #2) are merged, built, signed and boot-tested with `tools/build.ps1` and
-`tools/boot-test.ps1`, so the pipeline is proven. `aegis-poi` exists with its plan merged (PR #1)
+`AEGIS_TeddyBear` (PR #2) are merged, built, signed and boot-tested with `aegis-mods/tools/build.ps1`
+and `aegis-mods/tools/boot-test.ps1`, so the pipeline is proven. `aegis-poi` exists with its plan merged (PR #1)
 and no module code yet. The `P:\` sources are still not imported, `site-chernarus` still carries
 `mods/AEGIS_PvPGuard` (site PR #43 merged it into the site repo before this standard existed) and a
 stale `mods/AEGIS_TeddyBear` draft, and the skin library was merged into `core` (core PR #39). The
@@ -168,13 +168,15 @@ aegis-mods/
 
 ## Definition of done for a module release
 
-- [ ] `tools/check_module.py` passes (until it exists, the reviewer checks rules 2, 3, 5 and 6 by hand
-      and says so in the PR).
-- [ ] The module builds and signs with `tools/build.ps1`.
+- [ ] `aegis-poi/tools/check_module.py` passes (genuinely absent from `aegis-mods` — until it's copied
+      there, the reviewer checks rules 2, 3, 5 and 6 by hand and says so in the PR).
+- [ ] The module builds and signs with `aegis-mods/tools/build.ps1` (or the same script under
+      `aegis-poi/tools/`, for a module built in that repo).
 - [ ] Boot test on a clean vanilla mission, with `-mod=` listing only its declared `requires`: no
       script errors (`(E)`) in the RPT or script log, and `settings.json` is generated.
-      `tools/boot-test.ps1 <Name>` does this; a config-only module with no script log line uses
-      `-ConfigOnly` plus a throwaway `-serverMod` that spawns its classes and logs the result.
+      `aegis-mods/tools/boot-test.ps1 <Name>` (or `aegis-poi/tools/boot-test.ps1`) does this; a
+      config-only module with no script log line uses `-ConfigOnly` plus a throwaway `-serverMod`
+      that spawns its classes and logs the result.
 - [ ] Boot test with it removed again: the server starts, and the `persistence` claim holds. A module
       that spawns objects also shows equal object counts after two restarts, including one after a
       player has handled the spawned objects.
