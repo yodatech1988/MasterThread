@@ -21,6 +21,15 @@
     If `-Notify` is passed and BurntToast isn't installed, it prints one stdout line saying
     so instead of trying another notification mechanism.
 
+    NOTIFY IS STRUCTURALLY DISARMED UNDER TEST, not just off by default: a flag a test can
+    set is a default, not a guard (the same lesson behind "Testing this tool without
+    touching the owner's environment" in README.md, adopted after this exact incident). A
+    notification is attempted only when BOTH `-Notify` is passed AND `-StateDir` resolves to
+    the real default (`%APPDATA%\AEGIS`) -- any other `-StateDir` prints
+    `NOTIFY suppressed (non-default StateDir = test)` and never calls BurntToast, regardless
+    of `-Notify`. A test pointed at a throwaway directory cannot page the owner's desktop no
+    matter what flags it passes.
+
     Logic:
       - heartbeat file missing                          -> PM-HEARTBEAT MISSING   (exit 2)
       - heartbeat older than -StaleMinutes AND usage
@@ -58,9 +67,12 @@
 .PARAMETER Notify
     Opt-in only. Without it, this script never raises any desktop notification -- stdout
     and exit code only, per the owner's 2026-09-18 instruction (see DESCRIPTION). With it,
-    a STALE or MISSING result raises a BurntToast notification if the BurntToast module is
-    installed; if it is not, one stdout line says so. No other notification mechanism is
-    used under any circumstance -- in particular, never `msg.exe` or any other modal popup.
+    a STALE or MISSING result raises a BurntToast notification, but ONLY when `-StateDir`
+    also resolves to the real default (`%APPDATA%\AEGIS`) -- any other `-StateDir` (a test's
+    scratch directory) prints `NOTIFY suppressed (non-default StateDir = test)` instead,
+    structurally, whether or not `-Notify` was passed. If BurntToast is not installed on a
+    real-default run, one stdout line says so. No other notification mechanism is used
+    under any circumstance -- in particular, never `msg.exe` or any other modal popup.
 
 .PARAMETER LogPath
     Optional. When given, appends the single result line (with a UTC timestamp) to this
@@ -68,9 +80,10 @@
 
 .OUTPUTS
     One line to stdout, always. A line appended to `-LogPath` if given. A BurntToast
-    notification only if `-Notify` is passed and the result is STALE or MISSING. Never
-    reads or prints any secret -- it only reads two small JSON files this repo's own
-    scripts wrote.
+    notification only if `-Notify` is passed, the result is STALE or MISSING, AND
+    `-StateDir` resolves to the real default -- otherwise `NOTIFY suppressed (non-default
+    StateDir = test)` and no notification. Never reads or prints any secret -- it only
+    reads two small JSON files this repo's own scripts wrote.
 #>
 [CmdletBinding()]
 param(
@@ -88,6 +101,20 @@ $ErrorActionPreference = 'Stop'
 
 $HeartbeatPath = Join-Path $StateDir 'pm-heartbeat.json'
 $UsageStatePath = Join-Path $StateDir 'claude-usage-state.json'
+
+# Computed independently of the -StateDir default above (never the same expression object),
+# so a caller cannot make a test directory "look like" the real default by coincidence of
+# how the parameter default was bound -- this is evaluated fresh from $env:APPDATA every run.
+$RealDefaultStateDir = Join-Path $env:APPDATA 'AEGIS'
+function Test-IsRealDefaultStateDir {
+    try {
+        $resolved = [IO.Path]::GetFullPath($StateDir).TrimEnd('\', '/')
+        $real = [IO.Path]::GetFullPath($RealDefaultStateDir).TrimEnd('\', '/')
+        return $resolved -ieq $real
+    } catch {
+        return $false
+    }
+}
 
 function Get-JsonProp($Object, [string] $Name) {
     # Set-StrictMode -Version Latest makes dot-access on a PSCustomObject throw
@@ -114,9 +141,14 @@ function Write-Result([string] $Line) {
 }
 
 function Send-Notice([string] $Title, [string] $Message) {
-    # Opt-in only (-Notify). Owner instruction 2026-09-18 01:07Z: no popups by default, and
-    # no modal fallback of any kind -- BurntToast or nothing. A missing module prints one
-    # stdout line via Write-Result instead of trying msg.exe or any other mechanism.
+    # Opt-in only (-Notify) -- AND structurally disarmed off the real default StateDir, so a
+    # test cannot page the owner's desktop by passing -Notify: a flag a test can set is a
+    # default, not a guard. This check runs whether or not -Notify was passed, because the
+    # message it prints ("suppressed") is itself part of proving the guard is unconditional.
+    if (-not (Test-IsRealDefaultStateDir)) {
+        if ($Notify) { Write-Result "NOTIFY suppressed (non-default StateDir = test)" }
+        return
+    }
     if (-not $Notify) { return }
     try {
         if (Get-Module -ListAvailable -Name BurntToast -ErrorAction SilentlyContinue) {

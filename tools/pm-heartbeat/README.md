@@ -59,6 +59,15 @@ notification is raised **only** when the caller explicitly passes `-Notify`, and
 anything else. There is no `msg.exe` fallback and no other modal or UI mechanism anywhere in this
 script, under any flag combination.
 
+**`-Notify` is structurally disarmed off the real default `-StateDir`, not just off by default.**
+A flag a test can set is a default, not a guard — so `-Notify` firing was never made to depend on
+the flag alone. It fires only when `-StateDir` *also* resolves to the real
+`%APPDATA%\AEGIS` at the moment of the call (checked fresh against `$env:APPDATA`, not a cached
+value); any other `-StateDir` — a test's scratch directory — prints
+`NOTIFY suppressed (non-default StateDir = test)` and never calls BurntToast, regardless of
+whether `-Notify` was passed. A test pointed at a throwaway directory cannot page the owner's
+desktop no matter what flags it passes.
+
 Register it as a Windows scheduled task (recommended: every 15 minutes), silent (the default —
 append to a log if you want a record):
 
@@ -76,18 +85,39 @@ other `AEGIS-*.cmd`. That file is intentionally **not created by this PR**; a wo
 once the owner approves the mechanism (Decision Queue card, per `pm_role.md`'s "Open owner
 decisions" #3 and this lane's own report).
 
-## Testing
+## Testing this tool without touching the owner's environment
+
+**Rule adopted 2026-09-18, after this exact tool broke it once:** a tool under test must not be
+able to reach the owner's real environment at all — not "shouldn't," structurally can't. Test runs
+go to a throwaway `-StateDir` (or, for a stronger isolation pass, a temp directory with `$env:APPDATA`
+itself repointed for the test process only); the tool proves it can FAIL correctly there — missing
+file, stale heartbeat, malformed input — before it is ever pointed at the real path; and the test
+leaves zero files behind in the owner's real state directory.
+
+**The incident that made it a rule:** 2026-09-18 ~01:07Z, this PM-process lane's own test runs of
+`Watch-PmHeartbeat.ps1` fired `msg.exe` popups on the owner's desktop. Owner: *"I don't need these
+notifications."* The blast radius that time was a popup. The same miss in a tool that writes,
+restarts a service, or SSHes into a host is an incident, not an annoyance — which is why `-Notify`
+above is now structurally gated on the real `-StateDir`, not just left off by default (see above).
+
+**Precedent this follows:** the services no-silent-mint lane (2026-09-18) repointed `$env:APPDATA`
+to a temp directory for its own process, verified `%APPDATA%\AEGIS` was untouched afterward, and
+left zero throwaway files anywhere real. Same shape here:
 
 Both scripts take the same `-StateDir` (a directory holding `pm-heartbeat.json` and
 `claude-usage-state.json`), so a test points both at one scratch directory and never touches the
-real `%APPDATA%\AEGIS\` files. Never pass `-Notify` in a test — the whole point of the default is
-that it produces no popup, so a test proves that by leaving `-Notify` off, not by passing it:
+real `%APPDATA%\AEGIS\` files:
 
 ```powershell
 $test = "$env:TEMP\pmhb_test"
 powershell -File tools\pm-heartbeat\Write-PmHeartbeat.ps1 -Name test -Usage5h 42 -Dispatched 3 -StateDir $test
 powershell -File tools\pm-heartbeat\Watch-PmHeartbeat.ps1 -StateDir $test -Once
 ```
+
+`-Notify` is safe to pass in a test now (it will print `NOTIFY suppressed (non-default StateDir =
+test)` and never call BurntToast, since `$test` is not the real default), but there is still no
+reason to pass it in a test — proving the silent path is the point. Clean up `$test` afterward so
+no throwaway files linger, even in `%TEMP%`.
 
 ## What this is not
 
