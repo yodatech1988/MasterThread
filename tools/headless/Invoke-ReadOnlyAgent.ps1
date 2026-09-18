@@ -33,6 +33,36 @@
 
 .EXAMPLE
     .\Invoke-ReadOnlyAgent.ps1 -AgentName worktree-sweep -Prompt "List worktrees in MasterThread" -Tools "Bash"
+
+.NOTES
+    Exit codes (fixed 2026-09-18, see below): 0 = the `claude` process ran and exited 0.
+    Any other integer = the `claude` process's own real exit code, propagated as-is. 2 = this
+    wrapper itself failed to resolve or launch `claude` (never reached the subprocess at all).
+    3 = the run timed out and was killed. A non-zero exit here is always paired with an error
+    written to the report output -- never a silent fallthrough.
+
+    2026-09-18 fix, two defects found the same night this script's first real headless run was
+    attempted (PM_INBOX github-43-20260918T0403Z-l1pilot-build-and-crosslinks.md):
+
+    1. `Start-Process -FilePath 'claude'` resolved to the WRONG file. On this machine `claude` is
+       installed by npm as three files in the same directory: a bare `claude` (a `#!/bin/sh`
+       shebang script for git-bash/WSL, no extension), `claude.cmd` (the Windows wrapper), and
+       `claude.ps1`. `Start-Process`'s exact-name match finds the bare `claude` file BEFORE
+       PATHEXT-suffixed resolution ever tries `claude.cmd` -- and Windows cannot execute a shell
+       script directly, so `Start-Process` failed with "%1 is not a valid Win32 application" on
+       every call. Verified live: `Start-Process -FilePath 'claude'` fails this way;
+       `Start-Process -FilePath 'claude.cmd'` succeeds and returns real output (`claude --version`
+       -> "2.1.273 (Claude Code)"). Fix: resolve `claude.cmd` explicitly via `Get-Command`, never
+       the bare ambiguous name.
+    2. The failure was swallowed, not propagated. This script had no `$ErrorActionPreference`
+       set, so `Start-Process`'s failure was a non-terminating error: execution continued to
+       `$proc.WaitForExit(...)` with `$proc` still `$null`, which itself errors non-terminating
+       under the default preference, and execution continued AGAIN to the final line,
+       `exit $proc.ExitCode` -- with `$proc` null, `$proc.ExitCode` is `$null`, and `exit $null`
+       in PowerShell exits 0. So a run that never launched `claude` at all reported success.
+       Fix: `$ErrorActionPreference = 'Stop'` plus an outer try/catch around every step that can
+       fail, each catch printing the exception and exiting a documented non-zero code -- no path
+       reaches `exit` with an unset or null value.
 #>
 [CmdletBinding()]
 param(
@@ -45,9 +75,32 @@ param(
     [string]$Model
 )
 
+$ErrorActionPreference = 'Stop'
+
 if (-not (Test-Path $SettingsPath)) {
-    throw "Invoke-ReadOnlyAgent: settings file not found at $SettingsPath"
+    # NOTE: Write-Error is itself a terminating error under $ErrorActionPreference = 'Stop' and
+    # would skip the explicit `exit 2` below, falling through to PowerShell's own default exit 1
+    # for an unhandled error -- verified empirically 2026-09-18. Write-Host + explicit exit
+    # guarantees the documented code regardless of preference, same convention the estate's other
+    # click-files use for a controlled, known-cause exit.
+    Write-Host "Invoke-ReadOnlyAgent: settings file not found at $SettingsPath" -ForegroundColor Red
+    exit 2
 }
+
+# Resolve the real Windows executable explicitly -- never the bare 'claude' name, which an
+# exact-match lookup can resolve to a non-Windows shebang shim installed alongside it (see .NOTES
+# above). Prefer claude.cmd (the documented Windows wrapper); fall back to the bare name only if
+# no .cmd exists at all (e.g. a non-Windows host), which is itself worth knowing about.
+$claudeCmd = Get-Command 'claude.cmd' -ErrorAction SilentlyContinue
+if (-not $claudeCmd) {
+    Write-Warning "Invoke-ReadOnlyAgent: 'claude.cmd' not found on PATH; falling back to the bare 'claude' name, which is known to resolve incorrectly on a Windows host with an npm-installed CLI (see .NOTES)."
+    $claudeCmd = Get-Command 'claude' -ErrorAction SilentlyContinue
+}
+if (-not $claudeCmd) {
+    Write-Host "Invoke-ReadOnlyAgent: could not resolve a 'claude' executable on PATH at all (tried claude.cmd, then claude)." -ForegroundColor Red
+    exit 2
+}
+$claudeExe = $claudeCmd.Source
 
 $claudeArgs = @(
     '--print',
@@ -58,7 +111,13 @@ $claudeArgs = @(
     '--permission-prompts', 'none',
     '--strict-mcp-config',
     '--max-budget-usd', [string]$MaxBudgetUsd,
-    '--output-format', 'stream-json'
+    '--output-format', 'stream-json',
+    # 2026-09-18 fix, second real-invocation defect found the same night as the claude-resolution
+    # bug: `claude --print --output-format stream-json` refuses to run at all without --verbose
+    # ("Error: When using --print, --output-format=stream-json requires --verbose"), printed to
+    # STDERR only. Without this flag every single invocation failed before doing any work -- the
+    # error was invisible in normal output because stderr only reaches Write-Verbose below.
+    '--verbose'
 )
 
 if ($Model) {
@@ -67,16 +126,35 @@ if ($Model) {
 
 $claudeArgs += $Prompt
 
-Write-Verbose "claude $($claudeArgs -join ' ')"
+Write-Verbose "$claudeExe $($claudeArgs -join ' ')"
 
 $stdoutFile = [System.IO.Path]::GetTempFileName()
 $stderrFile = [System.IO.Path]::GetTempFileName()
-$proc = Start-Process -FilePath 'claude' -ArgumentList $claudeArgs -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+$proc = $null
+try {
+    $proc = Start-Process -FilePath $claudeExe -ArgumentList $claudeArgs -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+} catch {
+    # Write-Host, not Write-Error -- see the note above the settings-file check: Write-Error is
+    # itself terminating under $ErrorActionPreference = 'Stop' and would skip the exit code below.
+    Write-Host "Invoke-ReadOnlyAgent: failed to launch '$claudeExe': $($_.Exception.GetType().FullName): $($_.Exception.Message)" -ForegroundColor Red
+    Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
+    exit 2
+}
 
-if (-not $proc.WaitForExit($TimeoutSec * 1000)) {
-    Write-Warning "Invoke-ReadOnlyAgent: '$AgentName' exceeded ${TimeoutSec}s, killing it. This is itself a finding worth reporting -- see headless_agent_permissions.md Verification section for why a run should not hang under --permission-prompts none."
-    try { $proc.Kill() } catch {}
-    throw "Invoke-ReadOnlyAgent: timeout after ${TimeoutSec}s running agent '$AgentName'"
+try {
+    if (-not $proc.WaitForExit($TimeoutSec * 1000)) {
+        Write-Warning "Invoke-ReadOnlyAgent: '$AgentName' exceeded ${TimeoutSec}s, killing it. This is itself a finding worth reporting -- see headless_agent_permissions.md Verification section for why a run should not hang under --permission-prompts none."
+        try { $proc.Kill() } catch {}
+        Write-Host "Invoke-ReadOnlyAgent: timeout after ${TimeoutSec}s running agent '$AgentName'" -ForegroundColor Red
+        Get-Content $stdoutFile -ErrorAction SilentlyContinue
+        Get-Content $stderrFile -ErrorAction SilentlyContinue | Write-Verbose
+        Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
+        exit 3
+    }
+} catch {
+    Write-Host "Invoke-ReadOnlyAgent: error waiting on '$AgentName': $($_.Exception.GetType().FullName): $($_.Exception.Message)" -ForegroundColor Red
+    Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
+    exit 2
 }
 
 Get-Content $stdoutFile
