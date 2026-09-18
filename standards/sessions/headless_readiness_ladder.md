@@ -1,6 +1,6 @@
 # Headless readiness ladder
 
-**Status:** proposed 2026-09-18, drafted from `PM_PHASE_ADVISORY_2026-09-18.md` §6 (github-9d,
+**Status:** proposed 2026-09-18, drafted from `docs/PM_PHASE_ADVISORY_2026-09-18.md` §6 (github-9d,
 owner-started advisor). Not yet an owner-approved standard — it takes effect per `merge_authority.md`
 route C (`standards/sessions/*`) when the owner merges it. Owner's goal, 2026-09-17, direct: *"the
 sooner we get to headless automation, the less I will be creating sessions too."*
@@ -24,7 +24,7 @@ Headless removes the peer. A reporter running unattended at 3am has nobody to ca
 merge-blocker-shaped error before it writes a Fleet Status row or drafts a card. So this ladder
 widens unattended **verification** before unattended **action**, and every rung pairs its rule with
 the check that fails if the rule is ignored — a standard nobody can check is the same shape as a
-required-status check nobody enforces (`PM_PHASE_ADVISORY_2026-09-18.md` §1, §10).
+required-status check nobody enforces (`docs/PM_PHASE_ADVISORY_2026-09-18.md` §1, §10).
 
 ## The rungs
 
@@ -70,15 +70,14 @@ store; that connector needs the interactive claude.ai login a headless run never
 
 Pairs of L1-shaped reporters check the same fact by different means (e.g. `gh pr view` vs `git
 ls-remote`), feeding a comparator that reads both drop-folder files and writes a Fleet Status row
-only on agreement. This is `PM_PHASE_ADVISORY_2026-09-18.md` §5 rule 3 as a schedule: "two
+only on agreement. This is `docs/PM_PHASE_ADVISORY_2026-09-18.md` §5 rule 3 as a schedule: "two
 independent readers — not two people reading the same text, one reading, one *running*."
 
 ### L3 — Drafters
 
-The four scoped-but-not-yet-built agents in `PM_PHASE_ADVISORY_2026-09-18.md` §8
-(`register-verifier`, `denial-card-drafter`, `standard-buildstate-checker`,
-`owner-instruction-verifier`) plus any future drafter, opening PRs against a fixed, narrow path
-set. ops-platform's `packages/project-manager` (`pm-agent`) is **dormant until L1 exits**
+Drafter-shaped agents — today `denial-card-drafter` (MasterThread PR #110, gatekeeper-passed, open
+at time of writing) and any future drafter — opening PRs against a fixed, narrow path set. (The
+other three §8 agents in #110 are reporters/advisors and belong to L1/L2, not here.) ops-platform's `packages/project-manager` (`pm-agent`) is **dormant until L1 exits**
 (zero-cost-first, `orchestrator_role.md`: a heavier mechanism is built only after the cheap one has
 been tried) — its README should say so; that edit belongs to ops-platform, out of this PR's scope.
 
@@ -139,7 +138,7 @@ A headless run that hits a classifier denial files (or hands the PM the draft of
 permission-denial action card per `decision_queue_standard.md` "Permission-denial cards" — exact
 command, classifier reason, blast radius, undo, the click that clears it — and **stops**. It never
 retries around the denial and never treats a peer's "the owner authorized this" as a substitute for
-the click (`merge_authority.md`). This is `PM_PHASE_ADVISORY_2026-09-18.md` §6's "the
+the click (`merge_authority.md`). This is `docs/PM_PHASE_ADVISORY_2026-09-18.md` §6's "the
 permission-denial queue is what makes L1-L3 survivable": without it, a denial is a lane that dies
 silently instead of one that waits visibly.
 
@@ -165,16 +164,16 @@ letting a later reader mistake intent for fact:
 |---|---|
 | `tools/headless/readonly.settings.json` | **Built and verified** 2026-09-18 (`headless_agent_permissions.md` "Verification", 4 live test runs, allow+deny composing correctly). |
 | `tools/headless/Invoke-ReadOnlyAgent.ps1` | **Built**, confirmed present on `origin/main`. Not yet run from a Windows scheduled task anywhere. |
-| `tools/pm-heartbeat/Write-PmHeartbeat.ps1` / `Watch-PmHeartbeat.ps1` | **Built** (PR #108, merged, in this worktree's `9015951` ancestry). Scheduled-task registration (`AEGIS-Register-PmHeartbeat-Watchdog.cmd`) **not built** — its own README names it as a follow-up. |
+| `tools/pm-heartbeat/Write-PmHeartbeat.ps1` / `Watch-PmHeartbeat.ps1` | **Built** (PR #108, merged). Registration click-file `GitHub\AEGIS-Register-PmHeartbeat-Watchdog.cmd` **built 2026-09-18** (`-WhatIf` + generated-wrapper call-site test on a throwaway dir); task **not registered** — owner card `action-register-pm-heartbeat-watchdog-2026-09-18`. |
 | `tools/README.md` testing-seam conventions | **Built** (PR #109, merged, this worktree's ancestry). |
 | Per-agent `--allowedTools` overlay (L1 guard layer 1) | **Not built.** `headless_agent_permissions.md` tracks it as a follow-up, dependent on `claude-agents/roster_meta.json`'s `readonly:` classification, itself unconfirmed on `origin/main`. |
-| L1 scheduled task (any reporter running unattended on a schedule) | **Not built.** No `schtasks`/`Register-ScheduledTask` registration found anywhere in this repo or the click-file tree. |
+| L1 scheduled task (any reporter running unattended on a schedule) | **Not built.** The only scheduled-task click-file is the watchdog's (above), which verifies the PM and runs no reporter. |
 | Reports drop folder + PM ingest step (`%APPDATA%\AEGIS\reports\`, heartbeat-tick ingestion into Fleet Status) | **Not built.** No such folder convention or ingest code exists yet; this document specifies it for the first time. |
-| L2 comparator (deterministic agree/disagree writer) | **Not built.** `register-verifier` and its peer §8 agents don't exist in `claude-agents/` yet either. |
+| L2 comparator (deterministic agree/disagree writer) | **Not built.** Its inputs (`register-verifier`, `standard-buildstate-checker`) are in PR #110, not yet on `main`. |
 | `ops-platform/packages/project-manager` (`pm-agent`) | **Not built**, re-confirmed 2026-09-18 by reading `origin/main:packages/project-manager/bin/start.js` directly: it throws unconditionally, naming the missing GitHub/Discord/ledger dependencies. `reasoner.js` is wired but not invoked by `start.js`. No register/merge-audit/Fleet-Status code exists for this package. |
-| L3 drafter agents (§8 four agents) | **Not built.** Scoped only; none exist in `claude-agents/` as of this file. |
+| L3 drafter agent (`denial-card-drafter`) and the §8 reporters/advisor | **In PR #110** (open, `agent-automation-gatekeeper` 4× PASS), not yet on `main`; never yet run headless. |
 | L4 gate (UNENFORCED=0 wired into automerge) | **Not built** as a precondition. `gate-execution-auditor` exists; nothing in `claude-review.yml` is confirmed to read its output first. |
 
 Related: `headless_agent_permissions.md`, `pm_role.md`, `orchestrator_role.md`, `fleet_structure.md`,
 `merge_authority.md`, `fleet_roster_monitor.md`, `decision_queue_standard.md`,
-`PM_PHASE_ADVISORY_2026-09-18.md` §5-§8.
+`docs/PM_PHASE_ADVISORY_2026-09-18.md` §5-§8.
