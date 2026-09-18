@@ -48,17 +48,26 @@ Reads `pm-heartbeat.json` and `claude-usage-state.json` and decides one of three
 | `PM-HEARTBEAT OK <age>m session=<name>` | Fresh, or stale only because usage is at/above the ceiling (a correct pause per the tier runbook, not a stall). | 0 |
 
 Unknown usage (file missing or unreadable) is treated as headroom, not as "assume fine" — silence
-on uncertainty is exactly the failure mode the owner reported. On `STALE` or `MISSING` it also
-raises a Windows notification: `BurntToast` if installed, else `msg.exe` to the console session,
-else a plain `Write-Warning` — dependency-free by design, so the watchdog never fails silently for
-lack of a module.
+on uncertainty is exactly the failure mode the owner reported.
 
-Register it as a Windows scheduled task (recommended: every 15 minutes) so the owner is told the
-PM stalled without opening a session:
+**Silent by default** (owner instruction, 2026-09-18 01:07Z, direct: *"I got pm heartbeat missing
+pop ups. I don't need these notifications."* — a test run's `msg.exe` fallback put a modal popup on
+his desktop). Out of the box this script only ever writes one stdout line and sets an exit code.
+`-LogPath <file>` appends that same line, timestamped, to a log — no UI involved. A desktop
+notification is raised **only** when the caller explicitly passes `-Notify`, and that path is
+**BurntToast-only**: if the module isn't installed, it prints one line saying so instead of trying
+anything else. There is no `msg.exe` fallback and no other modal or UI mechanism anywhere in this
+script, under any flag combination.
+
+Register it as a Windows scheduled task (recommended: every 15 minutes), silent (the default —
+append to a log if you want a record):
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools\pm-heartbeat\Watch-PmHeartbeat.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\pm-heartbeat\Watch-PmHeartbeat.ps1 -LogPath C:\Users\yoda_\GitHub\pm-heartbeat-watch.log
 ```
+
+Add `-Notify` only if the owner asks for a desktop alert back — it did not ship on by default
+after the 2026-09-18 feedback above, and should not be turned on without him asking for it.
 
 **Registering the scheduled task is the owner's click, not something this lane creates.** Per
 convention it belongs at `GitHub\AEGIS-Register-PmHeartbeat-Watchdog.cmd` — a double-click file that
@@ -69,15 +78,15 @@ decisions" #3 and this lane's own report).
 
 ## Testing
 
-Both scripts take a `-StatePath` override (`Write-PmHeartbeat.ps1`'s `-StatePath` names the exact
-file; `Watch-PmHeartbeat.ps1`'s `-StatePath` names a directory holding both
-`pm-heartbeat.json`/`claude-usage-state.json`, or pass `-HeartbeatPath`/`-UsageStatePath`
-individually) so a test never touches the real `%APPDATA%\AEGIS\` files:
+Both scripts take the same `-StateDir` (a directory holding `pm-heartbeat.json` and
+`claude-usage-state.json`), so a test points both at one scratch directory and never touches the
+real `%APPDATA%\AEGIS\` files. Never pass `-Notify` in a test — the whole point of the default is
+that it produces no popup, so a test proves that by leaving `-Notify` off, not by passing it:
 
 ```powershell
 $test = "$env:TEMP\pmhb_test"
-powershell -File tools\pm-heartbeat\Write-PmHeartbeat.ps1 -Name test -Usage5h 42 -Dispatched 3 -StatePath "$test\pm-heartbeat.json"
-powershell -File tools\pm-heartbeat\Watch-PmHeartbeat.ps1 -StatePath $test -Once
+powershell -File tools\pm-heartbeat\Write-PmHeartbeat.ps1 -Name test -Usage5h 42 -Dispatched 3 -StateDir $test
+powershell -File tools\pm-heartbeat\Watch-PmHeartbeat.ps1 -StateDir $test -Once
 ```
 
 ## What this is not

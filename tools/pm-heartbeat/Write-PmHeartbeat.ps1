@@ -32,10 +32,12 @@
     Optional one-line free-text note, e.g. "3 dispatchable rows, 0 idle" or
     "quiet tick, nothing dispatchable". Kept short; this is a heartbeat, not a report.
 
-.PARAMETER StatePath
-    Override for the heartbeat file's path. Defaults to
-    `%APPDATA%\AEGIS\pm-heartbeat.json`. Tests should always pass this so they never touch
-    the real file.
+.PARAMETER StateDir
+    Directory the heartbeat file is written into, as `<StateDir>\pm-heartbeat.json`.
+    Defaults to `%APPDATA%\AEGIS`. Tests should always pass a scratch directory here so
+    they never touch the real file. (Matches `Watch-PmHeartbeat.ps1`'s `-StateDir` --
+    the two scripts used to take differently-shaped `-StatePath` params, one a file and
+    one a directory, which was confusing enough to be a bug in practice.)
 
 .OUTPUTS
     Writes the file and prints one confirmation line. No exit-code signaling beyond normal
@@ -56,14 +58,14 @@ param(
 
     [string] $Note = '',
 
-    [string] $StatePath = (Join-Path (Join-Path $env:APPDATA 'AEGIS') 'pm-heartbeat.json')
+    [string] $StateDir = (Join-Path $env:APPDATA 'AEGIS')
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$dir = Split-Path -Parent $StatePath
-if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+$StatePath = Join-Path $StateDir 'pm-heartbeat.json'
+if (-not (Test-Path $StateDir)) { New-Item -ItemType Directory -Path $StateDir -Force | Out-Null }
 
 $record = [ordered]@{
     session     = $Name

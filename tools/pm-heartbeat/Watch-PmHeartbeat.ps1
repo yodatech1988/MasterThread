@@ -10,8 +10,16 @@
     2026-09-18 ~00:50Z -- a PM session showing `busy` in `ListAgents` but not dispatching.
 
     This script never starts, stops, or messages a session. It is meant to run as a Windows
-    scheduled task (the owner's click-file registers that; see README.md in this folder) so
-    the owner is told the PM stalled without having to open a session and look himself.
+    scheduled task (the owner's click-file registers that; see README.md in this folder).
+
+    SILENT BY DEFAULT (owner instruction, 2026-09-18 01:07Z, direct: "I got pm heartbeat
+    missing pop ups. I don't need these notifications."): a scheduled run produced modal
+    `msg.exe` popups on his desktop during testing. This script now only ever writes a
+    stdout line, an exit code, and -- if `-LogPath` is given -- an appended log line. It
+    raises a desktop notification only when the caller explicitly passes `-Notify`, and
+    that path is BurntToast-only: no `msg.exe`, no other modal or UI fallback of any kind.
+    If `-Notify` is passed and BurntToast isn't installed, it prints one stdout line saying
+    so instead of trying another notification mechanism.
 
     Logic:
       - heartbeat file missing                          -> PM-HEARTBEAT MISSING   (exit 2)
@@ -39,43 +47,47 @@
     this switch changes no behavior. It exists so a caller reading the invocation line does
     not have to guess whether this script polls.
 
-.PARAMETER HeartbeatPath / .PARAMETER UsageStatePath
-    Overrides for the two files this reads. Default
-    `%APPDATA%\AEGIS\pm-heartbeat.json` and `%APPDATA%\AEGIS\claude-usage-state.json`.
+.PARAMETER StateDir
+    Directory holding the two files this reads: `<StateDir>\pm-heartbeat.json` and
+    `<StateDir>\claude-usage-state.json`. Defaults to `%APPDATA%\AEGIS`. Matches
+    `Write-PmHeartbeat.ps1`'s `-StateDir` -- tests pass the same scratch directory to both
+    scripts. (Previously this took a `-StatePath` that was treated as a directory while
+    `Write-PmHeartbeat.ps1`'s same-named param was a file path; that mismatch caused a real
+    run to write nothing where expected. `-StateDir` on both scripts replaces it.)
 
-.PARAMETER StatePath
-    Convenience override that sets BOTH -HeartbeatPath and -UsageStatePath to files under
-    the same directory (`<StatePath>\pm-heartbeat.json`, `<StatePath>\claude-usage-state.json`),
-    for tests that want one switch instead of two. Explicit -HeartbeatPath/-UsageStatePath
-    win if also supplied.
+.PARAMETER Notify
+    Opt-in only. Without it, this script never raises any desktop notification -- stdout
+    and exit code only, per the owner's 2026-09-18 instruction (see DESCRIPTION). With it,
+    a STALE or MISSING result raises a BurntToast notification if the BurntToast module is
+    installed; if it is not, one stdout line says so. No other notification mechanism is
+    used under any circumstance -- in particular, never `msg.exe` or any other modal popup.
+
+.PARAMETER LogPath
+    Optional. When given, appends the single result line (with a UTC timestamp) to this
+    file. Purely additive; never required, never printed to any UI.
 
 .OUTPUTS
-    One line to stdout, and a toast notification when BurntToast is installed (falls back to
-    `msg.exe` to the current console session, then to Write-Warning, so the script never
-    depends on a module being present). Never reads or prints any secret -- it only reads two
-    small JSON files this repo's own scripts wrote.
+    One line to stdout, always. A line appended to `-LogPath` if given. A BurntToast
+    notification only if `-Notify` is passed and the result is STALE or MISSING. Never
+    reads or prints any secret -- it only reads two small JSON files this repo's own
+    scripts wrote.
 #>
 [CmdletBinding()]
 param(
     [int]    $StaleMinutes = 30,
     [int]    $UsageCeiling = 80,
     [switch] $Once,
+    [switch] $Notify,
+    [string] $LogPath,
 
-    [string] $StatePath,
-    [string] $HeartbeatPath,
-    [string] $UsageStatePath
+    [string] $StateDir = (Join-Path $env:APPDATA 'AEGIS')
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$defaultDir = Join-Path $env:APPDATA 'AEGIS'
-if (-not $HeartbeatPath) {
-    $HeartbeatPath = if ($StatePath) { Join-Path $StatePath 'pm-heartbeat.json' } else { Join-Path $defaultDir 'pm-heartbeat.json' }
-}
-if (-not $UsageStatePath) {
-    $UsageStatePath = if ($StatePath) { Join-Path $StatePath 'claude-usage-state.json' } else { Join-Path $defaultDir 'claude-usage-state.json' }
-}
+$HeartbeatPath = Join-Path $StateDir 'pm-heartbeat.json'
+$UsageStatePath = Join-Path $StateDir 'claude-usage-state.json'
 
 function Get-JsonProp($Object, [string] $Name) {
     # Set-StrictMode -Version Latest makes dot-access on a PSCustomObject throw
@@ -89,8 +101,23 @@ function Get-JsonProp($Object, [string] $Name) {
     return $prop.Value
 }
 
+function Write-Result([string] $Line) {
+    # The only stdout/log surface. No UI here -- see Send-Notice for the opt-in-only
+    # BurntToast path, which is invoked separately, only when -Notify is set.
+    Write-Output $Line
+    if ($LogPath) {
+        try {
+            $stamp = [DateTime]::UtcNow.ToString('o')
+            Add-Content -Path $LogPath -Value "$stamp $Line" -Encoding utf8
+        } catch { }
+    }
+}
+
 function Send-Notice([string] $Title, [string] $Message) {
-    # Best-effort, dependency-free. Never let notification delivery fail the check itself.
+    # Opt-in only (-Notify). Owner instruction 2026-09-18 01:07Z: no popups by default, and
+    # no modal fallback of any kind -- BurntToast or nothing. A missing module prints one
+    # stdout line via Write-Result instead of trying msg.exe or any other mechanism.
+    if (-not $Notify) { return }
     try {
         if (Get-Module -ListAvailable -Name BurntToast -ErrorAction SilentlyContinue) {
             Import-Module BurntToast -ErrorAction Stop
@@ -98,16 +125,12 @@ function Send-Notice([string] $Title, [string] $Message) {
             return
         }
     } catch { }
-    try {
-        $null = msg.exe $env:USERNAME "$Title`n$Message" 2>$null
-        return
-    } catch { }
-    Write-Warning "$Title -- $Message"
+    Write-Result "PM-HEARTBEAT NOTIFY-SKIPPED BurntToast is not installed; no other notification mechanism is used."
 }
 
 if (-not (Test-Path $HeartbeatPath)) {
     $line = "PM-HEARTBEAT MISSING no heartbeat file at $HeartbeatPath -- the PM has never ticked, or the file was cleared."
-    Write-Output $line
+    Write-Result $line
     Send-Notice 'PM heartbeat missing' $line
     exit 2
 }
@@ -117,7 +140,7 @@ try {
     $hb = Get-Content -Path $HeartbeatPath -Raw | ConvertFrom-Json
 } catch {
     $line = "PM-HEARTBEAT MISSING heartbeat file at $HeartbeatPath is unreadable: $($_.Exception.Message)"
-    Write-Output $line
+    Write-Result $line
     Send-Notice 'PM heartbeat unreadable' $line
     exit 2
 }
@@ -125,7 +148,7 @@ try {
 $tickAtUtc = Get-JsonProp $hb 'tickAtUtc'
 if (-not $tickAtUtc) {
     $line = "PM-HEARTBEAT MISSING heartbeat file at $HeartbeatPath has no tickAtUtc field."
-    Write-Output $line
+    Write-Result $line
     Send-Notice 'PM heartbeat malformed' $line
     exit 2
 }
@@ -153,10 +176,10 @@ $hasHeadroom = ($null -eq $usagePct) -or ($usagePct -lt $UsageCeiling)
 if ($isStale -and $hasHeadroom) {
     $usageText = if ($null -ne $usagePct) { "usage=$usagePct%" } else { 'usage=unknown' }
     $line = "PM-HEARTBEAT STALE ${ageMinutes}m session=$sessionName $usageText"
-    Write-Output $line
+    Write-Result $line
     Send-Notice 'PM heartbeat stale' "$sessionName has not ticked in ${ageMinutes} minutes ($usageText). It should be dispatching."
     exit 1
 }
 
-Write-Output "PM-HEARTBEAT OK ${ageMinutes}m session=$sessionName"
+Write-Result "PM-HEARTBEAT OK ${ageMinutes}m session=$sessionName"
 exit 0
