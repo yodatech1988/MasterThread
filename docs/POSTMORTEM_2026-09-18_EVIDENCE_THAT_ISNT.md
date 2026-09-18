@@ -34,13 +34,21 @@ to that standard by its successors, not exempted from it. Every correction here 
    Practical upshot: `VaultTunnelKey.cmd` option 1 has not been run, or did not take, whatever this
    document or any card says. This is now on the Decision Queue for the owner (card filed by
    `github-c7`, evidence supplied by `github-43`).
-2. **§2.6 — "zero workflow runs on any self-hosted repo since 01:46:31Z" is now false as a sentence.**
-   Re-checked live: 10 MasterThread runs, 2 core runs and 2 site-chernarus runs occurred after that
-   timestamp. **The conclusion it was supporting still holds**, on closer reading of those runs: none
-   executed *on the vps-core runner* — MasterThread's five `pr-review` runs are `startup_failure` with
-   zero jobs, `agents-roster-check` ran four times on GitHub-hosted `ubuntu-latest`, and the core/
-   site-chernarus `pr-review` runs were `skipped`. So the runner remains genuinely unexercised; only the
-   literal sentence needed correcting, not the finding.
+2. **§2.6 — "zero workflow runs on any self-hosted repo since 01:46:31Z" is now false as a sentence,
+   and the run count below was ALREADY an undercount the moment it was written, not just stale.**
+   `github-43`'s independent second read (2026-09-18T05:00Z) re-queried the exact 01:46:31Z-03:24Z
+   window fresh rather than reuse the original count, and found **20 runs in MasterThread alone**
+   (14 `pr-review` failures + 6 `agents-roster-check` successes) before core or site-chernarus are even
+   counted — the "10 MasterThread runs" this correction originally stated was never right.
+
+   **The conclusion is stronger than originally stated, not merely intact.** A core `pr-review` run
+   (`35303028100`, 2026-09-18T03:23:32Z, independently re-confirmed via `gh api
+   repos/yodatech1988/core/actions/runs/35303028100`: `status=completed conclusion=failure`) genuinely
+   EXECUTED on `vps-core` — it was not skipped — and reproduced the identical failure signature as the
+   original §2.6 finding: `Downloading a new version of Bun`, `Unable to locate executable file: unzip`,
+   `bun: command not found`, exit 127. So the runner has not merely gone unexercised since the fix
+   merged; it has been *tried* and *still fails the identical way*. That is the more useful fact and the
+   one worth carrying forward, not "nothing has run."
 3. **Part 6 item 10 — "all twelve are findings" overstates the count and is now stale on two counts.**
    Zero-verdict on #107–#112 is still true (re-verified across all three GitHub comment endpoints plus
    the PR body). But that is **six** PRs, not twelve — the sentence never matched the six named. And as
@@ -52,8 +60,13 @@ to that standard by its successors, not exempted from it. Every correction here 
 4. **Part 5 — "queued behind ops-infra's PR cap" is overtaken.** ops-infra had 0 open PRs at the time
    of this correction (`gh pr list`, 2026-09-18). The fix described in Part 5 is no longer blocked on
    repo capacity; it is only blocked on being written and opened.
-5. **§2.5 — "five existing dry-run logs were renamed" is a stale count.** Disk now shows **seven**
-   `.dryrun.log` files under `C:\Users\yoda_\GitHub\`, plus the one genuine `.log`
+5. **§2.5 — "five existing dry-run logs were renamed" is a stale count, and the count itself is not a
+   stable fact worth asserting.** It has moved three times in under two hours as click-files ran
+   repeatedly tonight — 5, then 7 (this correction's own first draft), then **4** as of `github-43`'s
+   second read (2026-09-18T05:00Z, independently re-confirmed here: `ls *.dryrun.log` under
+   `C:\Users\yoda_\GitHub\` returns 4). A document meant to be read later should not carry a fourth
+   guess at a number that will have moved again by the time anyone reads it — the mechanism is the
+   durable fact, the count is not. Disk also still shows the one genuine `.log`
    (`AEGIS-Allow-PM-Seat-Tools.20260917-210644.log`, the owner's 01:06Z permission grant, correctly left
    un-renamed). The mechanism and the deliberate `.log` exception described in §2.5 are both still
    correct; only the count of five is stale.
@@ -274,8 +287,10 @@ bun: command not found
 
 services run `35293972105` (01:08:59Z, runner `vps-services`) shows a byte-identical failure. **[Corrected
 2026-09-18: the sentence below originally read "zero workflow runs on any self-hosted repo since
-01:46:31Z". That is now false as written — 14 runs occurred after that timestamp — but the finding it
-supported still holds; see Corrections section above for the re-verified detail.]** Then:
+01:46:31Z". That is now false as written, and the run count is not carried here since it has already
+moved once since the first correction — see Corrections section above, item 2, for the current
+re-verified count and the stronger finding it supports (a run on `vps-core` genuinely executed and
+reproduced this exact failure after the merge, not merely "nothing has run yet").]** Then:
 **zero workflow runs on any self-hosted repo since 01:46:31Z**, so nothing has exercised the runner
 since #35 merged and **nobody can yet say whether it helped**.
 
