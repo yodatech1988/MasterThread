@@ -87,8 +87,6 @@ If any of 1–6 is missing, draft the card with that field marked `<needs: ...>`
   "context": "You have three ways to clear this: (1) run the click-file/perform the action above yourself; (2) add a permission allow rule for this call (file that as its own decision card, one rule per card); (3) decline — if you decline, say so and the finding goes in checkResult, with the lane marked blocked-owner.",
   "ownerRequired": true,
   "bestPractice": "standards/sessions/headless_agent_permissions.md",
-  "options": [],
-  "recommendedOption": null,
   "status": "open",
   "resolution": "",
   "createdAt": "<date -u at filing>",
