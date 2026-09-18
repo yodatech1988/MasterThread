@@ -60,6 +60,34 @@ number, and the page itself never invents a status.
 | `checkResult` / `checkedBy` / `checkedAt` | string / string / ISO 8601 | Action cards only: what a check found when the action had **not** taken, or (with `checkedBy: "owner"`) a problem the owner reported from the card. The card stays open. |
 | `executabilityCheck` | string | Action cards only, **required at filing and before relay** (see Executability check below). Who checked, when, and what was traced to a primary source or actually run — or the literal string `not-checked`, which the PM treats as a hold on relaying to the owner. |
 
+**`claimedAt` set is evidence only that the owner pressed the claim button — it is not evidence he
+meant "Done".** The page's write code (read directly from the artifact's own script —
+`https://claude.ai/artifact/1fMqNA1zdQKsq1FDEFvyzf`, version `1789668310-a0f2`, 2026-09-18; re-check
+the current version if this drifts) confirms the row above: exactly one button, "I did it - check
+it", ever writes `claimedAt`, and it writes
+`claimComment` from whatever the owner typed in the comment box alongside it — unvalidated against
+the button's own label. The separate report button (for "It looked wrong" and similar) does the
+opposite: it *clears* `claimedAt` and `claimComment` and writes `checkResult` / `checkedBy: "owner"`
+/ `checkedAt` instead. So a card can legitimately carry a `claimedAt` and a `claimComment` that reads
+as a delegation or a "not really done" note, simply because the owner used the one claim button and
+typed something other than a completion — not because the page mis-stamped a different button. Two
+of the six claimed cards in the 2026-09-18 pass were exactly this: ovh-edge-firewall (`claimComment`
+"work this out with ops" — a delegation, written into the claim button's own comment box) and
+phase0-spend-limits (`claimComment` describing a prepaid account with no auto-reload, a different and
+stronger control than the Console caps the card asked for). Any sweep that treats `claimedAt` alone
+as "the owner said Done" is counting button presses, not claims, and will over-report work as done —
+part of the "13 of 17 claimed-but-unverified" figure from that pass came from exactly this filter. A
+session checking what the owner actually said MUST read `claimComment` (and `checkResult` /
+`checkedBy` / `checkedAt`, if those are also set) alongside `claimedAt` before treating a card as a
+completion claim. Sessions must never write to any of these fields; they hold the owner's own words.
+
+One card from that pass (hardware-keys) does not fit this pattern and is flagged rather than
+generalized from: it carries `checkedBy: "owner"` and a `checkResult` alongside a `claimedAt` set
+2.3s later — a combination the current write code cannot produce (the report path that sets
+`checkedBy` also clears `claimedAt` in the same write). Left unexplained here; treat it as a
+possible artifact of an earlier page version or a one-off, not as proof of present-day dual-stamping,
+and do not build a rule on it without separately verifying the page's history.
+
 ## Permission-denial cards: when the classifier says no
 
 A session's tool call can be refused by the auto-mode permission classifier (`[Remote Shell
