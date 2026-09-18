@@ -256,10 +256,11 @@ Only the PM talks to the owner on the fleet's behalf (exception: `fleet_structur
 
 1. Register location: a new Fleet Status `workstreams` collection (recommended) or the handoff file.
 2. Lead threshold: about five active workstreams (recommended) or another number.
-3. ~~PM-seat permission allow list~~ — **decided 2026-09-18T00:58Z** (card
-   `pm-seat-permission-allowlist-2026-09-18`, option B: the read-only set plus `git worktree add`
-   / `New-ParallelWorktrees.ps1`). Applied by the owner's click-file `AEGIS-Allow-PM-Seat-Tools.cmd`,
-   never by a session.
+3. ~~PM-seat permission allow list~~ — **owner decision, 2026-09-18**, recorded on Decision Queue
+   card `pm-seat-permission-allowlist-2026-09-18` (resolved on the page 00:58:24Z, option B: the
+   read-only set plus `git worktree add` / `New-ParallelWorktrees.ps1`). The card is the record;
+   ops recommended, the owner decided. The change is applied only by the owner running
+   `AEGIS-Allow-PM-Seat-Tools.cmd` himself — a resolved card authorises the change, not the run.
 
 Related: `merge_authority.md`, `fleet_structure.md`, `orchestrator_role.md`,
 `priority_classification.md`, `task_sizing.md`, `decision_queue_standard.md`,
