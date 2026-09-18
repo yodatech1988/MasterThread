@@ -254,6 +254,16 @@ been found. Apply these, in order, to the body before extracting `route:`, `head
   case a plain "strip emphasis and headings" pass does **not** catch on its own in the first place:
   `## Verdict` followed by a blank line and then `**merge**` on its own line has no `verdict:` token
   anywhere near the value until this step runs.
+
+  **One adjacency shape that does *not* need this protection, stated so a future reviewer doesn't
+  have to re-derive it under adversarial review the way `agent-automation-gatekeeper` did on its
+  third pass over this fix:** two inline `label: value` lines sitting directly adjacent, with no
+  blank line and no heading involved at all. Absorption is only ever *entered* by matching a bare
+  heading line in the first place — an inline `label: value` line already carries its value on the
+  same line, so nothing ever reaches forward for it, and extraction for that field completes where
+  it's found. Two such lines next to each other are simply two independent single-line matches; the
+  stop condition above exists to protect a heading's *reach-forward* absorption, and there is no
+  reach-forward to protect when neither line is a heading.
 - **If the absorbed value itself begins with a redundant inline label naming the same field**
   (`## Dependencies` absorbing a line that itself literally says `depends-on: none` — both name the
   same field under its two spellings), strip that leading `<field-or-its-synonym>:` from the
@@ -280,7 +290,7 @@ verdict line at all; a comment with a BOM, no heading and no bold markup whatsoe
 `reviewer:` and `author:` share one line; and a superseding comment with a parenthetical on the
 marker line itself (`MERGE-VERDICT v1 (supersedes the verdict at ef6e931...)`), which marker
 detection already tolerates unchanged. A reference implementation of the normalisation above (not
-the shipped agent, a standalone check) was run against all 6 real bodies plus three constructed
+the shipped agent, a standalone check) was run against all 6 real bodies plus four constructed
 fixtures — a comment with no `MERGE-VERDICT` marker at all; one with the marker but a genuinely
 missing `verdict:` field; and two built specifically to exercise the adjacent-label cases above —
 `Verdict` / `merge` / `Evidence` / `checked live` (heading directly adjacent to another heading, no
