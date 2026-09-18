@@ -161,7 +161,10 @@ it exactly as before, indistinguishably from outside: `ArtifactData`, `SendMessa
 `Bash(git worktree add *)`, `Bash(git worktree list)`, and the `New-ParallelWorktrees.ps1` call.
 Only the owner can add these — a session editing its own `settings.json` is classifier-blocked
 (self-modification) — so this is filed as one Decision Queue card with the exact list above (see
-"Open owner decisions" #3). A PM in prompting mode looks identical to a stalled one from outside.
+"Open owner decisions" #3). Prompting mode is not itself a stall — the 2026-09-18 PM dispatched
+throughout — but an unattended PM in prompting mode stalls at the first gated step of a dispatch,
+and from outside the two are indistinguishable; the watchdog therefore detects "no tick while
+budget and dispatchable work exist", never permission mode alone.
 
 On each event (heartbeat tick or otherwise):
 
@@ -245,14 +248,18 @@ Only the PM talks to the owner on the fleet's behalf (exception: `fleet_structur
   `pm-agent` has no definition anywhere on main. Treat the paragraph above as intent, not fact,
   until that changes. **General rule**: any standard that names a mechanism carries its build state
   — `built and verified on <date> by <command>`, or `not built` — so a later reader can't mistake
-  intent for fact, the same category error `PM_PHASE_ADVISORY_2026-09-18.md` §1 found across six
-  other standards in one evening.
+  intent for fact — the same category error the 2026-09-18 PM-process review found in six other
+  standards in one evening (a register, a supervisor script, a roster generator, a `queue` writer,
+  required checks, and this paragraph).
 
 ## Open owner decisions
 
 1. Register location: a new Fleet Status `workstreams` collection (recommended) or the handoff file.
 2. Lead threshold: about five active workstreams (recommended) or another number.
-3. PM-seat permission allow list (recommended: the list in "The control loop" above).
+3. ~~PM-seat permission allow list~~ — **decided 2026-09-18T00:58Z** (card
+   `pm-seat-permission-allowlist-2026-09-18`, option B: the read-only set plus `git worktree add`
+   / `New-ParallelWorktrees.ps1`). Applied by the owner's click-file `AEGIS-Allow-PM-Seat-Tools.cmd`,
+   never by a session.
 
 Related: `merge_authority.md`, `fleet_structure.md`, `orchestrator_role.md`,
 `priority_classification.md`, `task_sizing.md`, `decision_queue_standard.md`,
