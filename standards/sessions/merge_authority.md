@@ -95,7 +95,7 @@ manual queue.
 
    ```
    MERGE-VERDICT v1
-   route: seat
+   route: A|B|C - <why this route under the table above>
    head: <full head SHA reviewed>
    reviewer: <session name>      author: <session name, from the PM's dispatch ledger, or "unknown">
    evidence: own-read | relayed from <agent/session>
@@ -152,7 +152,11 @@ and flag any that (a) has no `MERGE-VERDICT` comment and no automerge comment, (
 the table but carries a seat verdict, (c) merged at a head SHA different from its verdict, or (d)
 was merged by its own author session per the dispatch ledger. The PM runs it at the start of every
 round and reports findings to the owner. This catches a walk-past after the fact; it does not
-prevent one.
+prevent one. The merge-route audit mode of `gate-execution-auditor` (owner decision card
+`merge-seat-how-to-enforce-route-b-2026-09-18`, resolved 2026-09-18, option C) is this detection
+half, built to run alongside the narrow permission rule from the same decision; it can only detect
+a missing or mismatched verdict against the files actually changed, never attribute a merge to the
+session or the owner who clicked it.
 
 **Phase 2 — branch protection everywhere (owner applies; approved, card `pr81-q4`).** Every default
 branch gets protection: a pull request required, no force-push, no deletion, admins included, and
