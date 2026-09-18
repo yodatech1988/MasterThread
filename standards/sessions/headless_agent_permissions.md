@@ -68,6 +68,17 @@ run directly in this worktree).
   `curl https://x` but not `sh -c 'curl https://x'`; `Bash(git push *)` stops `git push origin main`
   but not `git -C . push origin main` or `git -c push.default=current push origin main`. "Your other
   rules and the permission mode decide the commands in the last column."
+- **A deny rule anchored on argument position is defeated by argument order, not just by wrapper
+  commands.** Found 2026-09-18 in a live `settings.local.json`: `"deny": ["Bash(git worktree remove
+  --force *)"]` alongside `"allow": ["Bash(git worktree remove *)"]`. That deny only matches when
+  `--force` immediately follows `remove`. `git worktree remove /path --force` — a form git itself
+  accepts — matches neither deny pattern and falls through to the allow rule, so the flag it exists
+  to block reaches the command anyway. The fix is not a smarter glob (prefix matching has no
+  negation, so there is no single pattern that means "remove, without --force anywhere"); it needs
+  **one deny line per position the flag can legally appear in**, or an acceptance that the rule is
+  advisory. Either way, **the permission-classifier layer is the real guard here, not the deny
+  list** — the rule catches the common case and looks green regardless of whether the rare case is
+  covered, which is exactly the false-confidence shape this whole file exists to warn about.
   `/docs/en/permissions#bash-rule-limits`. `sh -c`, `powershell -Command`, `docker exec`, `npx`,
   `devbox run`, `mise exec`, `direnv exec` are explicitly named as *not* on the stripped-wrapper
   list, so a rule written for the inner command does not cover them.
