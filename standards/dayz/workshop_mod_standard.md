@@ -168,8 +168,12 @@ aegis-mods/
 
 ## Definition of done for a module release
 
-- [ ] `aegis-poi/tools/check_module.py` passes (genuinely absent from `aegis-mods` — until it's copied
-      there, the reviewer checks rules 2, 3, 5 and 6 by hand and says so in the PR).
+- [ ] `tools/check_module.py` passes, in either repo — `aegis-poi`'s original, or `aegis-mods`'s
+      own port (aegis-mods#53) with a per-module rule 6 prefix derivation in place of aegis-poi's
+      single shared `AEGIS_POI` constant. As of aegis-mods#53, 4 of the 7 existing modules
+      (`AEGIS_Economy`, `AEGIS_Medicine`, `AEGIS_Metrics`, `AEGIS_Skills`) fail real rule 3/6
+      checks pending follow-up fixes — a release for one of those modules still needs those fixed
+      first, not waived.
 - [ ] The module builds and signs with `aegis-mods/tools/build.ps1` (or the same script under
       `aegis-poi/tools/`, for a module built in that repo).
 - [ ] Boot test on a clean vanilla mission, with `-mod=` listing only its declared `requires`: no
