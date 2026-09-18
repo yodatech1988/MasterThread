@@ -230,12 +230,16 @@ describes these mechanisms differently, and correct it the same way if it drifts
    a live-host risk). "A triage agent digests the inbox each PM tick and moves processed files to
    `processed/`." Verified live: `processed/` holds real worker reports in exactly that filename
    shape, plus a `DIGEST-<timestamp>.md`.
-2. **"Two tasks on deck per session" — not found as a named rule.** No file (`PM_INBOX/README.md`,
-   `processed/`, `PM_NOTES_2026-09-18-github-94.md`, `PM_BACKLOG_2026-09-18.md`) states a rule by
-   this name. The nearest real construct is the workstream register's existing `now`/`next`/`later`
-   fields (see "The workstream register" above), which are per-workstream, not a per-session count.
-   If a future round wants a literal two-tasks-per-session rule, it needs to be designed and written
-   here — this section should not be read as evidence it already exists.
+2. **"Two tasks on deck per session" — BUILT-in-practice, NOT-yet-in-standard.** Not found in any
+   file at first check because it lived only in messages and a Fleet Status row, not a document.
+   `PM_NOTES_2026-09-18-github-94.md` §18 records the source: owner instruction ~03:0xZ, "agents
+   should always have two tasks on deck so they can switch back and forth" and "with this many
+   sessions that is at least a 12 task backlog for one round." Applied in every lane message from
+   ~03:1xZ on, and recorded in Fleet Status `sessions/github-94` fields `round3`, `round4`,
+   `ownerOverride`. Distinct from, and additive to, the register's `now`/`next`/`later` fields above
+   — this is a per-session dispatch practice, those are per-workstream state. Not yet written as a
+   rule a future PM can look up outside PM_NOTES; a follow-up should promote it into "Completion
+   handshake" or "The control loop" above, once it has run long enough to state as settled.
 3. **Backlog file with a real, large row count — built, and exceeds any stated floor.**
    `C:\Users\yoda_\GitHub\PM_BACKLOG_2026-09-18.md` is the live, edited copy; MasterThread's
    `docs/pm/PM_BACKLOG.md` is an explicitly-labelled point-in-time snapshot of it for the repo's own
@@ -264,13 +268,15 @@ describes these mechanisms differently, and correct it the same way if it drifts
    session's first-seen state on its own baseline tick, to avoid startup noise. Intended to run
    under `Monitor` as one long-lived process — this is the PM's only current visibility into a
    session going idle or stuck without that session proactively saying so.
-6. **`notify_when_idle` as a second signal — asserted, not evidenced tonight.** `SendMessage`'s
-   `notify_when_idle` parameter is a real harness capability (a one-shot subscription that fires
-   when a same-machine session next goes idle or exits), but no file the PM itself wrote tonight —
-   not `PM_NOTES`, not `PM_BACKLOG`, not any `processed/` report — references using it as a second
-   idle-detection signal alongside fleet-state. Recording this plainly rather than inferring a
-   pattern from a capability that merely exists: a future PM should treat this as an available tool
-   it could wire in, not as something already running in parallel with `Watch-FleetState.ps1`.
+6. **`notify_when_idle` as a second signal — BUILT-in-practice, NOT-yet-in-standard.** First check
+   found no file reference because the evidence is in session transcripts and Fleet Status, not a
+   repo file — the same shape of gap as item 2. `PM_NOTES_2026-09-18-github-94.md` §18: set on
+   every `SendMessage` lane card from ~03:3xZ on, producing a one-shot `[Cross-session idle notice]`
+   per session, run as the second signal alongside the fleet-state files (item 5). The note itself
+   flags why this matters for the standard: "not visible in any repo file — which is exactly why the
+   standard should name it." Recorded here as that naming; a future PM should treat both signals
+   (fleet-state polling and `notify_when_idle` subscriptions) as the current pair in active use, not
+   as fleet-state alone.
 
 ## The owner interface
 
