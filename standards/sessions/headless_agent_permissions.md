@@ -350,3 +350,5 @@ caller with no host to answer.
 Tool-level test discipline for anything invoked headless is in `tools/README.md` (test seam,
 real-path-keyed guards, call-site tests); a headless caller such as `Invoke-ReadOnlyAgent.ps1` is
 itself a call site and gets the same treatment.
+
+Related: `headless_readiness_ladder.md`.

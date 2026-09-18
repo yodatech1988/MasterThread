@@ -264,4 +264,4 @@ Only the PM talks to the owner on the fleet's behalf (exception: `fleet_structur
 
 Related: `merge_authority.md`, `fleet_structure.md`, `orchestrator_role.md`,
 `priority_classification.md`, `task_sizing.md`, `decision_queue_standard.md`,
-`fleet_status_standard.md`.
+`fleet_status_standard.md`, `headless_readiness_ladder.md`.
