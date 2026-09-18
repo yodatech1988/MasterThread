@@ -80,6 +80,7 @@ running in a different lane; this PR only adds the files and their rows.
 | `attorney-referral-researcher` | sonnet | R | yes | After a Tier 1/2 lawyer-needed call, researches real attorneys/firms by practice area and jurisdiction; never ranks, contacts, or retains | `_security-public/policies/compliance/regulations.md`, `regulatory_fact_questionnaire.md` |
 | `pm-agent` | sonnet | **A** | yes | Judgment layer for ops-platform's headless PM (triage/digest/escalation text only, Read/Grep only, no dispatch or self-scheduling) | `ops-platform` task 2.25; `aegis-pm-self-generation-limits`; Decision Queue card `headless-pm-cmd-run-mechanism-2026-09-17` |
 | `blocked-work-sweep` | sonnet | R | yes | Compares what the Decision Queue and Fleet Status claim against live `gh`/disk state and reports blockers by root cause; never files or resolves a card | MasterThread PR #86; `decision_queue_standard.md` action-card contract |
+| `gate-execution-auditor` | sonnet | R | yes | Checks each CI gate's last run for the tool's OWN output signature, not the job's conclusion, so a check that skipped or died early is caught; reports FALSE GREEN / INVISIBLE / UNRUNNABLE / UNENFORCED / HEALTHY. Read-only | Owner request 2026-09-17; `ESTATE_FACTS_CACHE.md` Claude-review failure classes; branch-protection audit 2026-09-18 |
 
 "Dormant" = Discord/Patreon automation stays paused per the standing owner decision
 (`docs/REPOS.md`); the definition exists for when that's lifted, and creating the file triggers
