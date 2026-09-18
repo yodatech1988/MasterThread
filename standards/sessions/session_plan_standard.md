@@ -37,6 +37,8 @@ PRs hid three real defects because the checks that were green had not actually r
    write them in `docs/PLAN.md` so a session never has to read another session's code to comply.
 6. **The PR that finishes a session also updates the plan.** Tick the session and correct any contract
    it changed. If the next session changed, update the repo's row in MasterThread `docs/REPOS.md`.
+   Any live-state claim it writes or leaves behind carries its check time and command — see
+   "A claim about live state carries when it was checked, and by what".
 7. **Secrets, money and business decisions go to the owner.** Everything else, the session decides
    and records. An open owner decision gets a stated default so sessions aren't blocked on it.
    Owner-only, always: real secrets and tokens; anything that spends money, including a test run
@@ -100,6 +102,61 @@ PRs hid three real defects because the checks that were green had not actually r
     - The session or lane that finishes a unit of work is the one responsible for closing it out
       per rule 9 (pruning its own worktree) as part of *finishing*, not leaving it for a future
       cleanup sweep to rediscover — that's exactly how rule 9 stopped being followed in practice.
+
+## A claim about live state carries when it was checked, and by what
+
+**(2026-09-17: the third occurrence in one day, so this is promoted from the lessons ledger into a
+rule.)** A plan that misdescribes live state is worse than no plan, because it is trusted.
+
+Three failures that day were the same shape — a statement that was **true when written** and then
+quietly expired, with nothing about it showing its age:
+
+- `docs/PLAN.md` said "nothing applied, no tunnel exists" while the tunnel existed. A session
+  trusting that row would have gone looking for finished work, or created a duplicate.
+- A Decision Queue card told the owner to double-click a file in a folder that was thirteen commits
+  behind and did not contain it. Merging on GitHub does not touch a local checkout.
+- A session reported a section of `PLAN.md` that no longer existed on `main`. It had read a stale
+  worktree; seven of the thirteen in that repo predated the rewrite.
+
+None of these was carelessness. Each was careful work whose truth had a shelf life nobody recorded.
+
+### The rule
+
+**Any sentence asserting what is true *right now* — a host's state, what exists in a third-party
+account, whether something is applied, merged or running — carries the UTC time it was checked and
+the command that checked it.**
+
+```
+Tunnel `vault-dev` exists, only one by that name
+  — as of 2026-09-18T00:00Z, `cloudflared tunnel list --output json`
+```
+
+An unstamped claim about live state is a **memory, not evidence**, and the next session treats it as
+one. Read the stamp before you read the claim.
+
+Three consequences worth stating, because each of them cost something:
+
+- **Prefer not to assert perishable facts in prose at all.** A document's durable job is design and
+  *why* — the part a diff never preserves and nobody can re-derive. "Does this exist right now" is a
+  question for a command. Where a row must carry live state, the stamp is what keeps it honest.
+- **Read `origin/<default>`, never a worktree, when checking what a repo says.** `git show
+  origin/main:<path>`. A worktree is whatever that lane last rebased onto, and a directory tree full
+  of them will keep producing phantom findings.
+- **Merging a PR changes nothing on anyone's disk.** After a merge that a person or a later step
+  depends on, fast-forward the checkout they will actually use and confirm the file there contains
+  the change. Both halves: the merge, and the thing that reads it.
+
+### Checking it rather than remembering it
+
+The `plan-status-check` agent already diffs a `PLAN.md` status table against the real `gh` state of
+the PRs it cites. A stamped row extends naturally to that treatment — the row names its own
+verification command, so the check can run it and compare.
+
+**Whatever is built for this must be proven able to fail**, by mutation or an equivalent. On
+2026-09-17 a test suite reported 16 of 16 passing against a mutation that had silently not applied;
+the run proved nothing and looked like proof. A drift checker that cannot produce a disagreement is
+worse than none, because it manufactures confidence in exactly the documents this rule exists to
+distrust.
 
 ## `docs/PLAN.md` shape
 
