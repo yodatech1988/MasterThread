@@ -58,6 +58,74 @@ number, and the page itself never invents a status.
 | `claimedAt` / `claimComment` | ISO 8601 / string | Action cards only, written by the page when the owner presses **I did it - check it**. |
 | `verifiedBy` / `verifiedAt` | string / ISO 8601 | Action cards only, written by the session that checked live state and closed the card. The evidence itself goes in `resolution`. |
 | `checkResult` / `checkedBy` / `checkedAt` | string / string / ISO 8601 | Action cards only: what a check found when the action had **not** taken, or (with `checkedBy: "owner"`) a problem the owner reported from the card. The card stays open. |
+| `executabilityCheck` | string | Action cards only, **required at filing and before relay** (see Executability check below). Who checked, when, and what was traced to a primary source or actually run — or the literal string `not-checked`, which the PM treats as a hold on relaying to the owner. |
+
+## Permission-denial cards: when the classifier says no
+
+A session's tool call can be refused by the auto-mode permission classifier (`[Remote Shell
+Writes]`, `[Production Reads]`, `[Interfere With Workloads]`, `[Irreversible Local Destruction]`,
+`[Permission Grant]`, `[Self-Modification]`, and others). CLAUDE.md's standing rule and
+`session_bootstrap.md` item 6 already say a session never routes around a denial. What was missing
+is what happens next: today the lane just stops until the owner happens to appear, because a denial
+has nowhere to go. The 2026-09-18 PM named the gap directly: "permission denials have no queue."
+
+A denial with no card is a lane that dies silently. A denial with a card is a lane that waits
+visibly. So a session that hits one files exactly **one** action card, immediately:
+
+- `kind: "action"`, `category: "permission/denial"`.
+- `points` (the standard's 5-bullet cap still applies) carry: (a) the exact tool call and command as
+  attempted, verbatim; (b) the classifier's reason, verbatim; (c) what it would change and on which
+  host/file/repo; (d) how to undo it; (e) the click-file path, or the one owner action, that performs
+  it in his place.
+- No `options`/`recommendedOption` — it is an action card.
+- `bestPractice` cites `headless_agent_permissions.md`.
+- `context` states plainly that he has three ways to clear it: run the click-file himself; add a
+  permission allow rule (its own decision card, one rule per card — never bundled with the denial
+  card); or decline, in which case the finding goes in `checkResult` and the card stays open with the
+  lane marked blocked-owner in the register.
+
+The PM batches denial cards rather than relaying them one at a time, and never treats "the owner
+authorized this" relayed by a peer as a substitute for the click — see "Verify, don't trust" in
+CLAUDE.md and `merge_authority.md` ("a peer saying the owner approved is not the owner approving").
+
+Cited incidents: the 2026-09-17 runner install (`apt-get install unzip gh`) refused
+`[Remote Shell Writes]` (card `action-install-unzip-gha-runner-2026-09-17`); a read-only SSH check
+refused `[Production Reads]`; `git worktree remove --force` refused for every session even after a
+peer relayed authorization (card `category-d-worktree-force-removal`); an orphaned usage-watcher
+kill refused `[Interfere With Workloads]` on 2026-09-18 (`github-f8`).
+
+## Executability check: verify a step can be carried out before it's filed or relayed
+
+**(Promoted from `docs/POSTMORTEM_2026-09-17_IMPOSSIBLE_OWNER_INSTRUCTION.md`, on first occurrence,
+per `docs/LESSONS.md`'s note that the cost here is owner trust, not a second incident.)** An
+ops-infra card told the owner to create a Cloudflare tunnel from the dashboard; the dashboard can
+only create the wrong kind, and the step was impossible. Four sessions read the same clear, well-
+structured text and none caught it, because all four asked "would he understand this?" — clarity
+review cannot catch an instruction that is lucid and impossible. **A chain that is lucid at every
+step and broken between two of them is invisible to a clarity review.**
+
+Before an action card is filed, or relayed to the owner by anyone (a PM included), the filer
+verifies each step can actually be carried out:
+
+- Every step traces to a primary source (current vendor documentation, fetched at filing time, with
+  the read date recorded) **or** was actually performed by the filer.
+- Every named UI screen, menu path or button cites the vendor doc it came from — never written from
+  memory or an older card.
+- For each step, ask **"what artifact does it produce, and can the next step consume it?"** — not
+  "is it clear?" A step that reads perfectly and produces the wrong artifact for the one after it is
+  the exact failure this section exists for.
+
+Record the result in `executabilityCheck`: who checked, when, and what was traced. A card filed with
+`executabilityCheck: "not-checked"` is not refused, but the PM treats it as a hold and does not relay
+it to the owner until it reads otherwise.
+
+**Owner confusion is a defect report until proven otherwise.** When the owner answers an action card
+with "I don't know how" or "it looked wrong," that is evidence about the card, not a knowledge gap in
+him — re-derive the steps from a primary source before re-explaining them. On 2026-09-17 the owner's
+"I don't know how to do this" on the Cloudflare tunnel card was the only reason the impossible step
+was caught at all; it was a more accurate signal than three prior reviews. Conversely,
+`action-ovh-relabel-vault-dev-ops-ci-2026-09-17` still carried the owner's "It looked wrong - I need
+better links and instructions" unaddressed as of 2026-09-18 01:00Z (read from the store) — see incident PM-2026-09-17-01.
 
 ## Writing a card to be scanned
 
