@@ -65,6 +65,49 @@ PowerShell, `date -u +%Y-%m-%dT%H:%M:%SZ` in bash) — never typed from memory. 
 reason: a hand-typed stamp drifted 10-100 minutes on 2026-09-17 and made a live session read as
 wound down.
 
+## An owner-run click-file logs every exit path
+
+A timestamped log next to the `.cmd`, written on EVERY terminating path — success, owner-cancelled,
+refused precondition, `-WhatIf`, and unhandled exception — each paired with its check:
+
+- Structure the script as one outer `try { ... } catch { ... } finally { Write-RunLog }`, with a
+  script-scoped outcome variable set immediately before every `exit`. **Check:** `finally` runs even
+  when the `try` calls `exit` (verified empirically 2026-09-18, both `powershell -Command` and
+  `powershell -File`, exit code preserved) — see `AEGIS-Register-PmHeartbeat-Watchdog.ps1`'s
+  `Write-RunLog` (~line 143), outer `try` (~181) and `catch`/`finally` (~505-522).
+- The log records: start time from the clock (not typed), the resolved plan, what the owner typed
+  (YES / cancelled — never any other console input, never a secret), the outcome, and the full
+  exception text when one occurred.
+- The real action gets its own `try/catch` that prints exception type, message and inner exception,
+  states the machine's resulting state, gives the exact undo, and exits non-zero — it never falls
+  through to success text it did not earn. See the `Register-ScheduledTask` handler (~449).
+- After the action, re-read live state and verify it happened (`Get-ScheduledTask`, re-parse the
+  written file) — a cmdlet that throws nothing is not proof.
+- The `.cmd` wrapper `pause`s after the PowerShell call so a thrown error stays on screen.
+- **Check that fails if ignored:** a run that produces no log is itself the finding — the same rule
+  `fleet_roster_monitor.md` states for watchers and `headless_readiness_ladder.md` restates for
+  headless runs ("a silent watcher and a quiet fleet must not look alike"). Cite it by name: the
+  2026-09-18 01:34Z incident, where the owner double-clicked
+  `AEGIS-Register-PmHeartbeat-Watchdog.cmd`, typed YES, the script wrote its two files, then
+  `Register-ScheduledTask` threw under `$ErrorActionPreference='Stop'` and died before its old
+  end-of-script-only logging step — no task, files on disk, NO log, indistinguishable from "never
+  ran" until a session compared file mtimes against the card's claim time.
+
+## What a session cannot test, it says so — on the card and in the file
+
+Some click-file paths cannot be exercised by a session at all, because exercising them *is* the
+owner-gated action (registering a scheduled task, applying a permission change, touching a live
+host). Those are code-reviewed, never "tested", and the card's `executabilityCheck`
+(`decision_queue_standard.md`) says which branch was reasoned about rather than run.
+
+- A verification step blocked by the permission classifier is reported as a gap, never retried
+  through another tool or a modified copy. Worked example: a 2026-09-18 subagent asked to exercise
+  the `Register-ScheduledTask` failure branch, by editing a throwaway COPY of the script to loosen
+  its real-vs-test guard, was refused ("Unauthorized Persistence") — it stopped and reported the gap
+  rather than routing around it, per `session_bootstrap.md` item 6 and CLAUDE.md's standing rule.
+- **Check:** an `executabilityCheck` that claims a branch was verified, for a branch only the owner
+  can reach, is false on its face.
+
 ## Incidents that made these rules
 
 - **2026-09-18, ~01:07Z — the msg.exe popup.** The PM-process lane's test runs of a new watchdog
@@ -78,3 +121,11 @@ wound down.
 - **2026-09-17 — hand-typed timestamps.** Manually written UTC stamps ran ahead of the real clock
   all day, making cards look answered before they were filed and a live session read as wound
   down.
+- **2026-09-18, 01:34Z — the click-file that died silently.** `Register-ScheduledTask` threw under
+  `$ErrorActionPreference='Stop'` after the owner typed YES and the files were written; the process
+  died before its old end-of-script-only logging step, leaving no task, files on disk, and no log.
+  Fix: one outer `try/catch/finally` with `Write-RunLog` in `finally`, set on every exit path.
+- **2026-09-18 — the refused failure-branch exercise.** A subagent asked to exercise the
+  `Register-ScheduledTask` throw path by loosening a throwaway copy's real-vs-test guard was refused
+  by the permission classifier ("Unauthorized Persistence"). It stopped and reported the gap instead
+  of routing around it; that branch remains code-reviewed, not executed.
