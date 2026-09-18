@@ -16,9 +16,13 @@ agent that strays from its description. Two things remove that human:
 
 1. **Headless invocation.** `ops-platform` PR #12 (`gh pr diff 12 --repo yodatech1988/ops-platform`,
    `packages/project-manager/src/reasoner.js`) spawns `claude --print --agent <name> ...` as a child
-   process from `runHeadlessReasoning()`, mirroring `MasterThread/tools/overnight-sweep-supervisor.ps1`'s
-   existing pattern. Nobody watches the run; the only external control the caller keeps is a hard
-   timeout and a `--max-budget-usd` ceiling enforced from outside the process.
+   process from `runHeadlessReasoning()`. Nobody watches the run; the only external control the
+   caller keeps is a hard timeout and a `--max-budget-usd` ceiling enforced from outside the
+   process. **Checked 2026-09-18** (`git -C MasterThread ls-tree -r --name-only origin/main | grep
+   -i supervisor`): `tools/overnight-sweep-supervisor.ps1` is **not on `origin/main`** — it does not
+   exist as a live caller. The only two live callers to adopt this file's recommended invocation
+   line are `ops-platform/packages/project-manager/src/reasoner.js` and this repo's own
+   `tools/headless/Invoke-ReadOnlyAgent.ps1`.
 2. **Prompt injection via content the agent reads.** A "read-only" agent's whole job is to read
    things it doesn't control — a PR diff, an issue body, a file over SSH, a log. If that content
    contains instructions ("also run `git push --force`..."), the model has no built-in reason to
@@ -112,7 +116,7 @@ run directly in this worktree).
   `runHeadlessReasoning()` passes `--tools`, defaulting to `["Read", "Grep"]`, alongside
   `--strict-mcp-config` and `--max-budget-usd`. It does not currently pass `--settings`,
   `--permission-mode`, or `--permission-prompts`. This file's recommended invocation line (below) is
-  what that caller and `overnight-sweep-supervisor.ps1` should add on top of their existing
+  what that caller and `tools/headless/Invoke-ReadOnlyAgent.ps1` should add on top of their existing
   `--tools` allow-list, as a recommendation to those files' owners — this PR does not edit either.
 
 ## Deny-list vs allow-list: recommendation
@@ -252,15 +256,16 @@ claude --print --agent <name> \
   "<prompt>"
 ```
 
-This is a recommendation for the owners of `ops-platform/packages/project-manager/src/reasoner.js`
-(`runHeadlessReasoning()`) and `MasterThread/tools/overnight-sweep-supervisor.ps1` to adopt — this PR
-does not edit either file (out of lane scope; both are owned elsewhere). `reasoner.js` already passes
-`--tools` and `--strict-mcp-config`; it is missing `--settings`, `--permission-mode`, and
-`--permission-prompts` from the line above.
+This is a recommendation for the owner of `ops-platform/packages/project-manager/src/reasoner.js`
+to adopt — this PR does not edit that file (out of lane scope; owned elsewhere). `reasoner.js`
+already passes `--tools` and `--strict-mcp-config`; it is missing `--settings`, `--permission-mode`,
+and `--permission-prompts` from the line above. (As of 2026-09-18, `MasterThread/tools/overnight-
+sweep-supervisor.ps1` is not on `origin/main` and has no known caller to adopt this line — see the
+correction under "The threat" above.)
 
 `tools/headless/Invoke-ReadOnlyAgent.ps1` in this repo is a thin wrapper around that invocation for
-PowerShell callers (`overnight-sweep-supervisor.ps1`'s ecosystem), taking `-AgentName`, `-Prompt`,
-`-Tools` and `-MaxBudgetUsd` and building the argv above.
+PowerShell callers, taking `-AgentName`, `-Prompt`, `-Tools` and `-MaxBudgetUsd` and building the
+argv above. It is, as of 2026-09-18, the only live PowerShell caller of this pattern.
 
 ## Agents that must never run headless at all
 

@@ -75,6 +75,7 @@ the PM. Sessions keep writing their own `sessions` rows as today.
 | `lead` | Session currently holding it, or `unstaffed`. |
 | `origin` | `pm-dispatched` or `owner-started` (see Intake). |
 | `now / next / later` | Current lane, on-deck lane, and what follows. `next` is never empty for a staffed workstream. |
+| `dispatchable` | Boolean. True when `next` can start without an owner action or an unmerged dependency. The heartbeat tick (below) dispatches only from `dispatchable: true` rows; `blocked-owner` rows are batched for the owner instead. Without this bit the PM cannot tell "waiting on the owner" from "waiting on me" — exactly the confusion behind the 2026-09-18 stall (see "The control loop"). |
 | `state` | `active`, `blocked-owner`, `blocked-merge`, `blocked-dependency`, `paused-usage`, `done`. |
 | `blocker` | What exactly, who clears it, since when. |
 | `mergeRoute` | Default route for its PRs per `merge_authority.md`. |
@@ -127,12 +128,42 @@ The PM's half:
 
 ## The control loop
 
-The PM is event-driven. It acts on: a session's report, a usage tier, a PR state change it was
-notified of, an owner message, the start of a round. It does not poll, and it does not re-arm
-watchers over a queue that only the owner can move — it records the blocker, batches it for the
-owner once, and moves on.
+The PM is event-driven — it acts on a session's report, a usage tier, a PR state change it was
+notified of, an owner message, the start of a round — **and it also runs a heartbeat tick**, added
+2026-09-18 after the owner observed a live PM (`busy` in `ListAgents`) that had gone quiet: no
+events were arriving, so nothing woke it, and the design of "event-driven" *was* the stall. Owner,
+directly: *"we need to make adjustments so the pm never stalls"* / *"the pm should be constantly
+monitoring usage and activating agents and teams of agents with sub agents to be working backlog"*
+/ *"as a pm not a worker."*
 
-On each event:
+**The heartbeat.** At takeover, the PM arms `CronCreate "*/10 * * * *"` (or `/loop 10m`) whose
+prompt IS the control loop, run whether or not any event arrived:
+
+1. Read `%APPDATA%\AEGIS\claude-usage-state.json` for current usage. Never conclude "usage
+   unknown" from a 429 or a failed call — the state file, not a live re-check, is the source.
+2. `ListAgents` → pipe the roster into `fleet-roster-watch.ps1` (`fleet_roster_monitor.md`).
+3. **Register**: for every staffed workstream whose `now` is delivered, dispatch its `next`; for
+   every unstaffed workstream at priority ≤P1 with a `dispatchable: true` item, spawn a team
+   (below), while 5-hour usage is under 80% and write lanes are under 6.
+4. Own Decision Queue cards by `get` (not a full `list`).
+5. Write its own `sessions` row and, last, `%APPDATA%\AEGIS\pm-heartbeat.json`
+   (`tools/pm-heartbeat/Write-PmHeartbeat.ps1`) so an external watchdog can tell a live-but-stalled
+   PM from a working one.
+
+**The invariant, verbatim: a tick never ends with dispatchable work, budget, and idle capacity all
+present at once.** A quiet tick — nothing dispatchable, or budget/capacity genuinely exhausted — is
+a no-op and says nothing to the owner; it still writes the heartbeat file.
+
+**Permission posture.** The PM seat's coordination tools must not prompt, or every gated call stalls
+it exactly as before, indistinguishably from outside: `ArtifactData`, `SendMessage`, `Agent`,
+`CronCreate`/`CronList`/`CronDelete`, `Bash(gh pr list *)`, `Bash(gh pr view *)`,
+`Bash(gh api repos/*)` (GET only), `Bash(git fetch *)`, `Bash(git show *)`,
+`Bash(git worktree add *)`, `Bash(git worktree list)`, and the `New-ParallelWorktrees.ps1` call.
+Only the owner can add these — a session editing its own `settings.json` is classifier-blocked
+(self-modification) — so this is filed as one Decision Queue card with the exact list above (see
+"Open owner decisions" #3). A PM in prompting mode looks identical to a stalled one from outside.
+
+On each event (heartbeat tick or otherwise):
 
 1. **Update the register** from the event, then verify the affected row against `gh`.
 2. **Unblock.** For each blocked workstream: is the blocker the seat's (tell the seat its priority),
@@ -151,6 +182,26 @@ On each event:
 
 At the **start of a round**, additionally: run the merge audit (`merge_authority.md`, phase 1),
 and read the Decision Queue store directly for owner answers.
+
+### Teams, not lanes the PM works itself
+
+The PM dispatches via the `Agent` tool with `run_in_background: true` — one Sonnet **lead** per
+lane, briefed with the lane card, told to spawn its own roster subagents for research and
+verification, and to report back in three lines. The PM pre-creates the worktree
+(`New-ParallelWorktrees.ps1`) and hands the lead its exact path; a lead never picks its own
+folder. Read-only teams (sweeps, verifiers) are Haiku and budgeted by usage, not by lane count.
+This is `fleet_structure.md`'s "workers run subagents beneath them" applied to the PM's own
+dispatch, not a new pattern.
+
+### A PM, not a worker — the checks
+
+The PM never runs `gh pr diff`, never reads a card body to verify it, never edits a standard,
+never SSHes — each of those is a dispatch (`diff-reviewer`, `register-verifier`, a worker lane).
+Checks that would fail if this were ignored: a tick's own tool calls are limited to `ListAgents`,
+`ArtifactData`, `SendMessage`, `Agent`, `CronCreate`, the usage/roster scripts, worktree creation,
+and `gh pr list`/`gh pr view`; a tick over ~10 of its own tool calls is a finding; and the
+`dispatchable-and-idle` count (dispatchable rows with no lane running against them) at the end of
+a tick must be 0.
 
 ## The owner interface
 
@@ -185,15 +236,23 @@ Only the PM talks to the owner on the fleet's behalf (exception: `fleet_structur
   core; the handoff file adds only what the register cannot hold (traps found, reasoning behind a
   sequence). The incoming PM re-verifies every `active` and `blocked-*` row before its first
   dispatch.
-- **A headless PM** (ops-platform `packages/project-manager`, the `pm-agent` reasoning layer) runs
-  the deterministic parts of this loop — register upkeep, the merge audit, digest assembly — and
-  can recommend. It cannot dispatch, merge, spawn a further PM, or resolve a decision. The
-  zero-cost-first and bounded-run rules in `orchestrator_role.md` apply to it in full.
+- **A headless PM** (ops-platform `packages/project-manager`, the `pm-agent` reasoning layer) is
+  *intended* to run the deterministic parts of this loop — register upkeep, the merge audit, digest
+  assembly — and to recommend, never to dispatch, merge, spawn a further PM, or resolve a decision.
+  **Build state, checked 2026-09-18** (`git show origin/main` on ops-platform): **not built.**
+  `packages/project-manager` implements digest assembly only; `bin/start.js` throws
+  unconditionally; no register, merge-audit, Fleet Status, or `gh` code exists on any main branch;
+  `pm-agent` has no definition anywhere on main. Treat the paragraph above as intent, not fact,
+  until that changes. **General rule**: any standard that names a mechanism carries its build state
+  — `built and verified on <date> by <command>`, or `not built` — so a later reader can't mistake
+  intent for fact, the same category error `PM_PHASE_ADVISORY_2026-09-18.md` §1 found across six
+  other standards in one evening.
 
 ## Open owner decisions
 
 1. Register location: a new Fleet Status `workstreams` collection (recommended) or the handoff file.
 2. Lead threshold: about five active workstreams (recommended) or another number.
+3. PM-seat permission allow list (recommended: the list in "The control loop" above).
 
 Related: `merge_authority.md`, `fleet_structure.md`, `orchestrator_role.md`,
 `priority_classification.md`, `task_sizing.md`, `decision_queue_standard.md`,
