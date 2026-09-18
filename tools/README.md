@@ -104,6 +104,72 @@ refused precondition, `-WhatIf`, and unhandled exception — each paired with it
   dry runs from real ones, and found two click-files — the seat-merge permission grant and the
   PM-heartbeat watchdog registration — whose only logs on disk were dry runs.
 
+## Test a settings-editing click-file against a scratch copy, never the live file
+
+A click-file that reads-modifies-writes a JSON settings file (`.claude/settings.json`,
+`settings.local.json`) is tested by pointing `-SettingsPath` at a scratch copy under
+`C:\Users\yoda_\AppData\Local\Temp\claude\`, never by editing the live file "to see what happens."
+Copy the real file there first so the test exercises real content, not a synthetic fixture that
+might not trigger a real bug.
+
+- **Check that fails if ignored:** this is not a formality. `AEGIS-Narrow-Local-Allowlist.ps1`'s
+  first `-WhatIf` run, 2026-09-18, against a scratch copy of the real `settings.local.json`, showed
+  that PowerShell 5.1's `ConvertTo-Json` HTML-escapes `<`, `>`, `&` and `'` as `\u003c`/`\u003e`/
+  `\u0026`/`\u0027` — even with `-Compress`, and even though the JSON is valid either way. That
+  file's `hooks.SessionStart` command is a bash script full of `>` redirects and single-quoted `jq`
+  literals; writing it unfixed would have silently corrupted the hook on the very first *real*
+  run — the JSON would still parse, so nothing would look wrong until the hook itself broke. Caught
+  only because the test used the real file's real content, not a placeholder. Fix: a targeted
+  regex un-escape of exactly those four sequences after `ConvertTo-Json`, documented in the script
+  next to the fix (not a general unicode-unescape, since that could reverse an intentional escape).
+- After a real-path write, re-read and re-parse the written file, and where the original had a
+  string field containing any of `< > & '`, diff that field's length/content against the original
+  to confirm it round-tripped byte-identical — a bare `ConvertFrom-Json` success is not proof
+  nothing was silently mangled inside a string.
+- Clean up the scratch copy and its directory after testing, and confirm the live file's
+  content/hash is unchanged before reporting the test as clean.
+
+## The two-shape deny rule for flags
+
+A permission-settings deny pattern of the shape `Bash(x * --flag*)` (or `Bash(x --flag*)`) matches
+only the flag position it literally spells out. Verified empirically 2026-09-18, both directions:
+
+- `Bash(gh pr merge --admin*)` catches `gh pr merge --admin <n>` but **not** `gh pr merge <n>
+  --admin` (no token between `merge` and the literal `--admin*` for the pattern to match against
+  the flag-after-arguments form).
+- `Bash(git worktree remove --force *)` catches `git worktree remove --force /path` but **not**
+  `git worktree remove /path --force` (git accepts the flag in either position; the deny only
+  covers flag-immediately-after-subcommand).
+
+**A single deny rule for a flag that can appear in more than one argument position is a false
+green** — whoever wrote it believes the flag is blocked, and it is only blocked in the one order
+they tested. Write two deny patterns, one per position (`Bash(x --flag*)` and `Bash(x * --flag*)`),
+every time a flag-based deny is added for a command where the flag's position isn't fixed by the
+tool's own syntax. This is not a complete guarantee even with both shapes — a prefix-glob deny
+still cannot express general negation (an abbreviated flag, an alias, a different flag that does
+the same thing), so state that limitation next to the deny rule rather than implying it's
+airtight. Applied so far: `AEGIS-Allow-Seat-Merge.ps1` (`--admin`, both shapes) and
+`AEGIS-Narrow-Local-Allowlist.ps1` (`--admin` on `gh pr merge`, `--force`/`-f` on `git worktree
+remove`, `--method` on `gh api`, all two-shape).
+
+## The interactive-guard contract: enforce the path-prefix exemption, don't just document it
+
+A click-file's interactive-console guard (refuses a non-interactive, non-`-WhatIf` run) commonly
+documents an exemption in its header: "a session may run this non-interactively only against a
+test fixture under `Temp\claude\`." **That sentence is not the guard until the code checks it.**
+Found 2026-09-18 in two sibling scripts (`AEGIS-Allow-Seat-Merge.ps1`,
+`AEGIS-Narrow-Local-Allowlist.ps1` at first draft): both refused every non-`-WhatIf` run
+unconditionally, regardless of `-SettingsPath`, which blocks the very testing this file's own
+"prove it can fail" rule requires and forces either skipping the real-write test or (worse)
+weakening the guard ad hoc under pressure to get a test to run.
+
+Fix, applied to both: resolve `-SettingsPath`, compare it against the `Temp\claude\` prefix
+(`$SettingsPath.StartsWith('C:\Users\yoda_\AppData\Local\Temp\claude\', [StringComparison]::
+OrdinalIgnoreCase)`), and only refuse when the path is NOT that prefix and the run is not
+`-WhatIf`. **Check that fails if ignored:** if a script's header claims a test exemption, try
+exercising it — a refusal on a `Temp\claude\` path means the doc and the code disagree, and the
+doc is the one that's wrong until the code is fixed to match it.
+
 ## What a session cannot test, it says so — on the card and in the file
 
 Some click-file paths cannot be exercised by a session at all, because exercising them *is* the
