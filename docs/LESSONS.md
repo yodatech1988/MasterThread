@@ -51,7 +51,10 @@ Each entry:
   somewhere to run (`gh api repos/<o>/<r>/actions/runners`). With zero runners the flip turns a loud
   `startup_failure` into a silent forever-queue - the be-rcon failure mode.
 - **Where it belongs:** not yet promoted - `blocked-work-sweep` step 6 carries it meanwhile.
-- **Seen:** 1 - card `actions-token-flip-4-repos-hold-or-run-2026-09-17` (owner chose hold).
+- **Seen:** 2 - card `actions-token-flip-4-repos-hold-or-run-2026-09-17` (owner chose hold);
+  and `payments`, whose required `check` context targets `runs-on: [self-hosted, vps]` with zero
+  registered runners - see "A required check with nowhere to run reads as checks failed, 24 hours
+  later" in the 2026-09-17 consolidated section below.
 
 ### "Held" in one document, decided in another - 2026-09-17
 - **False assumption:** that ops-infra `docs/PLAN.md` "Decision A is held" meant the owner had not
@@ -239,7 +242,9 @@ Each entry:
   unrelated to the diff.
 - **Where it belongs:** promoted — extends `standards/sessions/orchestrator_role.md` step 7
   ("Review before merge") to state this explicitly.
-- **Seen:** 1 — `SESSION_HANDOFF_2026-09-16-fleet-pm-rotation.md` "Traps discovered" #2:
+- **Seen:** 2 — occurrence 2 is "A gate that cannot fail is worse than no gate" (2026-09-17), in
+  the consolidated section below: a review job that skips for want of a credential and exits
+  SUCCESS. Occurrence 1: `SESSION_HANDOFF_2026-09-16-fleet-pm-rotation.md` "Traps discovered" #2:
   `claude-agents` has no secret-scan job at all, so its green checks say nothing about secrets;
   several repos' red checks were the same known runner-infra bug, not a real failure — corroborated
   by memory `aegis-runner-gh-gitleaks-bug.md`.
@@ -406,3 +411,293 @@ Each entry:
 - **Where it belongs:** `standards/sessions/decision_queue_standard.md`, next to the existing rule
   that a card answered with a question back is still open.
 - **Seen:** 1 — this session (`github-29`), 2026-09-17T22:45:25Z.
+
+---
+
+## Consolidated round close-out — 2026-09-17, "things that assert a false state"
+
+The entries below were written after the round, from live reads (`git show origin/main:<path>`,
+`gh` API, the stored Decision Queue documents), not from any session's summary. They are grouped by
+**mechanism**, because the night's defects did not sort by session — the same shape recurred in CI,
+in a backup probe, in a port scanner and in a lint baseline.
+
+Three things are deliberately **not** repeated here, because they already have a better home:
+
+- **Telling the owner's answer from a session's writing on the Decision Queue** — the millisecond
+  discriminator, the false byte-identical fingerprint, and the unattended-watcher rule — lives in
+  `standards/sessions/decision_queue_standard.md` (MasterThread **#100, merged** 2026-09-17T22:56Z).
+- **Reading `origin` not a working tree, `rg` honouring `.gitignore`, `--is-ancestor` on a
+  squash-merge, and "adjacency is not authority"** live in `standards/sessions/worker_role.md`
+  (MasterThread **#101, OPEN** as of this writing — do not cite it as landed).
+- **Verification effort allocated by audience rather than consequence**, and reviewing an
+  instruction for achievability rather than clarity, live in
+  `docs/POSTMORTEM_2026-09-17_IMPOSSIBLE_OWNER_INSTRUCTION.md` (**#102, merged**) and in the two
+  ledger entries immediately above this section.
+
+### A gate that cannot fail is worse than no gate — 2026-09-17 (seen twice, promote)
+- **False assumption:** that `review / review = success` meant a Claude review had read the diff.
+- **What is actually true, estate-wide, verified:** **no automated Claude review is completing on
+  any repo.** Two distinct mechanisms, needing different fixes, both reached through the *same*
+  shared workflow — the variable is the repo's secret, not the runner and not the workflow:
+  - **No review credential → GREEN.** `gh run view 35285166635 -R yodatech1988/website --json jobs`
+    shows job `review / review` completing in **5 seconds** with both `Run Claude review (...)` steps
+    `"conclusion":"skipped"`; the log carries the literal notice `No Workload Identity Federation
+    inputs or ANTHROPIC_API_KEY/CLAUDE_CODE_OAUTH_TOKEN secret configured -- skipping Claude
+    review`. `gh secret list -R yodatech1988/website` has neither secret. The job never reaches
+    `oven-sh/setup-bun`, so the runner's missing `unzip` never even shows up
+    (`gh run view 35285166635 --log | grep -ci unzip` → **0**).
+  - **Credential present, runner missing `unzip` → RED.** The job reaches `oven-sh/setup-bun`,
+    which downloads Bun as a `.zip` and shells out to `unzip`, and dies in ~8s with `Unable to
+    locate executable file: unzip`, exit 127 (core run 35232643743, site-chernarus run
+    35260046534; both runners report the same machine, `vps-736c134b`).
+- **What it has already cost:** site-badlands **#10** merged 2026-09-17T18:09:54Z on a green
+  `review / review` that had read nothing. website **#27** — the live PayPal donate button — merged
+  the same way, on a repo with automerge on, zero required approving reviews, and a review check
+  that is green by construction. Nothing reviewed it and nothing was ever going to.
+- **Rule candidate:** **never** treat a check's *colour* as evidence; read what the job actually
+  executed (`gh run view <id> --json jobs` for `skipped` steps, then the raw log). A credential- or
+  dependency-gated job must **fail closed** — a skip is a non-result and must not be reported as a
+  pass. Where fail-closed would block merges until credentials exist, that trade is the owner's call
+  and must be put to him in those words, not decided quietly by leaving the check green.
+- **Where it belongs:** this is occurrence 2 of "Green (or red) CI is not evidence of what it looks
+  like it's evidence of" (2026-09-16, above), which was promoted into
+  `standards/sessions/orchestrator_role.md` step 7. That step 7 text does **not** yet carry "a
+  skipped step is not a pass; gated jobs fail closed" — **that sentence is the outstanding
+  promotion**, and no PR carries it as of this entry.
+- **Seen:** 2 — 2026-09-16 (`claude-agents` green with no secret-scan job at all); 2026-09-17
+  (website/site-badlands green-by-skip, verified above).
+
+### A correction can be more dangerous than the error it corrects — 2026-09-17
+- **False assumption:** that "Claude review is dead runner-wide" was wrong because it passes on
+  `website`. The original claim was wrong in **mechanism** and right in **conclusion**; the
+  correction was wrong in a **more dangerous direction**, because it told the owner that the one
+  repo with the *invisible* failure was the healthy one. It was propagated to three sessions before
+  being caught.
+- **Rule candidate:** when correcting a peer's claim, state which *part* is wrong — mechanism,
+  scope, or conclusion — and check that the corrected version is not merely a different false
+  statement. A correction inherits none of the original's scrutiny and is trusted more, so it
+  carries the higher burden of proof, not the lower one. Re-verify a correction before relaying it,
+  exactly as you would the claim it replaces.
+- **Three other corrections from this round, recorded so the originals are not repeated:**
+  - "`core` and `site-chernarus` need the gitleaks port" — **false**. Neither uses gitleaks; both
+    run a hand-rolled `git grep -InE "$PATTERNS"` in `.github/workflows/secret-scan.yml` on
+    `origin/main`. `services` was the repo that needed it (#103).
+  - "The public edge has no intrusion protection and the plan over-claims" — **false on both
+    counts**. The edge runs fail2ban 1.1.0 active with its own `inet f2b-table`, ufw active, sshd
+    hardened; and `ops-infra/docs/CONTROLS.md` 3.E already reads *"fail2ban on `vault-dev` and edge;
+    CrowdSec on `vault-dev` only."* The only "both hosts" text sits in the plan's **goals** list. A
+    goal is not a claim.
+  - "All three card watchers would auto-reopen" — **false**; one would have stalled instead. The
+    session that said it was corrected by the session that owned the watcher.
+- **Where it belongs:** not yet promoted — one occurrence as a stated rule, but it is the connective
+  tissue for every corrected claim in this round. Promote into `worker_role.md`'s "State what you
+  searched" material (MasterThread #101) on a second occurrence.
+- **Seen:** 1 — this round; three claims corrected, one of the corrections itself retracted.
+
+### A scanner that never ran, and a re-run that cannot succeed — 2026-09-17
+- **False assumption:** that `gitleaks/gitleaks-action@v2` was scanning, and (separately, from a
+  header comment in `services`) that it is a **container action needing rootless Docker**.
+- **The mechanism, verified from the PR bodies' quoted CI output:** it is a **JavaScript action
+  that downloads a binary**, and it **hardcodes `/tmp`** for both its tool cache and its download.
+  On the self-hosted runner that path is not writable by the runner user:
+  `/usr/bin/tar: ../../../../../tmp: Cannot mkdir: Permission denied`, then
+  `could not install gitleaks ...: Destination file path /tmp/gitleaks.tmp already exists`, then
+  `Error: parameter 'file' is required`. The stale `/tmp/gitleaks.tmp` from the first failure
+  **blocks the fallback path, so every re-run fails identically** — re-running is a wasted cycle,
+  not a flake.
+- **Rule candidate:** when an action fails on a self-hosted runner, check whether it writes to a
+  hardcoded absolute path before assuming a container/Docker cause — and never diagnose from a
+  header comment in the repo, which is a claim like any other. If two consecutive runs produce a
+  byte-identical error, stop re-running and look for state left behind by the first. The fix that
+  worked in both repos was to drop the action and install a pinned binary into `$RUNNER_TEMP`:
+  `gitleaks git . --redact --no-banner --exit-code 1` (website **#28**, ported verbatim to services
+  **#103**; 111 commits scanned, green in 7s).
+- **Where it belongs:** not yet promoted — reinforces memory `aegis-runner-gh-gitleaks-bug.md`,
+  which should be corrected to say *JavaScript action, hardcoded `/tmp`*, not a Docker problem.
+- **Seen:** 1 (two repos, one cause) — website #28, services #103.
+
+### `if: failure()` is job-scoped: an infrastructure fault paged as a security finding — 2026-09-17
+- **False assumption:** that `if: failure()` on an alert step scopes to the step above it.
+- **The mechanism:** it covers the **whole job**. On `services`, the step *"Notify Discord of
+  finding"* was gated `if: failure()`, so any failure — including the gitleaks download above —
+  would have posted **"Possible secret literal found"**. Per #103's own body: *"Every failed run for
+  the past two days would have posted 'Possible secret literal found' for a broken download, had
+  `DISCORD_WEBHOOK_DEVLOG` been set."* It was silent only because the webhook secret was unset.
+- **Rule candidate:** **always** gate an alert on the specific step's outcome —
+  `if: always() && steps.<id>.outcome == 'failure'`, with an explicit `id:` on the step that
+  produces the finding. An infrastructure failure must never page a security finding: it trains the
+  reader to discount the alert that matters. **Audit every alerting workflow in the estate against
+  what its message literally claims**, not against what it was intended to mean.
+- **Where it belongs:** not yet promoted — a one-line rule alongside the logging conventions in
+  `standards/` would be the right home on a second occurrence.
+- **Seen:** 1 — services #103 (fix applied), found while porting website #28.
+
+### A required check with nowhere to run reads as "checks failed", 24 hours later — 2026-09-17
+- **False assumption:** that `payments`' red checks reflected something about the code.
+- **The mechanism, verified live:** `gh api repos/yodatech1988/payments/branches/master/protection`
+  → `required_status_checks.contexts: ["check"]`, `strict: true`; `.github/workflows/ci.yml` on
+  `origin/master` → `runs-on: [self-hosted, vps]`;
+  `gh api repos/yodatech1988/payments/actions/runners` → `{"total_count":0,"runners":[]}`. Three CI
+  runs sat queued and were **cancelled at GitHub's 24-hour queue timeout** (e.g. created
+  `2026-09-16T16:45:52Z`, updated `2026-09-17T16:45:54Z` — 24h00m02s). A cancelled run renders the
+  same as a failure. (Note: this repo's default branch is **`master`**, not `main`; querying
+  `/branches/main/protection` 404s and looks like "no protection configured".)
+- **Rule candidate:** before diagnosing a red or stuck required check, confirm the job has somewhere
+  to run (`gh api repos/<o>/<r>/actions/runners`) and confirm you queried the **actual default
+  branch**. A permission or config fix applied without a runner converts a loud instant failure into
+  a silent 24-hour queue, which is worse.
+- **Where it belongs:** this is occurrence **2** of "Check the prerequisite before asking for the
+  click" (2026-09-17, above) — its `blocked-work-sweep` step 6 already carries the runner check;
+  **the promotion still owed is the default-branch point**, which nothing carries yet.
+- **Seen:** 2 — the 4-repo Actions-token flip card (the owner held it, correctly, because those
+  repos also have zero runners); `payments` as measured above.
+
+### Every negative test needs a positive control — 2026-09-17
+- **False assumption:** that a non-zero exit from a probe means the system under test refused the
+  operation.
+- **Two instances, same shape, different tools:**
+  - `vault-backup prove-append-only` probed with `restic forget --tag <tag> --prune` and read any
+    non-zero exit as "refused". **restic rejects that form with `Fatal: no policy was specified`
+    and exits non-zero *before contacting the repository*** (measured on restic 0.19.1 and 0.18.1,
+    the version the role installs). It "proved" append-only enforcement against a plainly writable
+    server.
+  - An `actionlint` A/B baseline reported **"1 finding" on base vs 5 on the branch** — which reads
+    as "this change introduced 4 problems". A bad container mount meant it never read the file; the
+    single "finding" was `could not read ... no such file or directory`. **The tell was the number
+    making no sense, not an error message.** Re-run from a path the container can see and both
+    reported the identical 5 pre-existing findings.
+- **Rule candidate:** **always** pair a negative test with a positive control that must succeed —
+  the identical operation against a target *without* the protection (the docker suite now runs the
+  same `forget` against the same server without `--append-only` and requires it to pass). An
+  inconclusive result must **fail**, not pass, whenever the test's job is to sign something off.
+  For any A/B comparison, confirm the baseline run actually *did work* before trusting the delta.
+  And probe destructively without being destructive: write a throwaway probe snapshot and try to
+  delete only that, so a bad answer costs a few bytes rather than the backup.
+- **Where it belongs:** not yet promoted — `worker_role.md`'s "Tests and validators" paragraph is
+  the natural home ("never claim a pass you didn't observe" does not yet cover "and confirm the test
+  could have failed").
+- **Seen:** 2 — ops-infra #22 (restic); the same session's actionlint baseline.
+
+### Verify what landed, not that something landed — 2026-09-17
+- **False assumption:** that a merge flag says anything about what is now on `main`. For a PR whose
+  safety argument is "it ships switched off", the claim is about a **value on `main` after the
+  merge**, and the PR body is the assertion being tested, not evidence for it.
+- **Rule candidate:** read the switches themselves after the merge, e.g.
+  `git show origin/main:ansible/roles/backup/defaults/main.yml | grep -E '^backup_(primary|offsite)_enabled|^backup_require_target'`
+  → all three still `false`; plus confirm the role is actually wired into its play. Generalises to
+  any "changes nothing by default" or "ships inert" safety argument.
+- **Where it belongs:** not yet promoted — complements the `--is-ancestor` material in MasterThread
+  #101, which settles *whether* a merge happened; this settles *what* it did.
+- **Seen:** 1 — ops-infra #22, verified by the session that wrote it.
+
+### Scanning a host that DROPs: silence reads as congestion — 2026-09-17
+- **False assumption:** that an unresponsive port sweep was a network problem or a hung job.
+- **The mechanism, recorded in `ops-infra/tools/Test-PublicPorts.ps1`:** the vault **DROPs**
+  unsolicited packets rather than rejecting them, so nmap gets no answer on 65534 of 65535 ports and
+  **reads total silence as congestion, throttling itself hard**. Untuned, the sweep ran past 35
+  minutes and **did not honour `--host-timeout`**, because that timeout is checked between phases,
+  not mid-phase. The working invocation:
+  `NMAP_PACE="--max-retries 0 --min-rate 1000 --host-timeout 15m"` with
+  `nmap -sS -p- -sV --reason -Pn -T4 $NMAP_PACE --open <ip>` — `--min-rate 1000` overrides the
+  congestion back-off and 65535 ports finish in about a minute.
+- **A second defect in the same script:** `Set-StrictMode -Version Latest` (line 57) plus
+  `$openLines = ... | Where-Object {...}` (line 269) means a **single** match is a scalar string, and
+  `"VERDICT: $($openLines.Count) open port(s)..."` (line 274) then references a property that does
+  not exist. Under StrictMode that is a runtime error, so the verdict line loses its count in
+  exactly the case that matters most — one open port. Wrap any `Where-Object` result destined for
+  `.Count` in `@( )`.
+- **Rule candidate:** never read a slow scan as a broken scan against a drop-rather-than-reject
+  host; set `--min-rate` explicitly. **This tuning exists only in `Test-PublicPorts.ps1`** — the
+  agent definitions `vuln-scan-passive.md` and `vuln-scan-active.md` still carry bare
+  `nmap -sV --open <ip>` with no timing flag and no note about DROP hosts, and will hit the same
+  wall. That gap is open.
+- **Where it belongs:** not yet promoted — the concrete fix is to port the pacing note into those
+  two agent definitions.
+- **Seen:** 1 — ops-infra #21 / `tools/Test-PublicPorts.ps1`.
+
+### Scan output that isn't git-tracked is indistinguishable from a scan that never ran — 2026-09-17
+- **False assumption:** that a completed scan's evidence would still be there afterwards.
+- **What is checkable now:** `ops-infra/tools/Test-PublicPorts.ps1` creates and writes its evidence
+  itself — `$evidenceDir = Join-Path $repo 'security\evidence'; New-Item -ItemType Directory -Force
+  -Path $evidenceDir`, then `ports-<target>-<label>-<timestamp>.txt` — and that directory is
+  referenced by `docs/FIREWALL.md` (lines 212, 364) and `docs/PLAN.md` (line 765). The repo has
+  **no `.gitignore` at all** (`git show origin/main:.gitignore` → `fatal: path '.gitignore' does not
+  exist`), so those files are untracked simply by never having been added.
+- **Rule candidate:** a run whose only output is an untracked working-tree file produces a result
+  that a rebase, a `git clean` or a fresh worktree erases silently — and a missing evidence file
+  looks identical whether the scan failed, was never run, or succeeded and was lost. Commit scan
+  evidence (or write it outside the tree to a durable location) **in the same step that produces
+  it**, before any branch operation.
+- **Unverified:** the specific loss event reported this round — an untracked `security/evidence/`
+  directory vanishing under a rebase and taking a completed scan's output with it — **could not be
+  confirmed after the fact**; by its nature it leaves no trace. The mechanism above is verified; the
+  incident is recorded as reported, not as established.
+- **Where it belongs:** not yet promoted — adjacent to `worker_role.md`'s bulk/destructive rule
+  ("capture any real content a destructive action would otherwise lose into a durable, git-tracked
+  location before removing it"), which covers deletions but not rebases.
+- **Seen:** 1 — as reported; mechanism verified, event not.
+
+### Two tools disagreeing about a served page may both be right — 2026-09-17
+- **False assumption:** that a diff between built output and the served page meant the deploy was
+  stale. **11 HTML files reported as changed; 2 were real.**
+- **The mechanism:** Cloudflare injects `static.cloudflareinsights.com` into HTML responses, so
+  every HTML file differs from its built source by that script tag. `curl` does not receive the
+  injection; `System.Net.WebClient` does. Two tools disagreeing there is the expected result, not a
+  symptom.
+- **Rule candidate:** when diffing built output against a live page behind Cloudflare, strip the
+  injected analytics tag (or compare non-HTML assets) before counting differences, and say which
+  client fetched the page.
+- **Where it belongs:** not yet promoted — belongs with the `website` deploy notes on a second
+  occurrence.
+- **Seen:** 1 — the website deploy check, 2026-09-17.
+
+### A fleet-wide claim needs a per-repo check — 2026-09-17
+- **False assumption:** that "merges are blocked fleet-wide by the stale review gate" applied
+  everywhere. True for `core` and `site-chernarus`; **false for `ops-infra`, which has no
+  `.github/workflows` directory at all.** One `gh pr checks` and one directory listing settled it —
+  after the generalisation had already been relayed to the owner.
+- **Rule candidate:** never relay a fleet-wide claim that was established on one or two repos. Name
+  the repos it was checked on, and check the ones it is about to be applied to. The same discipline
+  applies to "all 36 repos have a `pr-review.yml`", which is a **configuration scan**, not evidence
+  of live behaviour on any of them.
+- **Where it belongs:** not yet promoted — same family as the "state what you searched" material in
+  MasterThread #101 (open); fold in there if it recurs.
+- **Seen:** 1 — the review-gate claim, 2026-09-17.
+
+### A hand-typed timestamp rule needs a machine, not another reminder — 2026-09-17
+- **False assumption:** that restating the "read the clock, never type the stamp" rule would stop it
+  being broken. It was already written in `decision_queue_standard.md` and was broken on **26 of 126
+  cards that same day**; by the end of the night **27 cards carried a hand-typed `createdAt`**, and
+  the 27th was written by a session that had cited the rule to other sessions hours earlier. Of the
+  26 cards whose `resolvedAt` precedes `createdAt`, **11 have a page-written `resolvedAt` and a
+  hand-typed `createdAt`** — the bogus field is `createdAt`, and those cards were answered normally.
+- **Rule candidate:** when a rule about a machine-checkable field is broken at this rate by sessions
+  that know it, the fix is to stop letting the field be typed — have the page stamp `createdAt` on
+  write, as it already stamps `resolvedAt` and `claimedAt`. Knowing the rule is demonstrably not
+  sufficient, including for the session enforcing it.
+- **Where it belongs:** not yet promoted as a standards change — the concrete proposal is a change
+  to the Decision Queue page source (`tools/`, versioned by MasterThread #94) so `createdAt` is
+  page-written. The analysis of the stamp drift itself is in #100 and is not repeated here.
+- **Seen:** 1 — measured across the `decisions` store, 2026-09-17.
+
+### What worked, and why it is in the ledger — 2026-09-17
+- **False assumption or none:** none — a rule candidate from what actually caught things.
+- **Rule candidate:** **every** fault in this round was caught by *doing* something that could have
+  come out the other way — running the probe, reading the raw log, querying the API, testing a
+  discriminator that could have failed. **None** was caught by careful reading of prose. So: when a
+  claim matters, design the cheapest check that can falsify it and run that, instead of re-reading
+  the artifact. Concretely, this round:
+  - Splitting resolutions by whether the stamp carries milliseconds **overturned** a confident
+    three-session diagnosis that re-reading the cards had only reinforced (#100).
+  - Sessions corrected each other and corrected themselves, and the corrections held — including a
+    PM accepting a correction from the lane it had mis-assigned.
+  - **A confused owner outperformed three expert reviews.** "I don't know how to do this" was the
+    only detection of the impossible instruction (#102).
+  - **A verified "no action needed, here is why" is a deliverable.** One lane handed back five facts
+    and no PR rather than manufacturing a role for itself — which would have applied change to a
+    live game host at midnight for a gap already recorded in three places.
+- **Where it belongs:** the first bullet belongs in `worker_role.md` next to "Verify invariants
+  against real files"; the last belongs in `worker_role.md`'s end-of-workstream section, which
+  currently tells a worker to stop and ask the PM but does not say that *nothing* is a valid
+  deliverable.
+- **Seen:** 1 — this round, as a stated rule.
