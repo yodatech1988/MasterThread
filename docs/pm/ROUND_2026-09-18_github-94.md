@@ -132,4 +132,190 @@ Open at close of this record:
   as backlog row `p1-06`, ready to resume once dispatched again.
 - aegis-mods workshop-standard violations (4 of 7 modules) awaiting an owner routing decision.
 
+---
+
+## Rounds 3–6 (03:15Z – close), delta on the record above
+
+Appended by github-c7, verified fresh against `gh`/`origin`/the live `decisions` store at write
+time (2026-09-18T05:3xZ), not relayed from any single inbox file. Everything below is new content
+since the record above; nothing in the prior sections was altered.
+
+### Fleet: who ended, and when
+
+Confirmed live via `ListAgents` at write time: `github-c1`, `github-2a`, `github-de` and `github-e7`
+are no longer present in the peer list — only `github-94` (PM), `github-d9` (merge seat), `github-43`
+and this session remain, plus one freshly-started worktree session. Each ended on direct owner
+instruction, not a crash or timeout:
+
+- **github-c1**, 05:05Z (`PM_INBOX/github-c1-20260918T0505Z-session-ending.md`) — stopped mid-task
+  on the round-record lane itself (gathered the raw merge list, didn't write the section); handed
+  off cleanly, no open worktree, no uncommitted work.
+- **github-2a**, last report 03:57Z (`.../github-2a-20260918T0357Z-claude-agents-session2-and-session-end.md`)
+  — "per the owner's instruction ('finish current work, then end session')." 99 worktrees removed
+  across the round (two passes), all verified-merged via REST before removal, none forced.
+- **github-de**, last report 03:58Z (`.../github-de-20260918T0358Z-clickfile-retirement-and-session-close.md`)
+  — ended after a click-file inventory sweep; flagged `AEGIS-Deploy-Website.ps1/.cmd` (live public-site
+  deploy, no logging, no dry-run mode, no interactive guard) as the single highest-risk untouched
+  script on disk, explicitly not started, recommended as the next session's first pick.
+- **github-e7** — last dated report 03:56Z (post-merge gate-signature sweep across 7 repos), no
+  explicit end line found in its own inbox files; absence from `ListAgents` is the only direct
+  evidence this session has that it ended, and that check was made just now, not backdated.
+
+### PRs merged, Rounds 3–6 (03:15Z → close), verified fresh via `gh api` REST (GraphQL was
+secondary-rate-limited for stretches of this window — REST throughout, never `gh pr list/view`
+during the limited periods)
+
+| Repo | PR | Merged (UTC) | SHA | Title |
+|---|---|---|---|---|
+| MasterThread | #119 | 03:22:17Z | 11e7926c | docs(pm): round-2 record, LESSONS.md entries, PM_BACKLOG snapshot |
+| MasterThread | #117 | 03:30:27Z | 2b63e5e8 | standards(decision_queue): claimedAt is not evidence of a claim |
+| MasterThread | #118 | 03:49:41Z | 28199e20 | standards(dayz): check_module.py now exists in aegis-mods |
+| MasterThread | #120 | 03:49:43Z | 9e6340d1 | gate-execution-auditor: fix two merge-route false positives (gatekeeper-reviewed) |
+| MasterThread | #121 | 03:49:45Z | e342a61d | tools/README.md: three click-file testing rules from tonight's real defects |
+| MasterThread | #123 | 03:56:25Z | d14be154 | docs: postmortem — a signal that reads as evidence without being evidence |
+| MasterThread | #124 | 03:57:37Z | b65b37ea | docs(REPOS): claude-session-archive Session 6 backfill in progress |
+| MasterThread | #125 | 04:09:42Z | f7765a69 | gate-execution-auditor: tolerate markdown-reformatted verdict comments |
+| MasterThread | #126 | 04:20:27Z | 213b6cf8 | tools/headless: fix Invoke-ReadOnlyAgent.ps1 — claude resolution + swallowed failures |
+| MasterThread | #127 | 04:38:06Z | 260eadaf | tools/headless: add -AllowedTools (code only, no grant) |
+| repo-template | #9 | 03:32:09Z | ba4ff5b1 | fix(template): don't propagate repo-template's own plan into new repos |
+| ops-policies | #16 | 03:31:03Z | 341f3b34 | docs: Session 10 — answer 14/18 ops-agent-routed questions, flag 4 needs-owner |
+| ops-household | #2 | 03:33:35Z | e647c39e | Family profile schema (Task 5.1) |
+| ops-business | #2 | 03:34:48Z | 1539ae30 | Session 1: data model, scope allowlist, gateway-client stub |
+| gh-federation | #9 | 03:37:18Z | bacf7899 | docs/PLAN.md: fix stale Status row, add unaccounted merged PRs |
+| ops-business | #3 | 03:39:56Z | 74c27a86 | Fix CI to run pytest; rename "scope allowlist" to entity allowlist/denylist |
+| core | #92 | 03:41:17Z | f4187e52 | ci: install gitleaks directly so secret-scan runs the real thing |
+| ops-infra | #39 | 03:44:22Z | ffc65b0f | docs(FIREWALL): add the missing UDP/7844 rule, flag the real sequencing |
+| vehicle-tracker | #1 | 03:44:24Z | 055807bb | docs/PLAN.md: add estate-template Status table |
+| aegis-marketplace-research | #2 | 03:46:02Z | 0352b36a | docs/PLAN.md: fix stale Status row for Session 0 |
+| site-chernarus | #123 | 03:50:46Z | 8469687c | ci: install gitleaks directly so secret-scan runs the real thing |
+| website | #35 | 03:51:32Z | eb578572 | ci: checksum-verify gitleaks, add Anthropic/Pterodactyl key rules |
+| site-badlands | #14 | 03:51:34Z | df7cd088 | ci: add secret-scan (real gitleaks, checksummed) |
+| claude-session-archive | #14 | 03:53:26Z | 39afb014 | archive: 2026-09-18 (10 sessions) |
+| 3d-printing | #6 | 03:53:35Z | 1d8da5eb | docs: add Session 0 PLAN.md |
+| flightory-stork-vtol | #5 | 03:53:37Z | 1f39d9af | docs: add Session 0 PLAN.md |
+| website | #36 | 03:56:52Z | 46d0b5cd | docs: finish Session 3's stale-doc check (aegis-website-build.md) |
+| claude-agents | #31 | 03:39:30Z | 0121aba9 | docs(README): add missing be-rcon package to the roster table |
+| claude-agents | #32 | 04:00:43Z | 69d4c442 | discord-community: durable violation-count storage (Session 2) |
+
+29 PRs across 17 repos. **Not yet mergeable at close of this delta** (both mine, both route B,
+reported separately): MasterThread #122 (`lessons-to-standards`, actually route C per
+`merge_authority.md`'s table — held for the owner, not the seat) and #125's own follow-up chain is
+already merged above; nothing else of mine is pending.
+
+### Cards filed/resolved since 03:15Z, read live from the `decisions` store
+
+Resolved:
+- `jarvis-master-requires-review-check-that-never-runs-2026-09-18` — owner chose A: fix the runner
+  (run the unzip click-file).
+- `ops-household-and-ops-business-missing-from-owner-only-repos-2026-09-18` — owner chose B: add
+  both repos to `OWNER_ONLY_REPOS`.
+
+Open at close:
+- `action-merge-masterthread-122-lessons-to-standards-2026-09-18`
+- `action-merge-ops-policies-16-s10-answers-2026-09-18`
+- `action-run-narrow-local-allowlist-clickfile-2026-09-18`
+- `branch-protection-matches-unrun-clickfile-provenance-2026-09-18`
+- `deny-list-blind-to-git-c-prefix-2026-09-18`
+- `vault-firewall-order-firewall-first-or-tunnel-first-2026-09-18`
+
+### Findings and retractions, Rounds 3–6 (PM_NOTES §19–§38, cited by section)
+
+Quoted or closely paraphrased from `PM_NOTES_2026-09-18-github-94.md`, whose sections are numbered
+`## NN.` and are **not in numeric file order** (new entries were inserted immediately before the
+old `## 6.`, so the file's tail reads …37, 38, 22, 6 — read by grepping `^## ` for the index, not
+by scrolling to the end).
+
+- **§19 — Seat's own findings (github-d9, 03:44Z).** Basis for backlog rows p2-21/p2-22 below.
+- **§20 — Check SHA length before pinning a merge (github-d9).** An automated read handed the merge
+  seat a 41-character string as a "head SHA" for MasterThread #121 — caught only because the length
+  was checked before pinning (a real SHA is exactly 40 hex chars). Backlog row p2-22: any tool
+  sourcing a SHA from another tool must assert `len==40 && hex` first and refuse otherwise.
+- **§28 — The merge seat does not fix things — PM's own error.** The owner instructed github-d9
+  directly not to resolve issues, only push work back to the originating lane. The PM assigned it a
+  one-word fix anyway because it looked tiny; the seat declined and routed it back, correctly. Every
+  defect the seat found this round (aegis-mods gate, repo-template plan file, website live-claim,
+  the six reformatted verdicts) went back to a lane for the same reason — the seat working as
+  intended, not friction, and "it's tiny" is exactly the reasoning that erodes the boundary.
+- **§30 — A "type YES" prompt that was a bare pause (github-43).** `AEGIS-VPS-CI-All.cmd` told the
+  owner he "must type YES" over a bare `pause` — any keypress continued, the gate confirmed nothing.
+  Fixed with a real console gate, a typed-YES check, log-on-every-exit-path, and a path typo
+  correction (`services\tools\`, not `aegis-services\tools\`, which doesn't exist). Flagged as worth
+  a sweep: every other click-file claiming a typed confirmation should be checked for the same fake
+  gate.
+- **§31 — Squash-merge invalidates a merge-base computed before it landed (github-c7, this
+  session).** This session's own branch passed merge-tree checks throughout its lane, then opened
+  `dirty`. #120 was squash-merged, not fast-forwarded, so every earlier check had been against a
+  stale pre-#120 ancestor. Resolved cleanly — origin/main's squashed content already contained the
+  finished version of this session's earlier draft commit, and git's own rebase auto-dropped the
+  next commit as already-upstream, confirming the resolution was correct. **Rule adopted: re-derive
+  merge-base fresh immediately before opening a PR, never reuse a mid-lane check, especially in a
+  repo that squash-merges.** Also invalidates, retroactively, the "no possible conflict" landing-order
+  analysis from earlier this round — it was only ever true at the moment it was run.
+- **§33 — The headless runner: three defects, one behind the other (github-43, PR #126).**
+  `exit $null` silently evaluates to exit 0 in PowerShell, so a failed tick reported success; fixing
+  that hit `Write-Error` being terminating under `$ErrorActionPreference='Stop'` and skipping the new
+  exit codes, fixed by switching to `Write-Host`; the actual root cause of "not a valid Win32
+  application" was `Start-Process -FilePath 'claude'` grabbing npm's bare shebang shim instead of
+  `claude.cmd`. Separately, `--output-format stream-json` needs `--verbose` or claude refuses to
+  stderr only, invisible without `-Verbose`. Proven with a real run: worktree-sweep, one repo, $0.25
+  cap, actual cost $0.024, exit 0, real output.
+- **§34 — PM defect: idle-state and report delivery race (found by github-43).** The PM chased
+  status from a session that had already filed its report, twice — the fleet-state idle flip and
+  the PM_INBOX report arrive independently, so "idle with no report" read as stalled when it wasn't.
+  Fix (now in `PM_INBOX/README.md` and this session's `tools/fleet-state/Write-SessionState.ps1`
+  doc comment): a session going idle after filing a report sets `-Note "reported: <filename>"`;
+  idle with no report reference is the only case the PM chases.
+- **§35 — "Not in the repo" and "doesn't exist" are different claims (github-d9).** A reviewer
+  flagged a proof-of-run as unverified because a repo search 404'd it; it existed in `PM_INBOX`, this
+  fleet's local session infrastructure, not a repo path. Rule: before writing "doesn't exist," check
+  where the thing would actually live — a reviewer's summary-level doubt is not itself a finding.
+- **§36 — PM relayed a peer's suggestion as fact, twice.** Once dispatching a lane to add allow
+  entries to a deny-only settings file (no `allow` key exists in its schema — github-43 checked
+  three primary sources before the PR would have shipped a change that fixed nothing); once telling
+  this session that github-43 had written a file (`EXECUTABILITY_CHECKS_2026-09-18.md`) that never
+  existed. Named explicitly as a trust-amplification risk: an unchecked claim acquires the PM's
+  authority on the way through a relay. Rule: check, or attribute explicitly as unverified.
+- **§37 — Deny-list is blind to `git -C` (github-43) — second instance of the shape bug.**
+  `readonly.settings.json` denies `git reset --hard`, `git push --force`, etc., but every rule
+  assumes no prefix — `git -C <path> reset --hard` matches none of them. Found scoping an allow entry
+  for worktree-sweep, whose real command is `git -C "<path>" worktree list --porcelain`; the only
+  pattern that matched it, `Bash(git -C *)`, would have bypassed the whole deny-list, so it was
+  correctly refused rather than shipped. Same root cause as the `--admin` flag-position finding
+  earlier tonight: glob permission rules are position-sensitive, one rule per command is not one
+  rule per invocation shape. Carded (`deny-list-blind-to-git-c-prefix-2026-09-18`), recommending
+  shape-aware rules plus a test asserting each denied command stays denied in every shape.
+- **§38 — Evidence standard scales with what a PR grants (github-d9, in #127's verdict).** A summary
+  of a proof run is acceptable evidence for a code-only PR that grants nothing (#127 — the seat
+  verified structurally that no allow-list file is touched). It is not acceptable for a PR that
+  widens what an agent may execute: that needs the raw run artifact, denied-run and allowed-run
+  output, not a narrative. Bar set for any future route-C grant PR.
+
+### Process mechanics adopted this window
+
+- **Fleet-state monitor** (`tools/fleet-state/Write-SessionState.ps1` + `Watch-FleetState.ps1`,
+  github-c7): every session writes its own `%APPDATA%\AEGIS\fleet\<session>.json` on every state
+  change; the PM watches the directory under a Monitor and sees a line only on a real transition
+  (idle/blocked) or a busy session going stale (mtime-based, not content-based, so a crashed session
+  is caught the same way a quiet one is). Tested against 6 real reformatted-comment-class edge cases
+  plus synthetic fixtures before being trusted; the `-Note "reported: <file>"` convention (§34
+  above) is documented in the tool's own comment-based help.
+- **`notify_when_idle` mechanics**: not a fleet-state feature — the cross-session `SendMessage`
+  subscription primitive, used by sessions to be pinged when a peer next goes idle rather than
+  polling `ListAgents` in a loop. Distinct mechanism, same goal (stop the PM from guessing).
+- **Backlog-exhaustion finding**: `PM_BACKLOG_2026-09-18.md`'s 13 originally-dispatchable rows
+  cleared to under the one-open-PR-per-repo cap during Rounds 3-6; the two rows added this window
+  (p2-21, p2-22, from §19/§20 above) are both queued behind MasterThread's own capacity rather than
+  immediately dispatchable — the backlog is not empty, but nothing in it is currently startable
+  without either a PR merging first or an owner routing call.
+
+### Open items at close of Rounds 3–6
+
+- Both open-and-unmerged PRs of this session's own (#122, blocked on route-C owner review) and the
+  six open cards listed above carry forward to the next round unchanged by this append.
+- `AEGIS-Deploy-Website.ps1/.cmd` audit (flagged by github-de at session end) — not started by
+  anyone in this window; still the single highest-risk untouched script on disk by the standing
+  description (live public-site deploy, no logging, no dry-run mode, no interactive guard).
+- github-e7's actual end time is not verifiable beyond "last report 03:56Z, absent from `ListAgents`
+  as of this write" — flagged rather than asserted as a precise timestamp.
+
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
