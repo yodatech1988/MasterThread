@@ -60,6 +60,22 @@ number, and the page itself never invents a status.
 | `checkResult` / `checkedBy` / `checkedAt` | string / string / ISO 8601 | Action cards only: what a check found when the action had **not** taken, or (with `checkedBy: "owner"`) a problem the owner reported from the card. The card stays open. |
 | `executabilityCheck` | string | Action cards only, **required at filing and before relay** (see Executability check below). Who checked, when, and what was traced to a primary source or actually run — or the literal string `not-checked`, which the PM treats as a hold on relaying to the owner. |
 
+**`claimedAt` is not evidence of a claim.** The Decision Queue page stamps `claimedAt` on any button
+press, not only on "Done". A card can therefore carry a `claimedAt` while the owner's actual answer
+was "It looked wrong", a delegation, or a description of some other control entirely. Three of the
+six claimed cards in the 2026-09-18 pass were exactly this: hardware-keys (`checkResult` "It looked
+wrong", `claimComment` asking for a Thursday reminder, `claimedAt` stamped 2.3s later),
+ovh-edge-firewall (`claimComment` "work this out with ops" — a delegation), and phase0-spend-limits
+(`claimComment` describing a prepaid account with no auto-reload, which is a different and stronger
+control than the Console caps the card asks for). Any sweep that filters on `claimedAt` alone is
+counting button presses, not claims, and will over-report work as done — the "13 of 17
+claimed-but-unverified" figure came from that filter. A session checking what the owner actually said
+MUST read `checkResult` and `claimComment` alongside `claimedAt`, and should treat `checkedBy: owner`
+plus a `checkedAt` that PREDATES `claimedAt` as a positive signal that the press was not a "Done".
+Sessions must never write to those fields; they hold the owner's own words. The page-side fix (stamp
+`claimedAt` only on the Done / "I did it" button) is owed by whoever owns the Decision Queue artifact
+page — not yet built as of this writing.
+
 ## Permission-denial cards: when the classifier says no
 
 A session's tool call can be refused by the auto-mode permission classifier (`[Remote Shell
