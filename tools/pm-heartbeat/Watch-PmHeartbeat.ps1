@@ -77,6 +77,18 @@ if (-not $UsageStatePath) {
     $UsageStatePath = if ($StatePath) { Join-Path $StatePath 'claude-usage-state.json' } else { Join-Path $defaultDir 'claude-usage-state.json' }
 }
 
+function Get-JsonProp($Object, [string] $Name) {
+    # Set-StrictMode -Version Latest makes dot-access on a PSCustomObject throw
+    # PropertyNotFoundException when the property is absent (found via diff-reviewer,
+    # 2026-09-18: a heartbeat/usage file missing an expected field crashed this script
+    # instead of hitting its own MISSING/unknown-usage branches). Every read of a field
+    # parsed from JSON goes through this instead of bare dot-access.
+    if ($null -eq $Object) { return $null }
+    $prop = $Object.PSObject.Properties[$Name]
+    if ($null -eq $prop) { return $null }
+    return $prop.Value
+}
+
 function Send-Notice([string] $Title, [string] $Message) {
     # Best-effort, dependency-free. Never let notification delivery fail the check itself.
     try {
@@ -110,24 +122,26 @@ try {
     exit 2
 }
 
-if (-not $hb.tickAtUtc) {
+$tickAtUtc = Get-JsonProp $hb 'tickAtUtc'
+if (-not $tickAtUtc) {
     $line = "PM-HEARTBEAT MISSING heartbeat file at $HeartbeatPath has no tickAtUtc field."
     Write-Output $line
     Send-Notice 'PM heartbeat malformed' $line
     exit 2
 }
 
-$tickAt = [DateTime]::Parse($hb.tickAtUtc, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AdjustToUniversal -bor [Globalization.DateTimeStyles]::AssumeUniversal)
+$tickAt = [DateTime]::Parse($tickAtUtc, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AdjustToUniversal -bor [Globalization.DateTimeStyles]::AssumeUniversal)
 $ageMinutes = [math]::Round(((Get-Date).ToUniversalTime() - $tickAt).TotalMinutes, 1)
-$sessionName = if ($hb.session) { [string]$hb.session } else { '?' }
+$hbSession = Get-JsonProp $hb 'session'
+$sessionName = if ($hbSession) { [string]$hbSession } else { '?' }
 
 $usagePct = $null
 if (Test-Path $UsageStatePath) {
     try {
         $usage = Get-Content -Path $UsageStatePath -Raw | ConvertFrom-Json
-        if ($usage.fiveHour -and $null -ne $usage.fiveHour.usedPercentage) {
-            $usagePct = [double]$usage.fiveHour.usedPercentage
-        }
+        $fiveHour = Get-JsonProp $usage 'fiveHour'
+        $usedPct = Get-JsonProp $fiveHour 'usedPercentage'
+        if ($null -ne $usedPct) { $usagePct = [double]$usedPct }
     } catch { }
 }
 
