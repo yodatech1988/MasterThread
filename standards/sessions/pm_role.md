@@ -213,6 +213,65 @@ and `gh pr list`/`gh pr view`; a tick over ~10 of its own tool calls is a findin
 `dispatchable-and-idle` count (dispatchable rows with no lane running against them) at the end of
 a tick must be 0.
 
+### Round protocol, as it actually ran on 2026-09-18
+
+The mechanisms below are recorded as they were **found built or not built** during a live PM round
+(github-94, 2026-09-18), not as an aspirational design. Where something is real, it is cited by
+exact file; where it is not, that is stated plainly rather than left to be assumed from a mention
+elsewhere. A future PM should trust this section over any card, chat line or handoff note that
+describes these mechanisms differently, and correct it the same way if it drifts.
+
+1. **PM_INBOX reporting protocol — built.** `PM_INBOX\README.md` (written by the PM, 2026-09-18):
+   a worker never sends a full report to the PM by chat. It writes the report to
+   `PM_INBOX\<session>-<UTC yyyyMMddTHHmmZ>-<topic>.md`, first line exactly
+   `STATUS: done | blocked | finding | question | denial`, then sends the PM one `SendMessage` line:
+   `INBOX <filename>` plus at most one sentence. Two exceptions still go to chat in full: a
+   classifier denial, and anything owner-safety (a wrong owner-facing card, a plaintext credential,
+   a live-host risk). "A triage agent digests the inbox each PM tick and moves processed files to
+   `processed/`." Verified live: `processed/` holds real worker reports in exactly that filename
+   shape, plus a `DIGEST-<timestamp>.md`.
+2. **"Two tasks on deck per session" — not found as a named rule.** No file (`PM_INBOX/README.md`,
+   `processed/`, `PM_NOTES_2026-09-18-github-94.md`, `PM_BACKLOG_2026-09-18.md`) states a rule by
+   this name. The nearest real construct is the workstream register's existing `now`/`next`/`later`
+   fields (see "The workstream register" above), which are per-workstream, not a per-session count.
+   If a future round wants a literal two-tasks-per-session rule, it needs to be designed and written
+   here — this section should not be read as evidence it already exists.
+3. **Backlog file with a real, large row count — built, and exceeds any stated floor.**
+   `C:\Users\yoda_\GitHub\PM_BACKLOG_2026-09-18.md` is the live, edited copy; MasterThread's
+   `docs/pm/PM_BACKLOG.md` is an explicitly-labelled point-in-time snapshot of it for the repo's own
+   record, not the working document. Shape: three tables (P1/P2/P3), each row
+   `id | repo | task | done-when | model/effort | size | mergeRoute | prerequisites |
+   dispatchable-now | source`. As read 2026-09-18: 67 total rows, 15 flagged `dispatchable-now:
+   **yes**` — either count clears a "≥12 dispatchable rows" bar. The snapshot already records drift
+   from the live file (two rows superseded by merged PRs), which is expected of a point-in-time copy
+   and not a defect.
+4. **Triage tick with lessons harvest — not built as an automated mechanism; real, but manual.**
+   `PM_INBOX/README.md`'s "triage agent digests the inbox each PM tick" is inbox digestion only, not
+   a lessons harvest. The actual lessons mechanism is `docs/LESSONS.md`'s promotion rule: a
+   first-seen defect is logged there once; on a second occurrence, "the PM (or the orchestrator
+   running `round-closeout`) adds the rule candidate... in the same close-out that recorded the
+   second occurrence" — a judgment call made at round-closeout, not a scheduled job.
+   `LESSONS_INBOX_2026-09-18.md` is a flat, manually-appended scratch file for the current night; no
+   cron, `/loop` or script named anything like "triage tick" exists anywhere in the estate as
+   checked. A future PM that wants this automated has a real gap to build, not a wiring task.
+5. **fleet-state files + `Watch-FleetState.ps1` — built, both halves exist.**
+   `tools/fleet-state/Write-SessionState.ps1` writes one atomic JSON file per session to
+   `%APPDATA%\AEGIS\fleet\<Session>.json` (`{session, state, lane, since, note}`, `state` ∈
+   `busy|idle|blocked`); a session calls it on every state change, which costs it nothing since the
+   watcher only reports transitions. `tools/fleet-state/Watch-FleetState.ps1` polls that directory
+   (default 30s) and prints only `IDLE <session>`, `BLOCKED <session>`, or `STALE <session>
+   <minutes>` (a `busy` file untouched past `-StaleMinutes`, default 15); it never reports a
+   session's first-seen state on its own baseline tick, to avoid startup noise. Intended to run
+   under `Monitor` as one long-lived process — this is the PM's only current visibility into a
+   session going idle or stuck without that session proactively saying so.
+6. **`notify_when_idle` as a second signal — asserted, not evidenced tonight.** `SendMessage`'s
+   `notify_when_idle` parameter is a real harness capability (a one-shot subscription that fires
+   when a same-machine session next goes idle or exits), but no file the PM itself wrote tonight —
+   not `PM_NOTES`, not `PM_BACKLOG`, not any `processed/` report — references using it as a second
+   idle-detection signal alongside fleet-state. Recording this plainly rather than inferring a
+   pattern from a capability that merely exists: a future PM should treat this as an available tool
+   it could wire in, not as something already running in parallel with `Watch-FleetState.ps1`.
+
 ## The owner interface
 
 Only the PM talks to the owner on the fleet's behalf (exception: `fleet_structure.md` rule 5).
