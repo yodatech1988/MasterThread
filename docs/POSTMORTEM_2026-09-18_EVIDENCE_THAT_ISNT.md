@@ -257,8 +257,9 @@ whether an action had actually happened required opening the file and reading it
 that failed**) writes `.log`. Applied on disk, not merely documented: all three click-files implement
 it, and five existing dry-run logs were renamed **after reading each body** — with the one genuine run
 (the owner's 01:06Z permission grant) deliberately left as `.log`. **[Corrected 2026-09-18: the
-renamed-log count is now seven, not five — see Corrections section above. The mechanism and the `.log`
-exception described here are unaffected.]**
+renamed-log count moved three times within two hours as click-files ran repeatedly and is not a
+stable fact worth restating here — see Corrections section above, item 5. The mechanism and the
+`.log` exception described here are unaffected.]**
 
 **Its own check that fails if ignored:** *if telling whether an action happened requires opening the
 log, the naming has already failed.*
