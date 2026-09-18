@@ -346,3 +346,7 @@ being re-run to force a clean result.
 No run hung waiting on a prompt (all four completed with exit 0 well under the 60s timeout), which
 is itself a confirmation that `--permission-prompts none` does what the docs say for a headless
 caller with no host to answer.
+
+Tool-level test discipline for anything invoked headless is in `tools/README.md` (test seam,
+real-path-keyed guards, call-site tests); a headless caller such as `Invoke-ReadOnlyAgent.ps1` is
+itself a call site and gets the same treatment.
