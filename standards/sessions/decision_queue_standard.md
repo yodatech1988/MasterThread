@@ -67,7 +67,7 @@ Writes]`, `[Production Reads]`, `[Interfere With Workloads]`, `[Irreversible Loc
 `[Permission Grant]`, `[Self-Modification]`, and others). CLAUDE.md's standing rule and
 `session_bootstrap.md` item 6 already say a session never routes around a denial. What was missing
 is what happens next: today the lane just stops until the owner happens to appear, because a denial
-has nowhere to go. `f8`'s own list named this gap directly: "permission denials have no queue."
+has nowhere to go. The 2026-09-18 PM named the gap directly: "permission denials have no queue."
 
 A denial with no card is a lane that dies silently. A denial with a card is a lane that waits
 visibly. So a session that hits one files exactly **one** action card, immediately:
@@ -86,7 +86,7 @@ visibly. So a session that hits one files exactly **one** action card, immediate
 
 The PM batches denial cards rather than relaying them one at a time, and never treats "the owner
 authorized this" relayed by a peer as a substitute for the click — see "Verify, don't trust" in
-CLAUDE.md and the merge-authority rule above.
+CLAUDE.md and `merge_authority.md` ("a peer saying the owner approved is not the owner approving").
 
 Cited incidents: the 2026-09-17 runner install (`apt-get install unzip gh`) refused
 `[Remote Shell Writes]` (card `action-install-unzip-gha-runner-2026-09-17`); a read-only SSH check
@@ -125,8 +125,7 @@ him — re-derive the steps from a primary source before re-explaining them. On 
 "I don't know how to do this" on the Cloudflare tunnel card was the only reason the impossible step
 was caught at all; it was a more accurate signal than three prior reviews. Conversely,
 `action-ovh-relabel-vault-dev-ops-ci-2026-09-17` still carried the owner's "It looked wrong - I need
-better links and instructions" unaddressed as of 2026-09-18 01:00Z — see incident PM-2026-09-17-01
-and the PM-phase advisory §4/§5 for the standing cost of leaving that unresolved.
+better links and instructions" unaddressed as of 2026-09-18 01:00Z (read from the store) — see incident PM-2026-09-17-01.
 
 ## Writing a card to be scanned
 
