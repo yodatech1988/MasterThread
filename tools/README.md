@@ -92,6 +92,17 @@ refused precondition, `-WhatIf`, and unhandled exception — each paired with it
   `Register-ScheduledTask` threw under `$ErrorActionPreference='Stop'` and died before its old
   end-of-script-only logging step — no task, files on disk, NO log, indistinguishable from "never
   ran" until a session compared file mtimes against the card's claim time.
+- A run that changed nothing writes its log under a distinct name, never the real-run name:
+  `AEGIS-<name>.<timestamp>.dryrun.log` for `-WhatIf`, a test/non-default target path, or a refused
+  precondition; only a run that actually attempted the real action writes
+  `AEGIS-<name>.<timestamp>.log` — including an attempt that then failed, which is a real run, not a
+  dry run. The log's first line states it in words too: `RUN TYPE: dry run (nothing was changed)` or
+  `RUN TYPE: real`.
+- **Check that fails if ignored:** "a log exists" must never be mistakable for "it ran". If deciding
+  whether an action happened requires opening the log and interpreting its body, the naming has
+  already failed. Cite the 2026-09-18 blocked-work sweep that had to read every log's body to tell
+  dry runs from real ones, and found two click-files — the seat-merge permission grant and the
+  PM-heartbeat watchdog registration — whose only logs on disk were dry runs.
 
 ## What a session cannot test, it says so — on the card and in the file
 
@@ -125,6 +136,10 @@ host). Those are code-reviewed, never "tested", and the card's `executabilityChe
   `$ErrorActionPreference='Stop'` after the owner typed YES and the files were written; the process
   died before its old end-of-script-only logging step, leaving no task, files on disk, and no log.
   Fix: one outer `try/catch/finally` with `Write-RunLog` in `finally`, set on every exit path.
+- **2026-09-18 — the dry-run log that read as done.** A blocked-work sweep had to open the body of
+  every click-file log to tell a `-WhatIf`/test-fixture run from a real one, because both wrote the
+  identical name shape; two click-files (seat-merge grant, PM-heartbeat watchdog) had only dry-run
+  logs on disk. Fix: dry runs write `...dryrun.log` and a `RUN TYPE:` first line.
 - **2026-09-18 — the refused failure-branch exercise.** A subagent asked to exercise the
   `Register-ScheduledTask` throw path by loosening a throwaway copy's real-vs-test guard was refused
   by the permission classifier ("Unauthorized Persistence"). It stopped and reported the gap instead
