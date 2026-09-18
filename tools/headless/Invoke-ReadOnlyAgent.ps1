@@ -20,7 +20,25 @@
 
 .PARAMETER Tools
     Comma-separated tool allow-list passed as --tools, e.g. "Read,Grep,Bash". Required -- there is
-    no safe default, since "what an agent needs" varies per agent.
+    no safe default, since "what an agent needs" varies per agent. NOTE (2026-09-18, see -AllowedTools
+    below): --tools only grants or withholds a whole tool category -- verified against `claude
+    --help`, it cannot narrow to a specific Bash sub-command. Under --permission-mode dontAsk, a bare
+    "Bash" grant here is NOT enough for an agent to run a specific command that isn't in Claude
+    Code's small built-in read-only set -- see headless_agent_permissions.md's own verification log,
+    which found exactly this failure (a harmless `git --version` denied with -Tools "Bash" alone),
+    and this tool's first real headless run reproduced it live (worktree-sweep's own `git worktree
+    list` denied the same way). Use -AllowedTools for the specific commands an agent actually needs.
+
+.PARAMETER AllowedTools
+    Added 2026-09-18, after the defect above was found and reproduced. Comma or space-separated
+    fine-grained permission-rule entries passed as --allowedTools, e.g. "Bash(git worktree
+    list:*),Bash(git status:*)" -- the ONLY flag (per `claude --help`) that accepts this specifier
+    syntax; --tools cannot. Optional; defaults to nothing, so a caller that does not pass this
+    parameter gets byte-identical behaviour to before this parameter existed -- confirmed by the
+    tests in this PR. Pass exactly the commands the named agent's own definition demonstrably uses,
+    nothing wider; this parameter does not decide that scope, the caller does (same division of
+    responsibility as -Tools, per this script's own long-standing rule that it "does not itself
+    decide what an agent is allowed to do").
 
 .PARAMETER MaxBudgetUsd
     Passed as --max-budget-usd. Default 1.
@@ -69,6 +87,7 @@ param(
     [Parameter(Mandatory = $true)][string]$AgentName,
     [Parameter(Mandatory = $true)][string]$Prompt,
     [Parameter(Mandatory = $true)][string]$Tools,
+    [string]$AllowedTools,
     [double]$MaxBudgetUsd = 1,
     [int]$TimeoutSec = 300,
     [string]$SettingsPath = (Join-Path $PSScriptRoot 'readonly.settings.json'),
@@ -102,11 +121,24 @@ if (-not $claudeCmd) {
 }
 $claudeExe = $claudeCmd.Source
 
+# Added 2026-09-18, found while proving -AllowedTools: Start-Process -ArgumentList does NOT quote
+# array elements containing spaces -- it joins the whole array with bare spaces, so a value like
+# "Bash(git -C * worktree list:*)" arrives at the child process as five separate argv tokens, one
+# of which ('-C') gets misparsed by claude's own CLI as an unrelated top-level flag ('error: unknown
+# option -C', reproduced live). A prompt containing the literal text '--version' hit the same defect
+# from the other direction: split into tokens, '--version' alone was interpreted as the CLI's own
+# --version flag, and the whole invocation printed only the version string. Every value that could
+# contain a space must be wrapped in an embedded double quote so the resulting command-line string
+# carries it as one token, the same way a person would quote it by hand at a real prompt.
+function ConvertTo-QuotedArg([string]$Value) {
+    return '"' + ($Value -replace '"', '\"') + '"'
+}
+
 $claudeArgs = @(
     '--print',
     '--agent', $AgentName,
-    '--settings', $SettingsPath,
-    '--tools', $Tools,
+    '--settings', (ConvertTo-QuotedArg $SettingsPath),
+    '--tools', (ConvertTo-QuotedArg $Tools),
     '--permission-mode', 'dontAsk',
     '--permission-prompts', 'none',
     '--strict-mcp-config',
@@ -120,23 +152,50 @@ $claudeArgs = @(
     '--verbose'
 )
 
+# Added 2026-09-18: --allowedTools is the only flag that accepts fine-grained Bash(cmd) specifiers
+# (verified against `claude --help`; --tools above is whole-category only). Omitted entirely when
+# not passed, so a caller that never sets -AllowedTools gets the exact same $claudeArgs as before
+# this parameter existed -- no default value, no behaviour change when unused.
+if ($AllowedTools) {
+    $claudeArgs += @('--allowedTools', (ConvertTo-QuotedArg $AllowedTools))
+}
+
 if ($Model) {
     $claudeArgs += @('--model', $Model)
 }
 
-$claudeArgs += $Prompt
+# Added 2026-09-18, second defect found proving -AllowedTools: --allowedTools is variadic, so a
+# trailing positional prompt is swallowed into it -- exactly the gap headless_agent_permissions.md's
+# own verification log already names ("a prompt passed as a trailing positional argument is
+# swallowed by it and the CLI exits 1 with 'Input must be provided'. Pass the prompt on stdin, or
+# put it before the flags."), reproduced live here. Fixed by following that same standard's own
+# tested pattern: when -AllowedTools is used, the prompt goes on stdin instead of as a positional
+# argument. When -AllowedTools is NOT used, behaviour is unchanged from before this parameter
+# existed -- the positional prompt stays exactly as it was.
+$promptFile = $null
+if ($AllowedTools) {
+    $promptFile = [System.IO.Path]::GetTempFileName()
+    [System.IO.File]::WriteAllText($promptFile, $Prompt, [System.Text.UTF8Encoding]::new($false))
+} else {
+    $claudeArgs += $Prompt
+}
 
-Write-Verbose "$claudeExe $($claudeArgs -join ' ')"
+Write-Verbose "$claudeExe $($claudeArgs -join ' ')$(if ($promptFile) { ' (prompt on stdin)' })"
 
 $stdoutFile = [System.IO.Path]::GetTempFileName()
 $stderrFile = [System.IO.Path]::GetTempFileName()
 $proc = $null
 try {
-    $proc = Start-Process -FilePath $claudeExe -ArgumentList $claudeArgs -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+    if ($promptFile) {
+        $proc = Start-Process -FilePath $claudeExe -ArgumentList $claudeArgs -NoNewWindow -PassThru -RedirectStandardInput $promptFile -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+    } else {
+        $proc = Start-Process -FilePath $claudeExe -ArgumentList $claudeArgs -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+    }
 } catch {
     # Write-Host, not Write-Error -- see the note above the settings-file check: Write-Error is
     # itself terminating under $ErrorActionPreference = 'Stop' and would skip the exit code below.
     Write-Host "Invoke-ReadOnlyAgent: failed to launch '$claudeExe': $($_.Exception.GetType().FullName): $($_.Exception.Message)" -ForegroundColor Red
+    if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
     Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
     exit 2
 }
@@ -148,16 +207,19 @@ try {
         Write-Host "Invoke-ReadOnlyAgent: timeout after ${TimeoutSec}s running agent '$AgentName'" -ForegroundColor Red
         Get-Content $stdoutFile -ErrorAction SilentlyContinue
         Get-Content $stderrFile -ErrorAction SilentlyContinue | Write-Verbose
-        Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
+        if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+    Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
         exit 3
     }
 } catch {
     Write-Host "Invoke-ReadOnlyAgent: error waiting on '$AgentName': $($_.Exception.GetType().FullName): $($_.Exception.Message)" -ForegroundColor Red
+    if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
     Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
     exit 2
 }
 
 Get-Content $stdoutFile
 Get-Content $stderrFile | Write-Verbose
+if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
 Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
 exit $proc.ExitCode
