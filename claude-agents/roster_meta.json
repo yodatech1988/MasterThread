@@ -75,5 +75,9 @@
   "workshop-mod-inventory": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
   "pm-agent": {"role": "A", "headless": "yes", "readonly": "tools", "dormant": false},
   "blocked-work-sweep": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
-  "gate-execution-auditor": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false}
+  "gate-execution-auditor": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
+  "owner-instruction-verifier": {"role": "A", "headless": "yes", "readonly": "instruction", "dormant": false},
+  "register-verifier": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
+  "denial-card-drafter": {"role": "D", "headless": "yes", "readonly": "tools", "dormant": false},
+  "standard-buildstate-checker": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false}
 }
