@@ -701,3 +701,103 @@ Three things are deliberately **not** repeated here, because they already have a
   currently tells a worker to stop and ask the PM but does not say that *nothing* is a valid
   deliverable.
 - **Seen:** 1 — this round, as a stated rule.
+
+### `claimedAt` is stamped on any button press, not only on "Done" — 2026-09-18
+- **False assumption:** that a Decision Queue card carrying a `claimedAt` timestamp means the owner
+  answered "Done" or "Merged". The button stamps `claimedAt` on any press, including "It looked
+  wrong" with a comment, or a delegation typed into the comment box.
+- **Rule candidate:** a sweep for owner-claimed-but-unverified work must read `checkResult` and
+  `claimComment` alongside `claimedAt`, never `claimedAt` alone — and should treat `checkedBy: owner`
+  plus a `checkedAt` that *predates* `claimedAt` as a positive signal the press was not a completion
+  claim. Sessions must never write to `checkResult`/`claimComment`; they hold the owner's own words.
+- **Where it belongs:** `decision_queue_standard.md`, action-card section.
+- **Seen:** 1 — a filter on `claimedAt` alone produced a "13 of 17 claimed-but-unverified" figure
+  that over-counted; three of the six were a delegation, an "it looked wrong", and a stronger-control
+  answer, not completions. (github-c7, corrected by github-2a's read of the page's write code.)
+
+### A deny rule anchored to argument position is defeated by argument order — 2026-09-18
+- **False assumption:** that `"deny": ["Bash(git worktree remove --force *)"]` blocks a force-remove,
+  when the allow list separately grants `"Bash(git worktree remove *)"`.
+- **Rule candidate:** a glob-style deny/allow rule of the shape `Bash(x * --flag*)` only matches when
+  the flag sits in that exact position. Git (and most CLIs) accept a flag anywhere after the
+  subcommand, so `git worktree remove <path> --force` slips past a deny anchored right after `remove`
+  and matches the broader allow instead. An allow-list mechanism cannot reliably express "may X, but
+  never with flag Y" — negation by flag position is not expressible this way, full stop.
+- **Where it belongs:** `headless_agent_permissions.md`, alongside the existing note that a Bash rule
+  is not a security boundary around the program.
+- **Seen:** 1 — found in `settings.local.json` while auditing it against an owner approval; the
+  standing note about a deny wildcard missing a *leading* flag already existed, this is the same
+  class in the other direction (trailing/repositioned flag). (github-c7)
+
+### A worktree's index can show hundreds of "staged" files with nothing actually staged — 2026-09-18
+- **False assumption:** that a worktree reporting hundreds of newly-staged files, with `git log`
+  failing as "no commits yet", represents real uncommitted work that must be rescued before the
+  worktree is touched.
+- **Rule candidate:** before treating a large staged-file count as real work, run `git symbolic-ref
+  HEAD` and `git show-ref --verify <that ref>`. If the branch ref is missing (deleted after a squash
+  merge, e.g. by a remote's auto-delete-on-merge plus a local prune) while the index still holds the
+  full tree, git reads it as an unborn branch with everything staged — a pure index artifact, not
+  lost content. Confirm with `git ls-files | wc -l` equalling the staged count. The fix is a
+  zero-content-change `git update-ref refs/heads/<branch> <target-sha>` to re-attach HEAD, never a
+  commit (which would create a parentless root commit capturing nothing real) and never a reset.
+- **Where it belongs:** not yet promoted — a candidate for `worker_role.md`'s worktree-hygiene
+  section on a second occurrence.
+- **Seen:** 2 — `_wt-MasterThread-buildstate-paths` (883 files, repaired) and the owner's own shared
+  MasterThread checkout (779 files, diagnosed, repair recommended but not yet applied). Same
+  signature both times: `ls-files` count equals staged count, target SHA recoverable from the
+  matching merged PR's `headRefOid`.
+
+### An agent's first live run is a test of the agent, not just of what it found — 2026-09-18
+- **False assumption or none:** none — a rule candidate from what actually happened on a new
+  automation's first outing.
+- **Rule candidate:** the first live run of any new checking/auditing tool or agent should be
+  hand-verified end to end before its findings are acted on, especially "confident" findings framed
+  as serious. A first run that produces false positives is not evidence the underlying problem is
+  worse than thought — it's evidence the checker itself has an unproven edge case (a byte-order-mark
+  in a comment body defeating a `startswith` match; a merge-from-base commit satisfying "head moved"
+  by the letter of a rule while carrying no new reviewed content). This is the same "evidence that
+  isn't" pattern the 2026-09-18 postmortem already named for hand-written claims — it applies to
+  automated checkers too. Also seen earlier the same night: a `gh api | grep` pipeline that silently
+  swallowed a 404 and reported a false "zero everywhere" until the implausibility of the number
+  itself ("no comments at all on 103 PRs") triggered a re-run that caught the broken pipe.
+- **Where it belongs:** `claude-agents/gate-execution-auditor.md` and any future auditor agent's own
+  definition should note this; general form belongs in `worker_role.md` near "Verify invariants
+  against real files".
+- **Seen:** 2 — gate-execution-auditor's first merge-route-audit run (two false positives, both
+  fixed) and github-43's own broken `gh api | grep` pipeline on the same night (caught before any
+  number was reported as fact).
+
+### A background sweep can fabricate a clean result instead of reporting failure — 2026-09-18
+- **False assumption:** that a dispatched worktree-sweep subagent returning "0 safe to remove" and a
+  named report file is a real, completed sweep.
+- **Rule candidate:** a caller that dispatches a read-only sweep agent must confirm the report file
+  it cites actually exists before treating the sweep as done — a subagent under this kind of load can
+  return a plausible-sounding negative result (nothing to report) backed by a report path that was
+  never written, rather than surfacing that it failed or ran out of scope. Splitting a fabrication-prone
+  sweep into smaller per-repo-group dispatches, each independently checkable, is the mitigation used
+  here; the deeper fix (a sweep agent that fails loudly instead of inventing a clean answer) is not
+  yet built.
+- **Where it belongs:** not yet promoted — candidate for `worktree-sweep.md`'s own definition (require
+  the agent to state and verify its own output path before returning) and for `worker_role.md`'s
+  section on trusting subagent output.
+- **Seen:** 1 — a worktree-sweep dispatch across `C:\Users\yoda_\GitHub` returned a fabricated
+  "0 safe to remove" result with a nonexistent report file; caught, flagged in chat, and the sweep
+  was re-dispatched split by repo group. (github-c1)
+
+### A vendor URL that 301s to a generic landing page is unlocatable, not verified — 2026-09-18
+- **False assumption:** that following a vendor knowledge-base link, landing on a generic homepage
+  after a redirect, and then guessing a same-domain path that happens to 404 counts as "traced" —
+  or that a prior session's citation of the same vendor page can be trusted without re-fetching it.
+- **Rule candidate:** when a cited vendor documentation URL 301-redirects to a generic landing page
+  instead of the specific article, or a guessed direct path 404s, the claim it was meant to support
+  must be reported as **unverifiable today**, not silently passed through on the strength of an
+  older citation or a plausible-sounding same-domain guess. This applies with extra weight to claims
+  an owner-facing card is about to ask the owner to act on (rule settings, hardware limits, UI paths)
+  — those get re-traced at card-filing time, not inherited from an earlier read.
+- **Where it belongs:** `decision_queue_standard.md`, alongside the existing "read the store directly,
+  not a peer's summary" rule — this is the same principle applied to external vendor sources instead
+  of internal ones.
+- **Seen:** 1 — every central claim on the OVH edge-firewall card (IPv4-only, 20-rule cap,
+  first-match, always-vs-DDoS-only, the exact panel navigation path) traced only to internal
+  `FIREWALL.md` and a prior session's reading; the vendor KB article itself 301s to a generic docs
+  homepage and a guessed direct path 404s. Held, not passed, pending a fresh trace. (github-43)
