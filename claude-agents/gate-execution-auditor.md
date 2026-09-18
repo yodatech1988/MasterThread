@@ -228,21 +228,32 @@ been found. Apply these, in order, to the body before extracting `route:`, `head
   that is *exactly* one of the known field names (case-insensitive, no colon, nothing else on the
   line — e.g. a line that now just reads `Verdict` or `Evidence`) is not itself a value; it is a
   section heading for the field that follows. Rewrite it as `<field>:` and absorb every following
-  line as that field's value, joined with a single space, until **either** a blank line followed by
-  another heading-or-field line **or a bare field-name heading with no blank line before it** — the
-  second clause is load-bearing, not decoration: two absorbable headings can sit directly adjacent
-  with nothing between them (`Verdict` immediately followed by `Evidence`, no blank line), and
-  without an explicit check for "the next line is itself a recognised bare heading" the first
-  field's absorption silently swallows the second field's name and value as its own content,
-  producing a value assembled from two different fields rather than a clean miss. Caught by
-  `agent-automation-gatekeeper`'s review of this fix, then reproduced against a constructed fixture
-  before the fix below was accepted: with only the blank-line check, `Verdict\nmerge\nEvidence\nchecked
-  live` (no blank lines at all) normalised to a single field, `verdict: merge Evidence checked live`,
-  losing `evidence` entirely. With both checks, it correctly yields `verdict: merge` and
-  `evidence: checked live` as two independent fields. This is the case a plain "strip emphasis and
-  headings" pass does **not** catch on its own in the first place: `## Verdict` followed by a blank
-  line and then `**merge**` on its own line has no `verdict:` token anywhere near the value until
-  this step runs.
+  line as that field's value, joined with a single space, until a blank line followed by a
+  recognised label line, or **any line that is itself a recognised label — bare heading or inline
+  `label: value` alike — appearing with no blank line before it.** That second clause must cover
+  both shapes of "the next thing is actually a different field," not only the heading-shaped one:
+  - Two absorbable headings can sit directly adjacent with nothing between them (`Verdict`
+    immediately followed by `Evidence`, no blank line). A version of this rule that only stopped on
+    another *bare heading* closed this case but missed the next one.
+  - A bare heading can also be immediately followed, no blank line, by an **inline** `label: value`
+    line for a different field (`Verdict` immediately followed by `route: B`) — checking only for
+    "is the next line itself a bare heading" does not fire here, because `route: B` is not bare, and
+    the value would otherwise be absorbed as verdict's content while `route` is lost or only
+    survives by accident of a later, unrelated splitting step.
+
+  Both were caught by two successive rounds of `agent-automation-gatekeeper` review of this fix, and
+  both were reproduced against a constructed fixture before being accepted, not asserted from
+  reasoning alone: with only a bare-heading check, `Verdict\nmerge\nEvidence\nchecked live` (heading,
+  heading, no blank lines) collapsed to one field, `verdict: merge Evidence checked live`, losing
+  `evidence` entirely; `Verdict\nroute: B` (heading then inline label, no blank line) left `verdict`
+  empty and depended on an unrelated pass to save `route` rather than stopping absorption cleanly at
+  the source. With the rule stated above — stop on *any* recognised label line, not only a bare one —
+  both fixtures normalise correctly: the first yields `verdict: merge` and `evidence: checked live`
+  as independent fields; the second yields `route: B` with `verdict` correctly landing on the
+  existing "field cannot be read → UNKNOWN" rule rather than a wrong or invented value. This is the
+  case a plain "strip emphasis and headings" pass does **not** catch on its own in the first place:
+  `## Verdict` followed by a blank line and then `**merge**` on its own line has no `verdict:` token
+  anywhere near the value until this step runs.
 - **If the absorbed value itself begins with a redundant inline label naming the same field**
   (`## Dependencies` absorbing a line that itself literally says `depends-on: none` — both name the
   same field under its two spellings), strip that leading `<field-or-its-synonym>:` from the
@@ -271,14 +282,16 @@ marker line itself (`MERGE-VERDICT v1 (supersedes the verdict at ef6e931...)`), 
 detection already tolerates unchanged. A reference implementation of the normalisation above (not
 the shipped agent, a standalone check) was run against all 6 real bodies plus three constructed
 fixtures — a comment with no `MERGE-VERDICT` marker at all; one with the marker but a genuinely
-missing `verdict:` field; and one built specifically to exercise the adjacent-bare-heading case
-below (`Verdict` / `merge` / `Evidence` / `checked live`, no blank lines at all) — the real 6 fetched
-fresh via `gh api repos/<owner>/<repo>/issues/<n>/comments`. All 6 real comments yielded a complete
-field set; the no-marker fixture correctly fell through to UNATTRIBUTED without attempting
-extraction; the marker-without-verdict fixture correctly extracted `route:`/`head:`/`reviewer:`
-while finding no `verdict:` field, which the existing hard rule above already reports as UNKNOWN,
-never CLEAN; the adjacent-heading fixture failed against the first draft of this fix (see below) and
-passes against the version actually described here.
+missing `verdict:` field; and two built specifically to exercise the adjacent-label cases above —
+`Verdict` / `merge` / `Evidence` / `checked live` (heading directly adjacent to another heading, no
+blank lines) and `Verdict` / `route: B` (heading directly adjacent to an inline label, no blank
+line) — the real 6 fetched fresh via `gh api repos/<owner>/<repo>/issues/<n>/comments`. All 6 real
+comments yielded a complete field set; the no-marker fixture correctly fell through to
+UNATTRIBUTED without attempting extraction; the marker-without-verdict fixture correctly extracted
+`route:`/`head:`/`reviewer:` while finding no `verdict:` field, which the existing hard rule above
+already reports as UNKNOWN, never CLEAN; both adjacent-label fixtures failed against an earlier
+draft of this fix that only checked for an adjacent *bare heading* (see above) and pass against the
+version actually described here, which stops on any recognised label line.
 
 **Restated because it matters specifically here, not only in the BOM subsection above:** every step
 in this subsection is string reshaping applied to already-fetched, already-untrusted text — stripping
