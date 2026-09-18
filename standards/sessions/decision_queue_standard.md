@@ -61,8 +61,10 @@ number, and the page itself never invents a status.
 | `executabilityCheck` | string | Action cards only, **required at filing and before relay** (see Executability check below). Who checked, when, and what was traced to a primary source or actually run — or the literal string `not-checked`, which the PM treats as a hold on relaying to the owner. |
 
 **`claimedAt` set is evidence only that the owner pressed the claim button — it is not evidence he
-meant "Done".** The page's write code (verified by reading it directly, not inferred) confirms the
-row above: exactly one button, "I did it - check it", ever writes `claimedAt`, and it writes
+meant "Done".** The page's write code (read directly from the artifact's own script —
+`https://claude.ai/artifact/1fMqNA1zdQKsq1FDEFvyzf`, version `1789668310-a0f2`, 2026-09-18; re-check
+the current version if this drifts) confirms the row above: exactly one button, "I did it - check
+it", ever writes `claimedAt`, and it writes
 `claimComment` from whatever the owner typed in the comment box alongside it — unvalidated against
 the button's own label. The separate report button (for "It looked wrong" and similar) does the
 opposite: it *clears* `claimedAt` and `claimComment` and writes `checkResult` / `checkedBy: "owner"`
