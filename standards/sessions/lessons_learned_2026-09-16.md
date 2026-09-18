@@ -117,3 +117,22 @@ explicit PM instruction, never a self-guided default. Added as `worker_role.md` 
 end of workstream" rather than a new standalone doc, since every worker already reads that file at
 startup and this is a direct continuation of its existing "Delivering" section, not a separate
 concern.
+
+## A new agent's first run is a test of the agent, 2026-09-18
+
+`gate-execution-auditor`'s merge-route audit mode was built, gatekeeper-reviewed, and merged as
+correct-by-design. Its **first real run against live PRs** produced two false positives anyway: a
+verdict comment starting with a UTF-8 BOM read as no verdict at all, and a routine merge-from-main
+commit inside a PR was read as the merge event itself, both scoring a clean merge as UNATTRIBUTED.
+Neither was a defect a reviewer could have caught by re-reading the definition harder — both needed
+real, messy input (an actual GitHub API response, an actual git history with a branch refresh in it)
+that a design review has no access to.
+
+The general point, not specific to this agent: **a definition review checks whether the logic is
+sound against the cases its author thought of. A first run checks it against the cases that
+actually occur.** Those are different tests, and passing the first proves nothing about the second.
+Budget for it explicitly — plan a new agent's first live output as a review step in its own right,
+not as evidence the build is finished, and expect to fix at least one thing the design review had no
+way to see. (Both fixes here, plus a further round from the same gatekeeper catching a
+false-*negative* risk in the fix itself — a stale SHA sharing a short prefix with the real one — are
+in the same PR; see MasterThread `claude-agents/gate-execution-auditor.md` history.)

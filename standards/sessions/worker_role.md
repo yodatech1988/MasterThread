@@ -165,6 +165,11 @@ If the orchestrator sends "PAUSE" (usage limit):
   - verified vs simulated
   - owner decisions
   - which files would deploy live, and how
+  - **which session wrote it.** Added 2026-09-18: a PR body that never names its session is
+    unattributable the moment the session ends — nobody reading it later can ask the author a
+    question, credit a lesson to its source, or tell a genuine owner merge apart from a session's
+    work without cross-referencing Fleet Status by timestamp. One line (`Session: github-xx`) is
+    enough; it costs nothing to include and is expensive to reconstruct once missing.
 - **Report back concisely, under ~25 lines:**
   - PR URL
   - done-when checklist, each item marked verified, simulated or pending

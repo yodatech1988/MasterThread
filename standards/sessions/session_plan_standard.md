@@ -55,6 +55,13 @@ PRs hid three real defects because the checks that were green had not actually r
    git worktree add ../_wt-<repo>-<slug> -b agent/<repo>/<slug> origin/<default>
    ```
 
+   **`<default>` is not the same string everywhere.** A 2026-09-18 sweep found the org's default
+   branch split across `main` and `master` in 7 repos. A command copied from one repo's session into
+   another with `origin/main` hardcoded either fails outright or, worse, silently branches from the
+   wrong ref if both branches happen to exist. Read the actual default with `gh repo view <owner>/<repo>
+   --json defaultBranchRef --jq .defaultBranchRef.name` (or `git remote show origin | grep 'HEAD branch'`)
+   before assuming it — never carry `main` forward from the last repo you worked in.
+
    Prune the worktree when the PR merges. Parallel sessions run across repos, never two in one repo
    (rule 4 makes that a collision by definition) -- **except** an orchestrating session running
    several in-process research/review lanes against the *same* repo at once (e.g. one lane per
