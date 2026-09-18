@@ -81,9 +81,16 @@ the PM. Sessions keep writing their own `sessions` rows as today.
 | `mergeRoute` | Default route for its PRs per `merge_authority.md`. |
 | `verified` | When the PM last checked this row against live `gh`, not against a report. |
 
-A register row older than the last state-changing event is stale. The PM re-verifies a row against
-`gh` before acting on it or reporting it to the owner; a peer's report updates the row only after
-that check.
+A register row is stale when a state-changing event on *that row's own* `now` item — its PR, branch,
+or named blocker — postdates the row's `verified` timestamp, not when anything at all happened in
+the row's repo (register-verifier's first live run, 2026-09-18T02:25Z, flagged two rows verified at
+02:14Z and 02:20Z as stale purely because an unrelated PR updated at 02:23:52Z in the same repo). The
+PM re-verifies a row against `gh` before acting on it or reporting it to the owner; a peer's report
+updates the row only after that check. A verification pass takes one snapshot of the newest relevant
+event per row at the start of the pass and compares every row against that snapshot, so rows checked
+early in the pass aren't judged stale relative to rows checked later in the same pass. A staleness
+rule that fires on every row is indistinguishable from one that fires on none, and both leave the PM
+re-verifying everything by hand — the cost the register exists to remove.
 
 ## Intake
 
