@@ -32,5 +32,24 @@ Check 'existing: protected / not 404'      (Test-ExistingRepoAllowed $m $true 0 
 Check 'existing: marker but public+full'   (Test-ExistingRepoAllowed $m $false 3 $false).Allowed $false
 Check 'existing: reason names marker'      ((Test-ExistingRepoAllowed 'x' $true 0 $true).Reason -like '*marker*') $true
 
+# Get-BranchCount: ok flag, raw text (gh api output shape: JSON body then "gh: <msg> (HTTP nnn)" on errors)
+Check 'branches: 200 []'                  (Get-BranchCount $true '[]') 0
+Check 'branches: 200 one branch'          (Get-BranchCount $true '[{"name":"main"}]') 1
+Check 'branches: 409 empty'               (Get-BranchCount $false '{"message":"Git Repository is empty.","status":"409"}gh: Git Repository is empty. (HTTP 409)') 0
+Check 'branches: 404 -> unknown'          ($null -eq (Get-BranchCount $false 'gh: Not Found (HTTP 404)')) $true
+Check 'branches: 409 not-empty text'      ($null -eq (Get-BranchCount $false 'gh: Conflict (HTTP 409)')) $true
+Check 'branches: 200 bad json -> unknown' ($null -eq (Get-BranchCount $true 'not json')) $true
+# Test-Is404
+Check 'protection probe 404 Branch not found' (Test-Is404 $false '{"message":"Branch not found","status":"404"}gh: Branch not found (HTTP 404)') $true
+Check 'protection probe 404 Branch not protected' (Test-Is404 $false 'gh: Branch not protected (HTTP 404)') $true
+Check 'protection probe 200 = protected'  (Test-Is404 $true '{"url":"x"}') $false
+Check 'protection probe 403 not 404'      (Test-Is404 $false 'gh: Forbidden (HTTP 403)') $false
+# Get-DefaultBranch (never assume main)
+Check 'default branch main'               (Get-DefaultBranch ([pscustomobject]@{ default_branch = 'main' })) 'main'
+Check 'default branch master'             (Get-DefaultBranch ([pscustomobject]@{ default_branch = 'master' })) 'master'
+Check 'default branch missing -> null'    ($null -eq (Get-DefaultBranch ([pscustomobject]@{ name = 'x' }))) $true
+Check 'default branch null repo -> null'  ($null -eq (Get-DefaultBranch $null)) $true
+Check 'default branch weird chars -> null' ($null -eq (Get-DefaultBranch ([pscustomobject]@{ default_branch = 'a b;rm' }))) $true
+
 Write-Host "PASS=$($script:pass) FAIL=$($script:fail)"
 exit $script:fail
