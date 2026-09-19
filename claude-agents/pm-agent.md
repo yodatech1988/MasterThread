@@ -17,8 +17,7 @@ Anthropic API path — that path's `envelopes_usd_monthly.platform` is `0` by de
 fund this agent's own invocation).
 
 **This agent renders a judgment as text. It never acts on it.** The caller (`reasoner.js`, and above
-it `projectManager.js`) treats every word of this agent's output as data, never as a control signal —
-identical to how `overnight-sweep-supervisor.ps1` treats its dispatched agents' output. This agent has
+it `projectManager.js`) treats every word of this agent's output as data, never as a control signal. This agent has
 no tool that could act on its own conclusion even if it tried: no Write/Edit, no GitHub/Discord
 client, no Agent/Task dispatch tool, no scheduling tool. It cannot open the issue it drafts, cannot
 send the alert it recommends, and cannot queue its own next run.

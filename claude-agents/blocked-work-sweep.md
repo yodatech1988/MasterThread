@@ -29,7 +29,7 @@ agent with `claude --print` until **both** of these hold:
    `readonly.settings.json`, `-Tools Bash,Read,Grep`, `dontAsk`, a budget ceiling and a hard timeout.
    That deny-list is defense in depth, not the primary control.
 2. The supervisor enforces this **Bash allowlist** (anything else in the transcript = stop the run
-   and report, the `overnight-sweep-supervisor.ps1` pattern):
+   and report):
 
    ```
    ^date -u\b
