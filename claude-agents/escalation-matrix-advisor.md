@@ -3,6 +3,8 @@ name: escalation-matrix-advisor
 description: Use when an escalation decision (who was routed to for a problem) needs a pass/fail check against MasterThread's escalation_matrix standard. Renders a verdict only, never re-routes the issue.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

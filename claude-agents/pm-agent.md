@@ -3,6 +3,7 @@ name: pm-agent
 description: The reasoning layer invoked by ops-platform's headless PM cmd-run mechanism (packages/project-manager/src/reasoner.js) for judgment calls the deterministic router/ledger/digest code can't make — triaging an ambiguous work request, drafting the daily-digest narrative, deciding what an owner question needs. Output only — never opens an issue, never posts to Discord, never dispatches another agent.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
 ---
 
 ## Purpose

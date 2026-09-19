@@ -3,6 +3,8 @@ name: architecture-doc-drafter
 description: Use when someone describes a system and needs a draft architecture document skeleton in MasterThread's real required-sections format. Drafts only -- caller reviews and places the file.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

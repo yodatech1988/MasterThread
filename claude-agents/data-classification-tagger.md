@@ -3,6 +3,8 @@ name: data-classification-tagger
 description: Use when given a file path or a description of a data field/table and it needs a classification tag under policies/data/classification.md (C0-C3, plus C3 tags pii/financial/credential/child-family) and the tier of who may act on it. Read-only.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

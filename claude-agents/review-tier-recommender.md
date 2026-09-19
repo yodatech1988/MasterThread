@@ -3,6 +3,7 @@ name: review-tier-recommender
 description: Use before (or instead of) a costly automatic PR review to check whether the PR actually needs it. Given a repo and PR number, classifies the diff's size and shape and recommends which worker_role.md model/effort row fits, since core/.github/workflows/claude-review.yml currently hardcodes claude-opus-5/high for every PR regardless of size (audit finding A1).
 tools: Bash, Grep, Read
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

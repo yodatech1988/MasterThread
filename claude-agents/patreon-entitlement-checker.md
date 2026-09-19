@@ -3,6 +3,8 @@ name: patreon-entitlement-checker
 description: Dormant — Discord automation is paused per owner decision; this defines capability for when it's lifted, not a running trigger. When invoked, cross-references a given Patreon tier against a member's Discord role and entitlement per policies/patreon/entitlements.md's actual rules. Read-only; reports mismatches, proposes nothing it can apply itself.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

@@ -3,6 +3,7 @@ name: origin-reader
 description: Use to read a file or directory listing from a repo's origin/<default> branch (never the local working tree), and state explicitly that origin was the source. For when a local checkout or PLAN.md status might be stale.
 tools: Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

@@ -3,6 +3,7 @@ name: test-baseline-runner
 description: Use when a PR or lane claims a test/validator baseline (pytest, npm test, econ_check, a repo's validate script) and the real pass/fail counts need confirming by actually running it. Restricted to test/validator invocations only — no git write commands, no deploy commands.
 tools: Bash
 model: sonnet
+maxTurns: 30
 ---
 
 ## Purpose

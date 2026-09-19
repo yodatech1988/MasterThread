@@ -3,6 +3,8 @@ name: technical-requirements-advisor
 description: Use when a technical requirements document needs a pass/fail check against MasterThread's technical_requirements standard before it's relied on for implementation. Renders a verdict only, never edits the document.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

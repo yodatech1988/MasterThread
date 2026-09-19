@@ -3,6 +3,7 @@ name: automerge-preflight
 description: Use before pushing a PR for review in a repo with automerge enabled, to catch an automerge-blocking condition up front instead of getting bounced to owner-review after a full Opus review already ran. Given a repo and PR number, checks it against claude-review.yml's actual deterministic automerge gates.
 tools: Bash, Grep
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

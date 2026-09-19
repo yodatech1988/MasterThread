@@ -3,6 +3,8 @@ name: lane-card-writer
 description: Use to turn a one-line backlog item plus target repo into a properly formatted lane (worker) or research card, with Priority and Size estimates and justification. Output only — never dispatches.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

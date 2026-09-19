@@ -3,6 +3,7 @@ name: github-org-repo-inventory
 description: Use to get a fact table of every repo in the yodatech1988 GitHub org -- name, visibility, last push date, archived status. Pure inventory, no judgment on which repos matter or need attention.
 tools: Read, Grep, Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

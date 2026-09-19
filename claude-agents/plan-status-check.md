@@ -3,6 +3,7 @@ name: plan-status-check
 description: Use to diff a repo's docs/PLAN.md Status table (read from origin) against the real gh state of each PR it cites, and report only the rows that disagree. Read-only.
 tools: Bash, Read, Grep
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

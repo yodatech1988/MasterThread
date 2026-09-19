@@ -3,6 +3,8 @@ name: support-triage
 description: Dormant — Discord automation is paused per owner decision; this defines capability for when it's lifted, not a running trigger. Classifies a support ticket's text against policies/discord/support.md's stated categories/routing rules and proposes a routing/priority label. Never sends a reply or closes a ticket.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

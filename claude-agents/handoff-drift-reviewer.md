@@ -3,6 +3,8 @@ name: handoff-drift-reviewer
 description: Use when a session is handing off -- a PM rotating to a fresh session, or any documented procedural handoff -- to check what actually happened against the standing procedure (orchestrator_role.md, session_plan_standard.md) before it's trusted. Call it FROM the session that just lived through the handoff, not from the incoming session -- it exists so drift gets fixed by whoever already holds the context, not reverse-engineered cold by a fresh session. Read-only: reports divergence and a recommendation, never edits the standard, the handoff file, or anything else.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

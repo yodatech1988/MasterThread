@@ -3,6 +3,7 @@ name: worktree-sweep
 description: Use to list a repo's git worktrees, resolve each branch's PR state, and report which worktrees are safe to remove. Never removes anything itself.
 tools: Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

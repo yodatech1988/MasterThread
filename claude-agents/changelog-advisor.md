@@ -3,6 +3,8 @@ name: changelog-advisor
 description: Use when a changelog entry or CHANGELOG.md diff needs to be checked against MasterThread's changelog standard before it ships. Advisor only — renders pass/fail, never edits the changelog.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

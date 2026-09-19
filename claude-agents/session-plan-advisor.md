@@ -3,6 +3,8 @@ name: session-plan-advisor
 description: Use when a docs/PLAN.md (or a plan draft) needs a pass/fail check against MasterThread's PLAN_template.md and session_plan_standard.md before sessions are dispatched from it. Advisor only -- renders a verdict per item, never edits the plan or dispatches anything.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

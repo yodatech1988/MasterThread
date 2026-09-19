@@ -3,6 +3,8 @@ name: logging-conventions-advisor
 description: Use when a log statement, logging helper, or diff touching log calls needs to be checked against MasterThread's logging conventions before it ships. Advisor only — renders pass/fail, never edits code.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

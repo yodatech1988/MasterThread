@@ -3,6 +3,8 @@ name: agent-automation-gatekeeper
 description: Review step for future additions to the org's T4 agent roster (MasterThread docs/AGENTS.md) -- use when given a NEW proposed agent definition file or a description of a proposed automation, to check it against the real rules in policies/security/agents_and_automation.md before it's added to the roster. Reports pass/fail per rule with the specific policy line checked.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

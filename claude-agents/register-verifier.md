@@ -3,6 +3,7 @@ name: register-verifier
 description: Use to check the PM's `workstreams` register (Fleet Status collection) against live `gh`/`git` state, so the PM's heartbeat tick doesn't act on a stale row. Given the register rows as a JSON file path (or a directory of per-doc JSON files, the shape `ArtifactData`'s `out_dir` export produces) plus a repo list, checks each row's `now`/`state`/`blocker`/`dispatchable` against reality and flags disagreement. Read-only fact-reporter — never writes the register, and has no `ArtifactData` tool of its own, so the caller exports the rows to disk first.
 tools: Read, Grep, Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

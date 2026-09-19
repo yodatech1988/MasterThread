@@ -3,6 +3,7 @@ name: usage-window-reporter
 description: Use for a one-off spot check of current Claude subscription usage (5-hour and weekly percentages) without starting a standing orchestrator watcher.
 tools: Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

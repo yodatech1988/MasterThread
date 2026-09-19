@@ -3,6 +3,7 @@ name: gate-execution-auditor
 description: Use to find CI gates that report success without having executed — the false-green class. Checks each gate's last run for the tool's OWN output signature rather than the job's conclusion, so a check that skipped, exited early, or never started is caught. Also runs a merge-route audit mode (owner decision `merge-seat-how-to-enforce-route-b-2026-09-18`, 2026-09-18): given a repo and lookback, classifies each merged PR's actual route per merge_authority.md and checks its MERGE-VERDICT comment for a route mismatch, a stale head, self-merge, or no verdict at all. Read-only; never re-runs, re-labels, merges, or edits anything.
 tools: Bash, Grep
 model: sonnet
+maxTurns: 30
 ---
 
 ## Purpose

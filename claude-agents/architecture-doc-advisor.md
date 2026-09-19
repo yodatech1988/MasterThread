@@ -3,6 +3,8 @@ name: architecture-doc-advisor
 description: Use when an architecture document needs a pass/fail check against MasterThread's architecture_doc_standard before it's treated as the reference for a system or feature. Renders a verdict only, never edits the doc.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

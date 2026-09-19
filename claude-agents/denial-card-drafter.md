@@ -3,6 +3,7 @@ name: denial-card-drafter
 description: Use immediately after a session's tool call is refused by the auto-mode permission classifier (`[Remote Shell Writes]`, `[Production Reads]`, `[Interfere With Workloads]`, `[Irreversible Local Destruction]`, `[Permission Grant]`, `[Self-Modification]`, etc.), to turn the denial into a complete Decision Queue action card in the exact "Permission-denial cards" shape. Drafter only — never files the card itself, so a lane never sits routing around a denial while waiting on this agent.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
 ---
 
 ## Purpose

@@ -3,6 +3,8 @@ name: sequence-diagram-drafter
 description: Use when someone describes an interaction between components/agents and wants a sequence diagram drafted from it, per MasterThread's sequence diagram standard. Read-only -- produces a draft block for the caller to place, never writes files.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

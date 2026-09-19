@@ -3,6 +3,8 @@ name: naming-conventions-advisor
 description: Use when a file, function, variable, JSON key, database column, agent name, or ID scheme needs to be checked against MasterThread's naming conventions before it ships. Advisor only — renders pass/fail, never renames anything.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

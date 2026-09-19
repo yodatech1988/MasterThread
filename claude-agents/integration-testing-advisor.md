@@ -3,6 +3,8 @@ name: integration-testing-advisor
 description: Use when an integration test plan needs a pass/fail check against MasterThread's integration_testing standard before a cross-system release relies on it. Renders a verdict only, never edits the plan.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

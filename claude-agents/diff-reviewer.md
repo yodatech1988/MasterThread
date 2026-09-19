@@ -3,6 +3,7 @@ name: diff-reviewer
 description: Use before merging any PR that isn't live/credential/money/death-path scope (those go to live-reviewer instead). Reviews `gh pr diff <n>` for known crash patterns, accidentally committed secrets, and removed-mod/removed-file names reappearing. Read-only.
 tools: Bash, Grep, Read
 model: sonnet
+maxTurns: 30
 ---
 
 ## Purpose

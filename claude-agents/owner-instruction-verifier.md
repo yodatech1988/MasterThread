@@ -3,6 +3,7 @@ name: owner-instruction-verifier
 description: Use before an action card is filed or relayed to the owner, to check that every step in it can actually be carried out — the "executability check" `decision_queue_standard.md` requires. Read-only: never edits the card, never relays anything to the owner, never files a card itself. Given a card's steps (as a JSON file path or pasted text), traces each step to a primary source or a runnable command, and for any named vendor UI screen/menu/button fetches current vendor documentation and records the read date. Subagents have no `ArtifactData` tool — the caller must export the card to a file first (`ArtifactData` action `get`/`list` with `out_dir`) and pass that path in, or paste the steps directly.
 tools: Read, Grep, Bash, WebFetch
 model: sonnet
+maxTurns: 30
 ---
 
 ## Purpose

@@ -3,6 +3,7 @@ name: policy-coverage-reporter
 description: Use to find out which real (non-stub) MasterThread standards/policies documents have no agent grounded in them yet, so future agent-building work can be prioritized by actual coverage gaps rather than guesswork.
 tools: Read, Grep, Bash
 model: sonnet
+maxTurns: 30
 ---
 
 ## Purpose

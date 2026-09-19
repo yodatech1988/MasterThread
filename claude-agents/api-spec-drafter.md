@@ -3,6 +3,8 @@ name: api-spec-drafter
 description: Use when someone describes an endpoint or small set of endpoints that needs an API spec skeleton. Drafts it in the exact sections required by MasterThread's API spec standard. Produces a draft only -- never writes it into a service's actual spec file or opens a PR with it.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

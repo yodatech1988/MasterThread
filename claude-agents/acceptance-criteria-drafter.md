@@ -3,6 +3,8 @@ name: acceptance-criteria-drafter
 description: Use when someone describes a feature or change that needs testable "done" conditions. Drafts acceptance criteria in the exact format required by MasterThread's acceptance criteria standard. Produces a draft only -- never adds it to a requirements doc or marks IDs as final.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

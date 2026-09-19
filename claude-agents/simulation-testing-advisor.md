@@ -3,6 +3,8 @@ name: simulation-testing-advisor
 description: Use when a simulation test plan needs a pass/fail check against MasterThread's simulation_testing standard before a policy change relies on it. Renders a verdict only, never edits the plan.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

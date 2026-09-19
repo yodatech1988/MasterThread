@@ -3,6 +3,7 @@ name: ovh-vps-usage-reporter
 description: Use to get the real OVH VPS inventory and usage for the AEGIS admin-bot VPS. Wraps OvhApiKey.ps1's read-only GET /vps call and reports exactly what OVH returns, fact-only.
 tools: Read, Grep, Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

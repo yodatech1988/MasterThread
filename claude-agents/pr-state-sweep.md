@@ -3,6 +3,7 @@ name: pr-state-sweep
 description: Use to sweep open PRs and their CI check states across one or more named yodatech1988 repos, replacing manual `gh pr list` polling. Pure reporting, read-only.
 tools: Bash, Grep
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

@@ -3,6 +3,7 @@ name: github-2fa-audit
 description: Use to periodically confirm the yodatech1988 GitHub account's 2FA and token-based-auth posture hasn't regressed, and that no workflow has reintroduced password-based or PAT-in-plaintext access. Read-only gh api checks only, never changes a setting.
 tools: Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

@@ -3,6 +3,7 @@ name: blocked-work-sweep
 description: Use when the owner or PM asks "what work is blocked?", or - once its headless prerequisites are met - under an external supervisor. Compares what the Ops Decision Queue and Fleet Status CLAIM (open cards, "Done"/"Merged" answers, sessions' waitingOn) against LIVE state (gh, the local disk) and reports every blocker with its root cause, grouped so one owner click that unblocks ten PRs reads as one item. Read-only. Never files, resolves or edits a card, never merges, never runs a click-file - it names what its caller should file.
 tools: Bash, Read, Grep
 model: sonnet
+maxTurns: 30
 ---
 
 ## Purpose

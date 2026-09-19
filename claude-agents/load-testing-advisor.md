@@ -3,6 +3,8 @@ name: load-testing-advisor
 description: Use when a load test plan needs a pass/fail check against MasterThread's load_testing standard before a launch or promotion relies on it. Renders a verdict only, never edits the plan.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

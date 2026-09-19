@@ -3,6 +3,8 @@ name: user-story-drafter
 description: Use when someone has a feature idea or free-form request (often from Discord or Patreon) that needs to become a normalized user story. Drafts it in the exact template required by MasterThread's user story format standard. Produces a draft only -- never files it as an issue or requirement.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

@@ -3,6 +3,7 @@ name: battleye-guid-verifier
 description: Use when given a Steam64 ID and you need its BattlEye GUID computed and shown step-by-step for hand verification (e.g. before a ban/kick/unban tool acts on it).
 tools: Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

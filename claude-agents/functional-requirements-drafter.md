@@ -3,6 +3,8 @@ name: functional-requirements-drafter
 description: Use when someone describes a feature or change and wants a functional requirements doc drafted from it, per MasterThread's functional requirements standard. Read-only -- produces a draft doc for the caller to place, never writes files.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

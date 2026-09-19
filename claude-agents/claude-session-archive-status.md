@@ -3,6 +3,7 @@ name: claude-session-archive-status
 description: Use to check the current status of the claude-session-archive backup job (last run, exit code, log output) without triggering a new archive run. Read-only wrapper around Invoke-Archive.ps1's own logs and scheduled task state.
 tools: Read, Grep, Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

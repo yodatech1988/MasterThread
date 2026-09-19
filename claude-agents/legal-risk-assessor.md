@@ -3,6 +3,8 @@ name: legal-risk-assessor
 description: Use after regulatory_fact_questionnaire.md has answers and/or legal-precedent-researcher has produced a sourced dossier, to turn facts plus primary-source research into a risk-tier call with three possible resolution paths (operational mitigation, risk transfer via insurance/third party, or owner-accept) and a clear signal for when the tier is high enough that a real lawyer is needed. Advisory only — never picks the resolution path; that is owner tier.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

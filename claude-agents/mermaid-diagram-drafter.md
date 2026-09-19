@@ -3,6 +3,8 @@ name: mermaid-diagram-drafter
 description: Use when someone describes a system or flow in prose and wants a Mermaid diagram drafted from it, per MasterThread's mermaid style guide. Read-only -- produces a draft block for the caller to place, never writes files.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose
