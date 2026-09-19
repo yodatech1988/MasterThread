@@ -207,4 +207,7 @@ below.
 2. Pin the cheapest model the task's judgment actually needs (see `orchestrator_role.md`'s table).
 3. List only the tools it needs; deny writes explicitly where a slip would be costly (live, money,
    secrets, Discord/Patreon sends).
-4. Add its row here in the same PR.
+4. Add its `claude-agents/roster_meta.json` entry (role, headless, readonly, dormant) and run
+   `python tools/generate_agents_md.py --write`: an advisor/drafter gets its row in the Advisors
+   section automatically; any other agent needs a row in the section that fits, and `--write` then
+   fills its Model/Role/Headless cells. `--check` (CI) fails if anything is missing or differs.
