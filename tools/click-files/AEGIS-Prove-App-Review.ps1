@@ -21,12 +21,14 @@
     4. As the App (token above): POST an APPROVE review on the PR head commit.
     5. Reads reviewDecision and mergeStateStatus (polls a few seconds for GitHub to compute them) and prints
        a verdict with the raw fields:
-         COUNTS         reviewDecision=APPROVED after the App's APPROVE was accepted
+         COUNTS         reviewDecision=APPROVED after the App's APPROVE was accepted AND mergeStateStatus is a real
+                        value that is not BLOCKED, UNKNOWN or empty (otherwise INCONCLUSIVE)
          DOES NOT COUNT App's APPROVE was accepted but reviewDecision=REVIEW_REQUIRED and mergeStateStatus=BLOCKED
          INCONCLUSIVE   anything else (API error, protection not settable on this plan, state still UNKNOWN)
        It NEVER merges.
     6. Prints exact cleanup steps. It deletes the throwaway repo only if gh already has the delete_repo scope
-       and you type YES; otherwise it tells you the two commands to run.
+       and you type YES AND this run created the repo itself; a pre-existing repo is never deleted by the script
+       (manual cleanup steps are printed instead).
   -WhatIf (allowed from a session): reads only and creates nothing. Loads the key, builds and locally verifies
   the JWT, reads gh state for the named repo, prints the plan. App API calls (installation lookup, token) are
   read-only but are made ONLY when -StateDir is the real default; with a test -StateDir they print
@@ -72,6 +74,7 @@ $script:Attempted = $false      # true once a write to GitHub was tried (real .l
 $script:Facts = New-Object System.Collections.Generic.List[string]
 $script:Exit = 0
 $script:Verdict = 'n/a'
+$createdHere = $false   # true ONLY when THIS run created the repo; the sole condition under which delete is offered
 $script:Token = $null
 $script:Jwt = $null
 
@@ -185,6 +188,14 @@ function Test-RepoNameAllowed([string]$n) {
     return $true
 }
 
+function Get-ProofVerdict($appState, $decision, $mss) {
+    if ($appState -eq 'APPROVED' -and $decision -eq 'APPROVED' -and $mss -and $mss -notin @('BLOCKED', 'UNKNOWN')) { return 'COUNTS' }
+    if ($appState -eq 'APPROVED' -and $decision -eq 'REVIEW_REQUIRED' -and $mss -eq 'BLOCKED') { return 'DOES NOT COUNT' }
+    return 'INCONCLUSIVE'
+}
+# Dot-sourced (test harness): functions only, nothing runs.
+if ($MyInvocation.InvocationName -eq '.') { return }
+
 try {
     if (-not $WhatIf) {
         if ([Console]::IsInputRedirected -or -not [Environment]::UserInteractive) {
@@ -250,6 +261,7 @@ try {
         $script:Attempted = $true
         & gh repo create "$Owner/$Repo" --private --add-readme --description 'throwaway: GitHub App review proof, safe to delete' *> $null
         if ($LASTEXITCODE -ne 0) { $script:Outcome = 'FAILED: gh repo create failed.'; $script:Exit = 1; exit 1 }
+        $createdHere = $true
         Add-Fact 'repo created by this script'; Write-Host "Created $Owner/$Repo." -ForegroundColor Green
     }
     $inst = Invoke-AppApi 'GET' "https://api.github.com/repos/$Owner/$Repo/installation" $script:Jwt $null
@@ -276,7 +288,7 @@ try {
     Add-Fact "protection PUT ok: $($prot.Ok)"
     if (-not $prot.Ok) {
         Write-Host "Could not set branch protection: $($prot.Text)" -ForegroundColor Yellow
-        $script:Verdict = 'INCONCLUSIVE'; $script:Outcome = 'INCONCLUSIVE: branch protection could not be set on the throwaway repo (private-repo protection may need a paid plan).'
+        $script:Verdict = 'INCONCLUSIVE'; $script:Outcome = 'INCONCLUSIVE: branch protection could not be set on the throwaway repo (private-repo protection may need a paid plan). Hint: try a PUBLIC throwaway repo (the script creates private ones only; create a public proof-* repo yourself, then it must be deleted by hand since the script only deletes repos it created).'
         Add-Fact "protection error: $($prot.Text)"; exit 0
     }
     Write-Host 'Protection set: 1 required approving review, enforce_admins true.'
@@ -303,18 +315,19 @@ try {
     }
     Write-Host "RAW: reviewDecision='$decision'  mergeStateStatus='$mss'  (App review state: $($rev.Data.state))"
     Add-Fact "raw reviewDecision=$decision mergeStateStatus=$mss"
-    if ($rev.Data.state -eq 'APPROVED' -and $decision -eq 'APPROVED') { $script:Verdict = 'COUNTS' }
-    elseif ($rev.Data.state -eq 'APPROVED' -and $decision -eq 'REVIEW_REQUIRED' -and $mss -eq 'BLOCKED') { $script:Verdict = 'DOES NOT COUNT' }
-    else { $script:Verdict = 'INCONCLUSIVE' }
+    $script:Verdict = Get-ProofVerdict $rev.Data.state $decision $mss
     Write-Host "VERDICT: $($script:Verdict)" -ForegroundColor Cyan
     $script:Outcome = "VERDICT $($script:Verdict): reviewDecision=$decision mergeStateStatus=$mss. Never merged."
 
     Write-Host ''
     Write-Host 'CLEANUP (throwaway repo; nothing was merged):' -ForegroundColor Cyan
     $scopes = (& gh auth status 2>&1 | Out-String)
-    if ($scopes -match 'delete_repo') {
+    if (-not $createdHere) {
+        Write-Host "  This run did not create $Owner/$Repo, so the script will NOT delete it. Delete it yourself if it is throwaway:"
+        Write-Host "  gh auth refresh -h github.com -s delete_repo ; gh repo delete $Owner/$Repo --yes"
+    } elseif ($scopes -match 'delete_repo') {
         $d = Read-Host "gh has delete_repo. Type YES to DELETE $Owner/$Repo now (anything else keeps it)"
-        if ($d -ceq 'YES' -and (Test-RepoNameAllowed $Repo)) {
+        if ($d -ceq 'YES' -and $createdHere -and (Test-RepoNameAllowed $Repo)) {
             & gh repo delete "$Owner/$Repo" --yes *> $null
             Add-Fact "repo delete exit code: $LASTEXITCODE"; Write-Host "Delete exit code: $LASTEXITCODE"
         } else { Write-Host "Kept. Delete later: gh repo delete $Owner/$Repo --yes" }
