@@ -129,6 +129,21 @@ manual queue.
 - Keep a private queue file, or treat any stored list as more current than live `gh`.
 - Poll. One pass per PM request, or per notification that a PR changed state.
 
+### Repos with strict up-to-date protection
+
+Where a default branch requires status checks with `strict: true` (branches must be up to date;
+website's `main` requires `secret-scan` and `build`), parallel PRs merge **one at a time**. When one
+lands, the base moves and every sibling's green checks go stale: GitHub refuses the merge ("2 of 2
+required status checks are expected") though both passed.
+
+- **The lane that authored the PR updates its own branch** and lets the checks re-run.
+- **The seat never pushes to a lane's branch.** Updating a branch moves the head, which voids the
+  pinned verdict and would make the seat the reviewer of its own change. The seat re-reads the new
+  head, checks only what moved, and posts a fresh verdict.
+
+Sequence a set of parallel PRs in such a repo accordingly. Precedent: website #35 then #36,
+2026-09-18.
+
 ## The owner route
 
 Route C PRs collect under the `merge:owner` label; that label *is* the owner's queue, visible in any
