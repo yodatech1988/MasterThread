@@ -15,7 +15,7 @@ opened a maintenance window for the exact target being tested.
 
 ## Inputs
 
-A target: `edge` (aegis-public-edge, 40.160.90.128) or `vault` (personal-vault, 40.160.141.129),
+A target: `edge` (aegis-public-edge, 40.160.90.128) or `vault` (personal-vault; address in the inventory file),
 per `ops-infra/ansible/inventory/hosts.yml`.
 
 ## Steps
