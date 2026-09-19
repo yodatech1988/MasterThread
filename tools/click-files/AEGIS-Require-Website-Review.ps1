@@ -36,7 +36,7 @@
   so a lockout is still possible after apply; if merges are blocked, run AEGIS-Restore-Website-Review.cmd.
 
   WHAT WAS AND WAS NOT TESTED (2026-09-19, by a session; see tools/README.md "What a session cannot test"):
-    Verified for real on a private scratch repo: guard refusal with a sole collaborator; apply
+    Worker-reported on a private scratch repo, since deleted, not independently reproducible: guard refusal with a sole collaborator; apply
       0->1 and restore 1->0 with the scratch protection carrying required checks secret-scan+build
       (strict, app_id 15368) and enforce_admins=true, raw GET identical before/after; -Restore
       refusal on a backup from another repo (exit 4); -WhatIf against the real website repo (GET only).
