@@ -138,7 +138,7 @@ required status checks are expected") though both passed.
 
 - **The lane that authored the PR updates its own branch** and lets the checks re-run.
 - **The seat never pushes to a lane's branch.** Updating a branch moves the head, which voids the
-  pinned verdict and would make the seat the reviewer of its own change. The seat re-reads the new
+  pinned verdict. The seat re-reads the new
   head, checks only what moved, and posts a fresh verdict.
 
 Sequence a set of parallel PRs in such a repo accordingly. Precedent: website #35 then #36,
