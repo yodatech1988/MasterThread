@@ -31,6 +31,20 @@
   hence every field is re-sent. required_signatures has its own endpoint and is not touched (it is
   compared before/after only).
 
+  LIMITS OF THE GUARD (read before running): it proves a second login has WRITE access, not that
+  the login can APPROVE. A bot or GitHub App collaborator may not satisfy the review requirement,
+  so a lockout is still possible after apply; if merges are blocked, run AEGIS-Restore-Website-Review.cmd.
+
+  WHAT WAS AND WAS NOT TESTED (2026-09-19, by a session; see tools/README.md "What a session cannot test"):
+    Verified for real on a private scratch repo: guard refusal with a sole collaborator; apply
+      0->1 and restore 1->0 with the scratch protection carrying required checks secret-scan+build
+      (strict, app_id 15368) and enforce_admins=true, raw GET identical before/after; -Restore
+      refusal on a backup from another repo (exit 4); -WhatIf against the real website repo (GET only).
+    Simulated only: the guard-PASS path (run in a temp copy with the guard line forced to pass,
+      because no second collaborator exists).
+    Never run: the .cmd wrappers, the real interactive YES prompt / interactive-console refusal
+      with a live console, and any real apply against website.
+
   Exit codes: 0 ok / nothing to do / -WhatIf done; 1 failed or unhandled exception;
               2 refused: not an interactive console; 3 refused: no eligible second reviewer (guard);
               4 refused: unexpected protection shape / missing backup / branch or repo mismatch.
@@ -193,6 +207,12 @@ try {
         }
         if (-not $BackupFile -or -not (Test-Path $BackupFile)) { Write-Host 'REFUSED: no backup file found. Nothing changed.' -ForegroundColor Red; $script:Outcome = 'REFUSED: no backup file.'; $script:Exit = 4; exit 4 }
         $bk = Get-Content -Raw -Path $BackupFile | ConvertFrom-Json
+        $wantUrl = "https://api.github.com/repos/$Owner/$Repo/branches/$Branch/protection"
+        $gotUrl = [string](Prop $bk 'url')
+        if ($gotUrl -cne $wantUrl) {
+            Write-Host "REFUSED: backup belongs to a different repo/branch (backup url '$gotUrl', expected '$wantUrl'). Nothing changed." -ForegroundColor Red
+            $script:Outcome = "REFUSED: backup url mismatch ('$gotUrl')."; $script:Exit = 4; exit 4
+        }
         $body = ConvertTo-PutBody $bk $null
         $bcount = if ($body.required_pull_request_reviews) { $body.required_pull_request_reviews.required_approving_review_count } else { 'n/a' }
         Write-Host "Backup  : $BackupFile"

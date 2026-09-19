@@ -5,6 +5,8 @@ REM because the sole collaborator cannot approve their own PRs and every merge w
 REM It saves an exact backup of the current protection next to this file first, then asks for YES.
 REM Undo: run AEGIS-Restore-Website-Review.cmd.
 REM Copy all three files (this .cmd, the restore .cmd, the .ps1) to where AEGIS-Protect-Default-Branches.cmd lives.
+REM NOT TESTED by a session: this wrapper and the live YES prompt were never run; the guard-PASS path was only
+REM simulated. The guard proves WRITE access, not ability to APPROVE (a bot may not count): if merges block, run Restore.
 echo This will offer to require 1 approving review on website main. Nothing changes until you type YES.
 echo.
 pause
