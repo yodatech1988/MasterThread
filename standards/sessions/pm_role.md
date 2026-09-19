@@ -213,6 +213,37 @@ and `gh pr list`/`gh pr view`; a tick over ~10 of its own tool calls is a findin
 `dispatchable-and-idle` count (dispatchable rows with no lane running against them) at the end of
 a tick must be 0.
 
+### Round protocol, as it actually ran on 2026-09-18
+
+This section records what a live PM round (github-94, 2026-09-18) reported about its own
+mechanisms, checked against `origin/main`. Nothing below is claimed as present in this repo unless
+a path is given that exists on `origin/main`. Items marked "local only" exist, if at all, only on
+the PM's machine and are **not in this repo**; treat them as unverified from here.
+
+1. **PM_INBOX reporting protocol - local only.** The PM reported a `PM_INBOX\README.md` on its own
+   machine describing worker reports written to files (one `SendMessage` pointer line to the PM,
+   full text in the file). That README is not in this repo, so its exact rules are not reproduced
+   here. Two categories are, as the round record states, sent to chat directly: a classifier
+   denial and anything owner-safety.
+2. **"Two tasks on deck per session" - practice, not in standard.** Reported as an owner
+   instruction on 2026-09-18 and applied in lane messages. The source note
+   (`PM_NOTES_2026-09-18-github-94.md`) is local only, not in this repo. A follow-up should promote
+   it into "Completion handshake" or "The control loop" once settled.
+3. **Backlog.** `docs/pm/PM_BACKLOG.md` on `origin/main` is a labelled round-2 point-in-time
+   snapshot of a live copy that is local only. Its own Totals line reads 28 rows, 13 dispatchable
+   now. Figures for any larger live backlog or a "row floor" are not supported by files in this
+   repo and are not asserted here.
+4. **Triage tick with lessons harvest - not built as automation.** The lessons mechanism in this
+   repo is `docs/LESSONS.md`'s promotion rule: on a second occurrence the PM (or the orchestrator
+   running `round-closeout`) adds the rule candidate in the same close-out. It is a judgment call
+   at close-out, not a scheduled job.
+5. **fleet-state scripts - not in this repo.** `tools/fleet-state/Write-SessionState.ps1` and
+   `tools/fleet-state/Watch-FleetState.ps1` do not exist on `origin/main`; if they exist they are
+   on the PM's local machine only. Do not rely on them until they are merged.
+6. **`notify_when_idle` as a second signal.** `SendMessage` with `notify_when_idle: true` is
+   referenced in `worker_intro_prompt.md` and `worker_role.md` on `origin/main`. Its use as a
+   standing second idle signal by the github-94 PM is reported, not verifiable from repo files.
+
 ## The owner interface
 
 Only the PM talks to the owner on the fleet's behalf (exception: `fleet_structure.md` rule 5).
