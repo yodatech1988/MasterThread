@@ -229,6 +229,8 @@ the **check** instead, and it is written the way it is because the first version
 
 ### The discriminator that works: milliseconds
 
+*Tool:* `tools/decision-queue/dq_monitor.py` applies this check (section D of its report) and the other audits below over an exported card directory. It is read-only; see `tools/decision-queue/README.md`.
+
 `resolvedAt` is written two ways, and they are trivially distinguishable:
 
 - **Page-written** stamps carry milliseconds (`…T22:09:27.260Z`). The owner clicked.

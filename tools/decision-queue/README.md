@@ -16,6 +16,7 @@ last published it.
 | `ops-decision-queue.html` | The page, exactly as passed to the publish call. No `<!doctype>`, `<html>`, `<head>` or `<body>`: the platform wraps it. |
 | `click-harness.js` | Runs the real page script in jsdom with a fake database and real click events. Covers the write paths: what gets written, and that nothing is written when it should not be. |
 | `render-harness.js` | Calls the page's card builders and checks the HTML strings: escaping of database text, the scannable-card layout, the collapsed Background section. |
+| `dq_monitor.py` | Report-only audit of an exported `decisions` collection (see "Audit the board" below). Not part of the page; it never writes to the queue. |
 
 ## Run the tests
 
@@ -33,6 +34,28 @@ What the harnesses cannot tell you: jsdom has no layout, so the phone/desktop ap
 clipboard, focus restore and how the armed (red) state looks are untested, and so is how the
 platform carries an open tab across a republish. Click through a real browser after any change to
 those.
+
+## Audit the board (`dq_monitor.py`)
+
+A read-only report over the `decisions` collection: open owner-required cards oldest first, owner claims
+not yet verified, resolved cards with `followUpPending`, session-written resolutions, and card hygiene
+(action cards without `executabilityCheck`, cards without `kind`, options without a recommendation,
+stamp drift). It exists so the audit in `standards/sessions/decision_queue_standard.md` ("Auditing the
+board") is one command instead of a hand-rolled script each time.
+
+```
+# 1. export the cards: ArtifactData `list` on the decisions collection with out_dir=<dir>
+# 2. run it on the exported directory (stdlib only; Python 3.8+)
+python tools/decision-queue/dq_monitor.py <dir>
+python -m unittest tools.tests.test_dq_monitor      # its tests, from the repo root
+```
+
+It only prints. What it prints is for a person or the PM to act on: the standard says to report a
+suspect card and never reopen it, under any signature (including a whole-second `resolvedAt`), and
+that a resolution matching `options[recommendedOption]` is not evidence of a defect. Section D relies on one rule, that a
+`resolvedAt` with milliseconds was written by the page and one without was composed by a session
+(`PAGE_WRITTEN_STAMP` in the script); if the page's stamping ever changes, change that constant and
+the standard together.
 
 ## Changing the page
 
