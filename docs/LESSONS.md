@@ -828,10 +828,13 @@ Three things are deliberately **not** repeated here, because they already have a
 
 ### A grade the worker gave its own eval run is provisional — 2026-09-19
 - **False assumption:** that "10/10 verdicts matched, graded" means the advisor was verified.
-  The lane 2 worker both ran the cases and did the manual grading, on ten easy cases run once each.
-- **Rule candidate:** in an eval or verification lane, results graded by the same session that ran
-  them are marked "provisional, not human-graded" in the PR body and the recorded-results file, and
-  the PR names the cases a human should spot-check. A completion claim carries that gap.
+  The 10/10 came from the lane worker's own AI session: the same AI session ran the ten cases
+  (one run each, all easy) and graded them, so no human graded any result. The lane card called this
+  "manual grading", which reads as human grading and misled.
+- **Rule candidate:** in an eval or verification lane, results graded by the same AI session that ran
+  them are marked "provisional, graded by the same AI session that ran them, not human-graded" in
+  the PR body and the recorded-results file, and the PR names the cases a human should spot-check.
+  A completion claim carries that gap.
 - **Where it belongs:** the eval harness README (`evals/` in claude-agents) and `worker_role.md`
   "Delivering" under verified vs simulated.
 - **Seen:** 1 — claude-agents#37, `model-policy-advisor`, cases C03, C05 and C10 suggested for
@@ -839,9 +842,15 @@ Three things are deliberately **not** repeated here, because they already have a
 
 ### A trial on a look-alike host does not validate the real host — 2026-09-19
 - **False assumption:** that the sandbox-runtime trial in a fresh WSL2 Ubuntu distro answers whether
-  srt works on vault-dev. The probes passed in WSL2, whose kernel has no AppArmor
-  user-namespace restriction; vault-dev is Ubuntu 24.04-class with that restriction on, lacks
-  bubblewrap, socat, ripgrep and Node, and needs a sysctl or an AppArmor profile first.
+  srt works on vault-dev. It does not: the WSL2 trial does NOT validate vault-dev. The probes passed
+  in WSL2, whose kernel has no AppArmor user-namespace restriction, while vault-dev has that
+  restriction on.
+  Provenance of the vault-dev facts: the lane 5 worker checked these live over read-only SSH on
+  vault-dev (I did not re-check them myself): Node, bubblewrap, socat and ripgrep are absent,
+  libseccomp is present, and `kernel.apparmor_restrict_unprivileged_userns` is 1. That a
+  sysctl change or an AppArmor profile would be needed for bubblewrap, and that bubblewrap, socat
+  and ripgrep are required by srt, come from reading the upstream README (worker-read, not tested
+  on vault-dev).
 - **Rule candidate:** a trial report states which properties of the real target it did not
   reproduce (kernel, security modules, installed packages) and says "does not validate <target>"
   in its first lines, and a lane card lists the target's prerequisites from a live read-only check
