@@ -10,7 +10,12 @@
   FLOW (real run, interactive console only):
     1. You type the throwaway repo name at a prompt. HARD REFUSALS, checked before anything else:
        the name 'website' (any case) and any name that does not start with 'proof'. The repo must be
-       private. If it does not exist the script offers to create it (private, with a README) after YES.
+       private. TWO-PHASE FLOW: run 1 (repo does not exist) creates an EMPTY private repo whose description
+       carries the marker 'created by AEGIS-Prove-App-Review' after YES, then stops because the App is not
+       installed on it yet; you install the App on it; run 2 (same name) continues. A pre-existing repo is used
+       ONLY if all hold: marker present, private, empty (no branches), no branch protection (GET returns 404).
+       Otherwise it refuses with exit 4 and modifies nothing. This is checked before the first commit, the
+       protection PUT, the branch and the PR. The first commit (README on main) is made by the script itself.
     2. Loads the App key from the DPAPI store, builds an RS256 JWT (pure .NET, no modules), verifies its
        signature locally against the key's own public half, then uses the JWT to (a) confirm the App is
        installed on that repo (if not: prints the install link and stops) and (b) mint a 1-hour
@@ -38,10 +43,12 @@
   refused in code; there is no exemption, because every write path here is a live GitHub write.
 
   WHAT WAS AND WAS NOT TESTED (worker-reported 2026-09-19; a session cannot create the App):
-    Tested locally with a throwaway RSA key in a scratch StateDir: key load from DPAPI store, JWT structure,
+    Tested locally (see tools/click-files/tests/Test-ProofVerdict.ps1 for the verdict + existing-repo decision
+      functions) with a throwaway RSA key in a scratch StateDir: key load from DPAPI store, JWT structure,
       RS256 signature verification, hard refusal of 'website' and non-'proof' names, interactive-console
       refusal, -WhatIf writes nothing, log written on every path, no key/JWT/token text in logs.
-    NOT RUN (needs a real App): installation lookup, token exchange, protection PUT, PR creation, the App's
+    NOT RUN (needs a real App / real GitHub): the marker/branches/protection reads against a real repo, the
+      empty-repo first-commit PUT, the two-phase re-run, installation lookup, token exchange, protection PUT, PR creation, the App's
       APPROVE, the verdict logic against real GitHub responses, cleanup/delete, the .cmd wrapper, the live
       YES prompts. The verdict rules are code-reviewed only.
   What you will see on a real run: prompts, then "App installed: yes", "Protection set", "PR #N opened",
@@ -193,6 +200,16 @@ function Get-ProofVerdict($appState, $decision, $mss) {
     if ($appState -eq 'APPROVED' -and $decision -eq 'REVIEW_REQUIRED' -and $mss -eq 'BLOCKED') { return 'DOES NOT COUNT' }
     return 'INCONCLUSIVE'
 }
+$Marker = 'created by AEGIS-Prove-App-Review'
+# Decides whether a PRE-EXISTING repo may be used. Allowed only if ALL hold: description carries the marker
+# (an earlier run of this script created it), private, empty (no branches), and no branch protection to overwrite.
+function Test-ExistingRepoAllowed($description, $isPrivate, $branchCount, $protection404) {
+    if (-not $description -or -not ([string]$description).Contains($Marker)) { return @{ Allowed = $false; Reason = "description lacks the marker '$Marker' (not created by this script)" } }
+    if (-not $isPrivate) { return @{ Allowed = $false; Reason = 'repo is public' } }
+    if ($null -eq $branchCount -or [int]$branchCount -ne 0) { return @{ Allowed = $false; Reason = 'repo is not empty (has branches) or its branches could not be read' } }
+    if (-not $protection404) { return @{ Allowed = $false; Reason = 'branch protection exists or could not be confirmed absent (404)' } }
+    return @{ Allowed = $true; Reason = 'marker present, private, empty, no protection' }
+}
 # Dot-sourced (test harness): functions only, nothing runs.
 if ($MyInvocation.InvocationName -eq '.') { return }
 
@@ -235,8 +252,17 @@ try {
     $exists = $rv.Ok
     if ($exists) {
         $ri = $rv.Text | ConvertFrom-Json
-        if (-not $ri.private) { Write-Host 'REFUSED: that repo is public. Nothing changed.' -ForegroundColor Red; $script:Outcome = 'REFUSED: repo not private.'; $script:Exit = 4; exit 4 }
-        Add-Fact "repo exists: yes, private, default branch $($ri.default_branch)"
+        $bl = Invoke-GhApi 'GET' "repos/$Owner/$Repo/branches" $null
+        $bc = $null; if ($bl.Ok) { $bc = @(($bl.Text | ConvertFrom-Json)).Count }
+        $pg = Invoke-GhApi 'GET' "repos/$Owner/$Repo/branches/main/protection" $null
+        $p404 = (-not $pg.Ok) -and ($pg.Text -match 'HTTP 404')
+        $dec = Test-ExistingRepoAllowed $ri.description $ri.private $bc $p404
+        Add-Fact "repo exists: yes; private=$($ri.private); branches=$bc; protection404=$p404; existing-repo check: allowed=$($dec.Allowed) ($($dec.Reason))"
+        if (-not $dec.Allowed) {
+            Write-Host "REFUSED: existing repo not usable: $($dec.Reason). Nothing was changed." -ForegroundColor Red
+            Write-Host 'Only an EMPTY private repo created by an earlier run of this script may be reused. Use a new proof-* name.' -ForegroundColor Red
+            $script:Outcome = "REFUSED: existing repo not usable: $($dec.Reason)"; $script:Exit = 4; exit 4
+        }
     } else { Add-Fact 'repo exists: no' }
     Write-Host "Repo $Owner/$Repo exists: $exists"
 
@@ -256,10 +282,10 @@ try {
 
     # ---- real run ----
     if (-not $exists) {
-        $t = Read-Host "Repo does not exist. Type YES to create PRIVATE repo $Owner/$Repo with a README (anything else cancels)"
+        $t = Read-Host "Repo does not exist. Type YES to create PRIVATE repo $Owner/$Repo (empty; the script adds a first commit later) (anything else cancels)"
         if ($t -cne 'YES') { $script:Outcome = 'Cancelled by owner before creating the repo.'; exit 0 }
         $script:Attempted = $true
-        & gh repo create "$Owner/$Repo" --private --add-readme --description 'throwaway: GitHub App review proof, safe to delete' *> $null
+        & gh repo create "$Owner/$Repo" --private --description "throwaway: GitHub App review proof, safe to delete ($Marker)" *> $null
         if ($LASTEXITCODE -ne 0) { $script:Outcome = 'FAILED: gh repo create failed.'; $script:Exit = 1; exit 1 }
         $createdHere = $true
         Add-Fact 'repo created by this script'; Write-Host "Created $Owner/$Repo." -ForegroundColor Green
@@ -269,7 +295,7 @@ try {
     if (-not $inst.Ok) {
         Write-Host 'The App is NOT installed on this repo (or the JWT was rejected).' -ForegroundColor Yellow
         Write-Host 'Install it: GitHub > Settings > Applications > Installed GitHub Apps > (the App) > Configure > add repository' -ForegroundColor Yellow
-        Write-Host "  https://github.com/settings/installations  then choose $Repo and Save. Then run this again with the same repo name."
+        Write-Host "  https://github.com/settings/installations  then choose $Repo and Save. Then run this again with the same repo name; it will continue (the repo is still empty and carries the marker). Because THIS run created it and the next will not, the next run prints manual cleanup steps instead of offering delete."
         Write-Host "Cleanup if you stop here: gh repo delete $Owner/$Repo --yes" -ForegroundColor Yellow
         $script:Outcome = "REFUSED: App not installed on $Repo (HTTP $($inst.Status) $($inst.Msg)). Repo left in place."; $script:Exit = 4; exit 4
     }
@@ -281,6 +307,10 @@ try {
     $script:Jwt = $null
 
     $script:Attempted = $true
+    # the repo is empty by construction (created here, or verified empty above): make the first commit on main
+    $init = Invoke-GhApi 'PUT' "repos/$Owner/$Repo/contents/README.md" @{ message = 'first commit'; content = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("throwaway proof repo`n")); branch = 'main' }
+    Add-Fact "initial commit on main ok: $($init.Ok)"
+    if (-not $init.Ok) { $script:Verdict = 'INCONCLUSIVE'; $script:Outcome = 'INCONCLUSIVE: could not create the first commit on main.'; Add-Fact "init error: $($init.Text)"; exit 0 }
     $prot = Invoke-GhApi 'PUT' "repos/$Owner/$Repo/branches/main/protection" @{
         required_status_checks = $null; enforce_admins = $true; restrictions = $null
         required_pull_request_reviews = @{ required_approving_review_count = 1; dismiss_stale_reviews = $false }
@@ -288,7 +318,7 @@ try {
     Add-Fact "protection PUT ok: $($prot.Ok)"
     if (-not $prot.Ok) {
         Write-Host "Could not set branch protection: $($prot.Text)" -ForegroundColor Yellow
-        $script:Verdict = 'INCONCLUSIVE'; $script:Outcome = 'INCONCLUSIVE: branch protection could not be set on the throwaway repo (private-repo protection may need a paid plan). Hint: try a PUBLIC throwaway repo (the script creates private ones only; create a public proof-* repo yourself, then it must be deleted by hand since the script only deletes repos it created).'
+        $script:Verdict = 'INCONCLUSIVE'; $script:Outcome = 'INCONCLUSIVE: branch protection could not be set on the throwaway repo (private-repo protection may need a paid plan). Testing on a public repo would need a code change to this script (it refuses public repos on purpose).'
         Add-Fact "protection error: $($prot.Text)"; exit 0
     }
     Write-Host 'Protection set: 1 required approving review, enforce_admins true.'
