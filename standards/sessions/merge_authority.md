@@ -107,6 +107,15 @@ manual queue.
 6. **Merge** with `gh pr merge --squash --match-head-commit <sha>`. If the head moved since the
    verdict, the verdict is void; review again. Never `--admin`. Never self-approve around a stale
    CHANGES_REQUESTED.
+
+   **Assert the SHA's shape before pinning it.** If `<sha>` came out of a tool (a `gh` or `git`
+   read, an API response, an agent's or another session's report) rather than being read by you
+   from the PR's live head, first check that it is exactly 40 characters and lowercase hex, for
+   example `[[ $sha =~ ^[0-9a-f]{40}$ ]]`. If it is not, do not merge: re-read the head from the
+   PR and use that. A wrong-length "SHA" has been handed to the seat before (a 41-character string
+   offered as the head of MasterThread #121, caught only because the length was checked), and a
+   pin the seat did not validate is not evidence that the verdict covers the head it reviewed. The
+   same check applies to the `head:` line of the verdict comment.
 7. **Report** merged / held / sent-to-owner to the PM in three lines. "Merged" is not "live",
    "applied" or "fixed"; say which milestone was reached.
 
