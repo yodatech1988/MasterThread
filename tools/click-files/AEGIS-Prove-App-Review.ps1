@@ -10,24 +10,33 @@
   FLOW (real run, interactive console only):
     1. You type the throwaway repo name at a prompt. HARD REFUSALS, checked before anything else:
        the name 'website' (any case) and any name that does not start with 'proof'. The repo must be
-       private. If it does not exist the script offers to create it (private, with a README) after YES.
+       private. TWO-PHASE FLOW: run 1 (repo does not exist) creates an EMPTY private repo whose description
+       carries the marker 'created by AEGIS-Prove-App-Review' after YES, then stops because the App is not
+       installed on it yet; you install the App on it; run 2 (same name) continues. A pre-existing repo is used
+       ONLY if all hold: marker present, private, empty (no branches), no branch protection (GET returns 404).
+       Otherwise it refuses with exit 4 and modifies nothing. This is checked before the first commit, the
+       protection PUT, the branch and the PR. The first commit (README on the repo's default branch, read from GitHub at run time) is made by the script itself.
     2. Loads the App key from the DPAPI store, builds an RS256 JWT (pure .NET, no modules), verifies its
        signature locally against the key's own public half, then uses the JWT to (a) confirm the App is
        installed on that repo (if not: prints the install link and stops) and (b) mint a 1-hour
        installation token. The token lives only in a script variable used in an HTTPS Authorization header:
        never on a command line, never in an environment variable, never logged; cleared in finally.
-    3. As your gh session (yodatech1988): sets branch protection on the throwaway repo's main = 1 required
+    3. As your gh session (yodatech1988): sets branch protection on the throwaway repo's default branch (read from GitHub, not assumed) = 1 required
        approving review, enforce_admins true; creates a branch + commit + PR.
     4. As the App (token above): POST an APPROVE review on the PR head commit.
     5. Reads reviewDecision and mergeStateStatus (polls a few seconds for GitHub to compute them) and prints
        a verdict with the raw fields:
-         COUNTS         reviewDecision=APPROVED after the App's APPROVE was accepted
+         COUNTS         reviewDecision=APPROVED after the App's APPROVE was accepted AND mergeStateStatus is a real
+                        value that is not BLOCKED, UNKNOWN or empty (otherwise INCONCLUSIVE)
          DOES NOT COUNT App's APPROVE was accepted but reviewDecision=REVIEW_REQUIRED and mergeStateStatus=BLOCKED
          INCONCLUSIVE   anything else (API error, protection not settable on this plan, state still UNKNOWN)
        It NEVER merges.
-    6. Prints exact cleanup steps. It deletes the throwaway repo only if gh already has the delete_repo scope
-       and you type YES; otherwise it tells you the two commands to run.
-  -WhatIf (allowed from a session): reads only and creates nothing. Loads the key, builds and locally verifies
+    6. Prints exact cleanup steps. In the two-phase flow the run that reaches the verdict is run 2, which did NOT
+       create the repo, so the auto-delete offer never triggers there: cleanup is always manual (gh auth refresh -h
+       github.com -s delete_repo ; gh repo delete <owner>/<repo> --yes, or the repo's Danger Zone). The delete code
+       path exists only for a single-run flow (repo created and verdict reached in one run) and is NOT RUN.
+  -WhatIf (allowed from a session): reads only and creates nothing. It exits 4 (like a real run) if the named
+  repo exists but is ineligible under the existing-repo rule above. Loads the key, builds and locally verifies
   the JWT, reads gh state for the named repo, prints the plan. App API calls (installation lookup, token) are
   read-only but are made ONLY when -StateDir is the real default; with a test -StateDir they print
   "suppressed (non-default target = test)".
@@ -36,10 +45,14 @@
   refused in code; there is no exemption, because every write path here is a live GitHub write.
 
   WHAT WAS AND WAS NOT TESTED (worker-reported 2026-09-19; a session cannot create the App):
-    Tested locally with a throwaway RSA key in a scratch StateDir: key load from DPAPI store, JWT structure,
+    Tested locally (see tools/click-files/tests/Test-ProofVerdict.ps1 for the verdict + existing-repo decision
+      functions) with a throwaway RSA key in a scratch StateDir: key load from DPAPI store, JWT structure,
       RS256 signature verification, hard refusal of 'website' and non-'proof' names, interactive-console
       refusal, -WhatIf writes nothing, log written on every path, no key/JWT/token text in logs.
-    NOT RUN (needs a real App): installation lookup, token exchange, protection PUT, PR creation, the App's
+    Also tested: Get-BranchCount (200 [] and 409 empty), Test-Is404, Get-DefaultBranch (main/master/null/invalid).
+    NOT RUN (needs a real App / real GitHub): the real default_branch, branches-call and protection-probe values
+      on a fresh empty repo (run 1's log records them), the marker/branches/protection reads against a real repo, the
+      empty-repo first-commit PUT, the two-phase re-run, installation lookup, token exchange, protection PUT, PR creation, the App's
       APPROVE, the verdict logic against real GitHub responses, cleanup/delete, the .cmd wrapper, the live
       YES prompts. The verdict rules are code-reviewed only.
   What you will see on a real run: prompts, then "App installed: yes", "Protection set", "PR #N opened",
@@ -72,6 +85,8 @@ $script:Attempted = $false      # true once a write to GitHub was tried (real .l
 $script:Facts = New-Object System.Collections.Generic.List[string]
 $script:Exit = 0
 $script:Verdict = 'n/a'
+$Base = $null   # default branch, read from GitHub at run time
+$createdHere = $false   # true ONLY when THIS run created the repo; the sole condition under which delete is offered
 $script:Token = $null
 $script:Jwt = $null
 
@@ -185,6 +200,37 @@ function Test-RepoNameAllowed([string]$n) {
     return $true
 }
 
+function Get-ProofVerdict($appState, $decision, $mss) {
+    if ($appState -eq 'APPROVED' -and $decision -eq 'APPROVED' -and $mss -and $mss -notin @('BLOCKED', 'UNKNOWN')) { return 'COUNTS' }
+    if ($appState -eq 'APPROVED' -and $decision -eq 'REVIEW_REQUIRED' -and $mss -eq 'BLOCKED') { return 'DOES NOT COUNT' }
+    return 'INCONCLUSIVE'
+}
+$Marker = 'created by AEGIS-Prove-App-Review'
+# Decides whether a PRE-EXISTING repo may be used. Allowed only if ALL hold: description carries the marker
+# (an earlier run of this script created it), private, empty (no branches), and no branch protection to overwrite.
+function Test-ExistingRepoAllowed($description, $isPrivate, $branchCount, $protection404) {
+    if (-not $description -or -not ([string]$description).Contains($Marker)) { return @{ Allowed = $false; Reason = "description lacks the marker '$Marker' (not created by this script)" } }
+    if (-not $isPrivate) { return @{ Allowed = $false; Reason = 'repo is public' } }
+    if ($null -eq $branchCount -or [int]$branchCount -ne 0) { return @{ Allowed = $false; Reason = 'repo is not empty (has branches) or its branches could not be read' } }
+    if (-not $protection404) { return @{ Allowed = $false; Reason = 'branch protection exists or could not be confirmed absent (404)' } }
+    return @{ Allowed = $true; Reason = 'marker present, private, empty, no protection' }
+}
+# Empty-repo branch count: 200 + [] normally; also treat an explicit 409 'Git Repository is empty' as 0.
+function Get-BranchCount($ok, $text) {
+    if ($ok) { try { return @(($text | ConvertFrom-Json)).Count } catch { return $null } }
+    if ($text -match 'HTTP 409' -and $text -match '(?i)empty') { return 0 }
+    return $null
+}
+function Test-Is404($ok, $text) { return ((-not $ok) -and ($text -match 'HTTP 404')) }
+# Default branch must be read from GitHub, never assumed to be 'main'.
+function Get-DefaultBranch($repoInfo) {
+    $b = $null; if ($null -ne $repoInfo -and $repoInfo.PSObject.Properties['default_branch']) { $b = [string]$repoInfo.default_branch }
+    if ($b -and $b -match '^[A-Za-z0-9._/-]+$') { return $b }
+    return $null
+}
+# Dot-sourced (test harness): functions only, nothing runs.
+if ($MyInvocation.InvocationName -eq '.') { return }
+
 try {
     if (-not $WhatIf) {
         if ([Console]::IsInputRedirected -or -not [Environment]::UserInteractive) {
@@ -224,8 +270,20 @@ try {
     $exists = $rv.Ok
     if ($exists) {
         $ri = $rv.Text | ConvertFrom-Json
-        if (-not $ri.private) { Write-Host 'REFUSED: that repo is public. Nothing changed.' -ForegroundColor Red; $script:Outcome = 'REFUSED: repo not private.'; $script:Exit = 4; exit 4 }
-        Add-Fact "repo exists: yes, private, default branch $($ri.default_branch)"
+        $bl = Invoke-GhApi 'GET' "repos/$Owner/$Repo/branches" $null
+        $bc = Get-BranchCount $bl.Ok $bl.Text
+        $Base = Get-DefaultBranch $ri
+        if (-not $Base) { Write-Host 'REFUSED: could not read the repo default branch. Nothing changed.' -ForegroundColor Red; $script:Outcome = 'REFUSED: default branch unreadable.'; $script:Exit = 4; exit 4 }
+        $pg = Invoke-GhApi 'GET' "repos/$Owner/$Repo/branches/$Base/protection" $null
+        $p404 = Test-Is404 $pg.Ok $pg.Text
+        Add-Fact "observed: default_branch=$Base; branches call ok=$($bl.Ok) -> count=$bc (raw: $(($bl.Text -replace '\s+',' ').Substring(0,[Math]::Min(120,$bl.Text.Length)))); protection probe ok=$($pg.Ok) 404=$p404 (raw: $(($pg.Text -replace '\s+',' ').Substring(0,[Math]::Min(160,$pg.Text.Length))))"
+        $dec = Test-ExistingRepoAllowed $ri.description $ri.private $bc $p404
+        Add-Fact "repo exists: yes; private=$($ri.private); branches=$bc; protection404=$p404; existing-repo check: allowed=$($dec.Allowed) ($($dec.Reason))"
+        if (-not $dec.Allowed) {
+            Write-Host "REFUSED: existing repo not usable: $($dec.Reason). Nothing was changed." -ForegroundColor Red
+            Write-Host 'Only an EMPTY private repo created by an earlier run of this script may be reused. Use a new proof-* name.' -ForegroundColor Red
+            $script:Outcome = "REFUSED: existing repo not usable: $($dec.Reason)"; $script:Exit = 4; exit 4
+        }
     } else { Add-Fact 'repo exists: no' }
     Write-Host "Repo $Owner/$Repo exists: $exists"
 
@@ -239,25 +297,29 @@ try {
     } else { Add-Fact 'App installation lookup: suppressed (non-default target = test) or repo not created yet'; Write-Host 'App installation lookup: suppressed / repo not created yet.' }
 
     if ($WhatIf) {
-        Write-Host 'PLAN (nothing created): create repo if missing; require App installed; protect main (1 approval, enforce_admins); open PR; App APPROVE; read reviewDecision/mergeStateStatus; print verdict; never merge.'
+        Write-Host 'PLAN (nothing created): create repo if missing; require App installed; protect the default branch (1 approval, enforce_admins); open PR; App APPROVE; read reviewDecision/mergeStateStatus; print verdict; never merge.'
         $script:Outcome = '-WhatIf: read-only checks done. Nothing created or changed.'; exit 0
     }
 
     # ---- real run ----
     if (-not $exists) {
-        $t = Read-Host "Repo does not exist. Type YES to create PRIVATE repo $Owner/$Repo with a README (anything else cancels)"
+        $t = Read-Host "Repo does not exist. Type YES to create PRIVATE repo $Owner/$Repo (empty; the script adds a first commit later) (anything else cancels)"
         if ($t -cne 'YES') { $script:Outcome = 'Cancelled by owner before creating the repo.'; exit 0 }
         $script:Attempted = $true
-        & gh repo create "$Owner/$Repo" --private --add-readme --description 'throwaway: GitHub App review proof, safe to delete' *> $null
+        & gh repo create "$Owner/$Repo" --private --description "throwaway: GitHub App review proof, safe to delete ($Marker)" *> $null
         if ($LASTEXITCODE -ne 0) { $script:Outcome = 'FAILED: gh repo create failed.'; $script:Exit = 1; exit 1 }
+        $createdHere = $true
         Add-Fact 'repo created by this script'; Write-Host "Created $Owner/$Repo." -ForegroundColor Green
+        $rv2 = Invoke-GhApi 'GET' "repos/$Owner/$Repo" $null
+        $Base = if ($rv2.Ok) { Get-DefaultBranch ($rv2.Text | ConvertFrom-Json) } else { $null }
+        Add-Fact "observed after create: default_branch=$Base"
     }
     $inst = Invoke-AppApi 'GET' "https://api.github.com/repos/$Owner/$Repo/installation" $script:Jwt $null
     Add-Fact "App installed on repo: $($inst.Ok) (HTTP $($inst.Status) $($inst.Msg))"
     if (-not $inst.Ok) {
         Write-Host 'The App is NOT installed on this repo (or the JWT was rejected).' -ForegroundColor Yellow
         Write-Host 'Install it: GitHub > Settings > Applications > Installed GitHub Apps > (the App) > Configure > add repository' -ForegroundColor Yellow
-        Write-Host "  https://github.com/settings/installations  then choose $Repo and Save. Then run this again with the same repo name."
+        Write-Host "  https://github.com/settings/installations  then choose $Repo and Save. Then run this again with the same repo name; it will continue (the repo is still empty and carries the marker). Because THIS run created it and the next will not, the next run prints manual cleanup steps instead of offering delete."
         Write-Host "Cleanup if you stop here: gh repo delete $Owner/$Repo --yes" -ForegroundColor Yellow
         $script:Outcome = "REFUSED: App not installed on $Repo (HTTP $($inst.Status) $($inst.Msg)). Repo left in place."; $script:Exit = 4; exit 4
     }
@@ -268,23 +330,28 @@ try {
     Add-Fact "installation token minted (1h, repo-scoped); expires_at $($tok.Data.expires_at); token value NOT logged"
     $script:Jwt = $null
 
+    if (-not $Base) { $script:Outcome = 'FAILED: default branch unknown.'; $script:Exit = 1; exit 1 }
     $script:Attempted = $true
-    $prot = Invoke-GhApi 'PUT' "repos/$Owner/$Repo/branches/main/protection" @{
+    # the repo is empty by construction (created here, or verified empty above): make the first commit on the default branch ($Base)
+    $init = Invoke-GhApi 'PUT' "repos/$Owner/$Repo/contents/README.md" @{ message = 'first commit'; content = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("throwaway proof repo`n")); branch = $Base }
+    Add-Fact "initial commit on $Base ok: $($init.Ok)"
+    if (-not $init.Ok) { $script:Verdict = 'INCONCLUSIVE'; $script:Outcome = 'INCONCLUSIVE: could not create the first commit on the default branch.'; Add-Fact "init error: $($init.Text)"; exit 0 }
+    $prot = Invoke-GhApi 'PUT' "repos/$Owner/$Repo/branches/$Base/protection" @{
         required_status_checks = $null; enforce_admins = $true; restrictions = $null
         required_pull_request_reviews = @{ required_approving_review_count = 1; dismiss_stale_reviews = $false }
     }
     Add-Fact "protection PUT ok: $($prot.Ok)"
     if (-not $prot.Ok) {
         Write-Host "Could not set branch protection: $($prot.Text)" -ForegroundColor Yellow
-        $script:Verdict = 'INCONCLUSIVE'; $script:Outcome = 'INCONCLUSIVE: branch protection could not be set on the throwaway repo (private-repo protection may need a paid plan).'
+        $script:Verdict = 'INCONCLUSIVE'; $script:Outcome = 'INCONCLUSIVE: branch protection could not be set on the throwaway repo (private-repo protection may need a paid plan). Testing on a public repo would need a code change to this script (it refuses public repos on purpose).'
         Add-Fact "protection error: $($prot.Text)"; exit 0
     }
     Write-Host 'Protection set: 1 required approving review, enforce_admins true.'
-    $mainSha = (Invoke-GhApi 'GET' "repos/$Owner/$Repo/git/ref/heads/main" $null).Text | ConvertFrom-Json
+    $mainSha = (Invoke-GhApi 'GET' "repos/$Owner/$Repo/git/ref/heads/$Base" $null).Text | ConvertFrom-Json
     $branch = "proof-$stamp"
     $r1 = Invoke-GhApi 'POST' "repos/$Owner/$Repo/git/refs" @{ ref = "refs/heads/$branch"; sha = $mainSha.object.sha }
     $r2 = Invoke-GhApi 'PUT' "repos/$Owner/$Repo/contents/proof-$stamp.txt" @{ message = 'proof commit'; content = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("proof $stamp")); branch = $branch }
-    $r3 = Invoke-GhApi 'POST' "repos/$Owner/$Repo/pulls" @{ title = 'Proof PR (never merge)'; head = $branch; base = 'main'; body = 'Throwaway proof of GitHub App review counting. Do not merge.' }
+    $r3 = Invoke-GhApi 'POST' "repos/$Owner/$Repo/pulls" @{ title = 'Proof PR (never merge)'; head = $branch; base = $Base; body = 'Throwaway proof of GitHub App review counting. Do not merge.' }
     if (-not ($r1.Ok -and $r2.Ok -and $r3.Ok)) { Add-Fact "branch/commit/PR ok: $($r1.Ok)/$($r2.Ok)/$($r3.Ok)"; $script:Verdict = 'INCONCLUSIVE'; $script:Outcome = 'INCONCLUSIVE: could not create the proof branch/commit/PR.'; exit 0 }
     $pr = $r3.Text | ConvertFrom-Json
     Add-Fact "PR: #$($pr.number) head $($pr.head.sha)"; Write-Host "PR #$($pr.number) opened: $($pr.html_url)"
@@ -303,18 +370,19 @@ try {
     }
     Write-Host "RAW: reviewDecision='$decision'  mergeStateStatus='$mss'  (App review state: $($rev.Data.state))"
     Add-Fact "raw reviewDecision=$decision mergeStateStatus=$mss"
-    if ($rev.Data.state -eq 'APPROVED' -and $decision -eq 'APPROVED') { $script:Verdict = 'COUNTS' }
-    elseif ($rev.Data.state -eq 'APPROVED' -and $decision -eq 'REVIEW_REQUIRED' -and $mss -eq 'BLOCKED') { $script:Verdict = 'DOES NOT COUNT' }
-    else { $script:Verdict = 'INCONCLUSIVE' }
+    $script:Verdict = Get-ProofVerdict $rev.Data.state $decision $mss
     Write-Host "VERDICT: $($script:Verdict)" -ForegroundColor Cyan
     $script:Outcome = "VERDICT $($script:Verdict): reviewDecision=$decision mergeStateStatus=$mss. Never merged."
 
     Write-Host ''
     Write-Host 'CLEANUP (throwaway repo; nothing was merged):' -ForegroundColor Cyan
     $scopes = (& gh auth status 2>&1 | Out-String)
-    if ($scopes -match 'delete_repo') {
+    if (-not $createdHere) {
+        Write-Host "  This run did not create $Owner/$Repo, so the script will NOT delete it. Delete it yourself if it is throwaway:"
+        Write-Host "  gh auth refresh -h github.com -s delete_repo ; gh repo delete $Owner/$Repo --yes"
+    } elseif ($scopes -match 'delete_repo') {
         $d = Read-Host "gh has delete_repo. Type YES to DELETE $Owner/$Repo now (anything else keeps it)"
-        if ($d -ceq 'YES' -and (Test-RepoNameAllowed $Repo)) {
+        if ($d -ceq 'YES' -and $createdHere -and (Test-RepoNameAllowed $Repo)) {
             & gh repo delete "$Owner/$Repo" --yes *> $null
             Add-Fact "repo delete exit code: $LASTEXITCODE"; Write-Host "Delete exit code: $LASTEXITCODE"
         } else { Write-Host "Kept. Delete later: gh repo delete $Owner/$Repo --yes" }
