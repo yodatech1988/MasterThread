@@ -859,3 +859,33 @@ Three things are deliberately **not** repeated here, because they already have a
 - **Where it belongs:** `researcher_role.md` (report shape), and ops-infra issue #40 for the
   vault-dev follow-up.
 - **Seen:** 1 — ops-infra#40, lane 5, WSL2 `srt-trial` distro vs vault-dev. (github-49)
+
+### `gitleaks git .` scans history: a revert commit does not clear a planted secret — 2026-09-18
+- **False assumption:** that deleting a planted test secret in a follow-up commit re-greens a
+  `gitleaks git .` gate. While proving out the site-chernarus gitleaks-mirror PR, a session pushed a
+  commit with a fake Anthropic-shaped token, saw the run fail as intended, then pushed a commit
+  deleting the file; the gate still failed, because the secret is still reachable in history at the
+  earlier commit and `gitleaks git` walks history by design.
+- **Rule candidate:** to prove a secret scanner fails, plant the secret on a disposable branch that
+  is never opened as the real PR, or drop the test commit with a rewrite; never expect a revert to
+  clear it. Provenance: the live observation is one session's report in
+  `LESSONS_INBOX_2026-09-18.md`; that the gate runs `gitleaks git .` over full history is also in
+  `docs/POSTMORTEM_2026-09-18_EVIDENCE_THAT_ISNT.md`. I did not re-run gitleaks (not installed on
+  the machine that wrote this entry).
+- **Where it belongs:** the secret-scan section of the CI guidance (`tools/README.md` or the
+  scanner's own doc), not yet promoted.
+- **Seen:** 1 — site-chernarus gitleaks-mirror PR, 2026-09-18. (recorded by github-49 for the PM)
+
+### `yodatech1988` is a User account, so every `orgs/yodatech1988/...` endpoint 404s — 2026-09-18
+- **False assumption:** that a 404 from `gh api orgs/yodatech1988/...` means a permission or token
+  scope limit. It happens for every token, because there is no such organization.
+- **Rule candidate:** before calling an org-scoped GitHub endpoint, confirm the owner type with
+  `gh api users/<name> --jq .type`; use the per-repo or user equivalent (for example
+  `repos/yodatech1988/<repo>/actions/runners`, which works where the org endpoint 404s). Any doc,
+  card or agent that says "the org" for this account is wrong. Verified 2026-09-19:
+  `gh api orgs/yodatech1988` returns 404 and `users/yodatech1988` reports `type: User`. Earlier
+  evidence: `ops-policies` `docs/OPEN_QUESTIONS.md` Q31 ops addendum (2026-09-18).
+- **Where it belongs:** not yet promoted; candidate for any agent brief that queries GitHub org
+  endpoints, and a memory note on the account type.
+- **Seen:** 1 — ops-policies Q31 verification, 2026-09-18, then re-checked 2026-09-19. (recorded by
+  github-49 for the PM)
