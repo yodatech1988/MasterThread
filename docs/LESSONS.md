@@ -801,3 +801,10 @@ Three things are deliberately **not** repeated here, because they already have a
   first-match, always-vs-DDoS-only, the exact panel navigation path) traced only to internal
   `FIREWALL.md` and a prior session's reading; the vendor KB article itself 301s to a generic docs
   homepage and a guessed direct path 404s. Held, not passed, pending a fresh trace. (github-43)
+
+## 2026-09-19 - skill-rubric-extract (worker, MasterThread)
+
+- **Assumption that turned out false:** expected a "substantive" standard to extract a rubric from (lane card named api-spec, naming-conventions, logging-conventions); found every advisor/drafter standard is 11-36 lines. The largest (architecture_doc_standard, 36) was chosen; api-spec is 23. Also expected issue claude-agents#33's "0 skills" to hold; MasterThread `skills/` already has 5.
+- **Rule candidate:** a lane card that says "pick a substantive standard" should be checked with `wc -l` on the candidates before dispatch, not at pick time.
+- **Where it belongs:** lane-card checklist (`lane-card-writer` agent brief).
+- **Seen:** 1 - skill-rubric-extract.

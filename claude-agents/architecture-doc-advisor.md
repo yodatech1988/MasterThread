@@ -7,9 +7,9 @@ model: sonnet
 
 ## Purpose
 
-Check an architecture document against `MasterThread/standards/architecture/architecture_doc_standard.md`'s
-seven Required Sections, so a doc missing structure the standard demands doesn't get treated as a
-finished reference.
+Check an architecture document against `MasterThread/standards/architecture/architecture_doc_standard.md`
+so a doc missing structure the standard demands doesn't get treated as a finished reference.
+Thin wrapper: the rubric itself lives in the `architecture-doc-rubric` skill.
 
 ## Inputs
 
@@ -17,16 +17,10 @@ The path (or pasted text) of the architecture document under review.
 
 ## Steps
 
-1. Read the standard's full "Required Sections" list: (1) Overview (summary, scope and
-   out-of-scope items), (2) Context Diagram (high-level diagram of systems and interactions),
-   (3) Components (services/agents/databases/external APIs, responsibilities and boundaries),
-   (4) Data Flow (how data moves, key transformations), (5) Failure Modes & Resilience (what can
-   go wrong, how the system responds or degrades), (6) Security & Privacy (sensitive data, access
-   controls), (7) Operational Concerns (monitoring, scaling, deployment considerations).
-2. Read the document under review and check each section exists with real content, not a stub
-   heading -- e.g. "Failure Modes & Resilience" present but empty still fails that section.
-3. Note the standard's binding line: "Systems Designer Agents MUST produce architecture docs with
-   these sections" -- flag any section missing or thin as a blocker, not a suggestion.
+1. Read `skills/architecture-doc-rubric/SKILL.md` (MasterThread repo) and the standard it points
+   to; the standard wins on any disagreement.
+2. Read the document under review and apply the skill's "Checking" rules to each of the seven
+   sections.
 
 ## Output
 

@@ -32,3 +32,9 @@ deliberate, not an oversight. Do not build them without a fresh owner sign-off:
 
 See `docs/LESSONS.md` for the running lessons-learned ledger that feeds future skill/standard
 promotions.
+
+## Added after batch 1
+
+| Skill | Purpose |
+|---|---|
+| [`architecture-doc-rubric`](architecture-doc-rubric/SKILL.md) | The seven-section rubric from `architecture_doc_standard.md`, shared by the `architecture-doc-advisor` and `architecture-doc-drafter` agents (now thin wrappers). Owner re-scoped issue claude-agents#33 to this repo on 2026-09-19; it is a pilot for one pair, not a program expansion. |
