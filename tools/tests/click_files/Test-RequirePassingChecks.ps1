@@ -419,6 +419,13 @@ try {
             Check ((Put-Count) -eq 0) "PUT count $(Put-Count)"
         }
     }
+    Case '12e2 scratch name with a trailing newline is refused (regex $ would match before it): exit 4, no PUT' {
+        $e = New-TestEnv @{}
+        $r = Invoke-Under $e @{ ScratchRepo = "srt-scratch-checks-test-x`n"; ScratchChecks = @('test'); AssumeYes = $true }
+        Check ($r.Exit -eq 4) "exit $($r.Exit) expected 4`n$($r.Out)"
+        Check ("$($r.Out)" -match 'REFUSED-ARG: -ScratchRepo must match') "refused for the wrong reason:`n$($r.Out)"
+        Check ((Put-Count) -eq 0) "PUT count $(Put-Count)"
+    }
     Case '12f real deny names are refused: review / review, review / automerge' {
         foreach ($n in 'review / review', 'review / automerge') {
             $e = New-TestEnv @{}

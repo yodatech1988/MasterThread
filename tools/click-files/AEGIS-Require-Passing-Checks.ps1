@@ -105,7 +105,7 @@ $Manifest = @(
 $IsScratch = $false
 # Test harness only. The exemption is a whole-name pattern, not a prefix, so path-like or upper-case names are refused.
 if ($ScratchRepo) {
-    if (($ScratchRepo -cnotmatch '^srt-scratch-checks-test-[a-z0-9-]+$') -or -not $ScratchChecks) {
+    if (($ScratchRepo -cnotmatch '^srt-scratch-checks-test-[a-z0-9-]+\z') -or -not $ScratchChecks) {
         $Manifest = @()   # refused below
     } else {
         $IsScratch = $true
