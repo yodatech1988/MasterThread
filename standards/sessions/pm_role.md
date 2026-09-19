@@ -215,68 +215,34 @@ a tick must be 0.
 
 ### Round protocol, as it actually ran on 2026-09-18
 
-The mechanisms below are recorded as they were **found built or not built** during a live PM round
-(github-94, 2026-09-18), not as an aspirational design. Where something is real, it is cited by
-exact file; where it is not, that is stated plainly rather than left to be assumed from a mention
-elsewhere. A future PM should trust this section over any card, chat line or handoff note that
-describes these mechanisms differently, and correct it the same way if it drifts.
+This section records what a live PM round (github-94, 2026-09-18) reported about its own
+mechanisms, checked against `origin/main`. Nothing below is claimed as present in this repo unless
+a path is given that exists on `origin/main`. Items marked "local only" exist, if at all, only on
+the PM's machine and are **not in this repo**; treat them as unverified from here.
 
-1. **PM_INBOX reporting protocol — built.** `PM_INBOX\README.md` (written by the PM, 2026-09-18):
-   a worker never sends a full report to the PM by chat. It writes the report to
-   `PM_INBOX\<session>-<UTC yyyyMMddTHHmmZ>-<topic>.md`, first line exactly
-   `STATUS: done | blocked | finding | question | denial`, then sends the PM one `SendMessage` line:
-   `INBOX <filename>` plus at most one sentence. Two exceptions still go to chat in full: a
-   classifier denial, and anything owner-safety (a wrong owner-facing card, a plaintext credential,
-   a live-host risk). "A triage agent digests the inbox each PM tick and moves processed files to
-   `processed/`." Verified live: `processed/` holds real worker reports in exactly that filename
-   shape, plus a `DIGEST-<timestamp>.md`.
-2. **"Two tasks on deck per session" — BUILT-in-practice, NOT-yet-in-standard.** Not found in any
-   file at first check because it lived only in messages and a Fleet Status row, not a document.
-   `PM_NOTES_2026-09-18-github-94.md` §18 records the source: owner instruction ~03:0xZ, "agents
-   should always have two tasks on deck so they can switch back and forth" and "with this many
-   sessions that is at least a 12 task backlog for one round." Applied in every lane message from
-   ~03:1xZ on, and recorded in Fleet Status `sessions/github-94` fields `round3`, `round4`,
-   `ownerOverride`. Distinct from, and additive to, the register's `now`/`next`/`later` fields above
-   — this is a per-session dispatch practice, those are per-workstream state. Not yet written as a
-   rule a future PM can look up outside PM_NOTES; a follow-up should promote it into "Completion
-   handshake" or "The control loop" above, once it has run long enough to state as settled.
-3. **Backlog file with a real, large row count — built, and exceeds any stated floor.**
-   `C:\Users\yoda_\GitHub\PM_BACKLOG_2026-09-18.md` is the live, edited copy; MasterThread's
-   `docs/pm/PM_BACKLOG.md` is an explicitly-labelled point-in-time snapshot of it for the repo's own
-   record, not the working document. Shape: three tables (P1/P2/P3), each row
-   `id | repo | task | done-when | model/effort | size | mergeRoute | prerequisites |
-   dispatchable-now | source`. As read 2026-09-18: 67 total rows, 15 flagged `dispatchable-now:
-   **yes**` — either count clears a "≥12 dispatchable rows" bar. The snapshot already records drift
-   from the live file (two rows superseded by merged PRs), which is expected of a point-in-time copy
-   and not a defect.
-4. **Triage tick with lessons harvest — not built as an automated mechanism; real, but manual.**
-   `PM_INBOX/README.md`'s "triage agent digests the inbox each PM tick" is inbox digestion only, not
-   a lessons harvest. The actual lessons mechanism is `docs/LESSONS.md`'s promotion rule: a
-   first-seen defect is logged there once; on a second occurrence, "the PM (or the orchestrator
-   running `round-closeout`) adds the rule candidate... in the same close-out that recorded the
-   second occurrence" — a judgment call made at round-closeout, not a scheduled job.
-   `LESSONS_INBOX_2026-09-18.md` is a flat, manually-appended scratch file for the current night; no
-   cron, `/loop` or script named anything like "triage tick" exists anywhere in the estate as
-   checked. A future PM that wants this automated has a real gap to build, not a wiring task.
-5. **fleet-state files + `Watch-FleetState.ps1` — built, both halves exist.**
-   `tools/fleet-state/Write-SessionState.ps1` writes one atomic JSON file per session to
-   `%APPDATA%\AEGIS\fleet\<Session>.json` (`{session, state, lane, since, note}`, `state` ∈
-   `busy|idle|blocked`); a session calls it on every state change, which costs it nothing since the
-   watcher only reports transitions. `tools/fleet-state/Watch-FleetState.ps1` polls that directory
-   (default 30s) and prints only `IDLE <session>`, `BLOCKED <session>`, or `STALE <session>
-   <minutes>` (a `busy` file untouched past `-StaleMinutes`, default 15); it never reports a
-   session's first-seen state on its own baseline tick, to avoid startup noise. Intended to run
-   under `Monitor` as one long-lived process — this is the PM's only current visibility into a
-   session going idle or stuck without that session proactively saying so.
-6. **`notify_when_idle` as a second signal — BUILT-in-practice, NOT-yet-in-standard.** First check
-   found no file reference because the evidence is in session transcripts and Fleet Status, not a
-   repo file — the same shape of gap as item 2. `PM_NOTES_2026-09-18-github-94.md` §18: set on
-   every `SendMessage` lane card from ~03:3xZ on, producing a one-shot `[Cross-session idle notice]`
-   per session, run as the second signal alongside the fleet-state files (item 5). The note itself
-   flags why this matters for the standard: "not visible in any repo file — which is exactly why the
-   standard should name it." Recorded here as that naming; a future PM should treat both signals
-   (fleet-state polling and `notify_when_idle` subscriptions) as the current pair in active use, not
-   as fleet-state alone.
+1. **PM_INBOX reporting protocol - local only.** The PM reported a `PM_INBOX\README.md` on its own
+   machine describing worker reports written to files (one `SendMessage` pointer line to the PM,
+   full text in the file). That README is not in this repo, so its exact rules are not reproduced
+   here. Two categories are stated in this repo's own rules to go to chat directly: a classifier
+   denial and anything owner-safety.
+2. **"Two tasks on deck per session" - practice, not in standard.** Reported as an owner
+   instruction on 2026-09-18 and applied in lane messages. The source note
+   (`PM_NOTES_2026-09-18-github-94.md`) is local only, not in this repo. A follow-up should promote
+   it into "Completion handshake" or "The control loop" once settled.
+3. **Backlog.** `docs/pm/PM_BACKLOG.md` on `origin/main` is a labelled round-2 point-in-time
+   snapshot of a live copy that is local only. Its own Totals line reads 28 rows, 13 dispatchable
+   now. Figures for any larger live backlog or a "row floor" are not supported by files in this
+   repo and are not asserted here.
+4. **Triage tick with lessons harvest - not built as automation.** The lessons mechanism in this
+   repo is `docs/LESSONS.md`'s promotion rule: on a second occurrence the PM (or the orchestrator
+   running `round-closeout`) adds the rule candidate in the same close-out. It is a judgment call
+   at close-out, not a scheduled job.
+5. **fleet-state scripts - not in this repo.** `tools/fleet-state/Write-SessionState.ps1` and
+   `tools/fleet-state/Watch-FleetState.ps1` do not exist on `origin/main`; if they exist they are
+   on the PM's local machine only. Do not rely on them until they are merged.
+6. **`notify_when_idle` as a second signal.** `SendMessage` with `notify_when_idle: true` is
+   referenced in `worker_intro_prompt.md` and `worker_role.md` on `origin/main`. Its use as a
+   standing second idle signal by the github-94 PM is reported, not verifiable from repo files.
 
 ## The owner interface
 
