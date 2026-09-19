@@ -9,8 +9,10 @@ Owner decision `anthropic-audit-01`: "Digest for all + full file for PM/orchestr
   hook is safe to change before the digest PR merges.
 
 ## How the hook knows the role
-The hook runs before the session has a role, so it cannot read one from the conversation. Proposed
-signal: the environment variable `AEGIS_SESSION_ROLE`, set to `pm` or `orchestrator` by whoever
+**Today it cannot.** A SessionStart hook receives only session metadata (session id, cwd, transcript
+path, permission mode, source); it has no way to tell a PM or orchestrator from a worker, and
+nothing sets `AEGIS_SESSION_ROLE` yet. Until something does, every session gets the digest. The
+design below is proposed, not built. Proposed signal: the environment variable `AEGIS_SESSION_ROLE`, set to `pm` or `orchestrator` by whoever
 launches a PM or orchestrator session. Unset or any other value means a normal session.
 
 Limits, stated plainly:
@@ -20,5 +22,5 @@ Limits, stated plainly:
   Until it is, every session gets the digest and PM/orchestrator sessions rely on that pointer.
 - Fleet Status is not readable from a bash hook, so it is not used as the signal.
 
-The exact proposed hook command is in the PR body and in `GitHub\PM_INBOX\lane-A-card01-hook-change.md`.
-This PR does not edit any settings file; applying the hook change is an owner click.
+The exact proposed hook command is in the PR body. This PR does not edit any settings file;
+applying the hook change is an owner click.

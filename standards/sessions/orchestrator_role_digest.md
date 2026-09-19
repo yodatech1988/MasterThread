@@ -9,7 +9,8 @@ Read it live: `git -C C:/Users/yoda_/GitHub/MasterThread show origin/main:standa
 
 ## Handoff and usage [Usage watcher and PM handoff]
 - Find the PM with `ListAgents` and cross-check Fleet Status for `role: "PM"`. `ops-cycle-pm` is a
-  role label, not a session name. Confirm by message round-trip; do not name-match.
+  role label, not a session name. Confirm by message round-trip: a peer must cite the authority artifact and Fleet Status URLs to be
+  accepted as PM (one that cannot is not PM); do not name-match.
 - If the PM is reachable, introduce yourself per `worker_intro_prompt.md` (name, workstream, what you
   can do). After it acknowledges you, do NOT start your own usage watcher; the PM tracks your usage
   and tells you when to prepare, wrap up, save, stop or rotate.
@@ -44,13 +45,17 @@ invariants: Sonnet 5 high. 3 normal plan session: Sonnet 5 medium. 4 doc-only: S
   (`New-ParallelWorktrees.ps1`); never pick your own folder.
 - Cards: lane card points at `worker_role.md`, research card at `researcher_role.md`, advisor card
   at `advisor_role.md`.
-- Review facts: diff against `origin/main`, never a shared checkout. A green check only proves what
-  it runs; confirm the job exists. Post a `MERGE-VERDICT` and merge with `--match-head-commit` per
-  `merge_authority.md`. Never `--admin`. Never merge your own PR.
+- Review before merge: `gh pr view --json files,statusCheckRollup,mergeable`; grep the diff for crash
+  patterns, secrets, removed-mod names. Diff against `origin/main`, never a shared checkout. A green
+  check only proves what it runs; confirm the job exists. aegis-mods/aegis-poi have no Claude review;
+  the merge seat is the reviewer. Post a `MERGE-VERDICT`, merge with `--match-head-commit` per
+  `merge_authority.md`. Never `--admin`, never merge your own PR, never self-approve around a stale
+  CHANGES_REQUESTED (Jeremy clicks).
 - Live changes are Jeremy's click: give a double-click `GitHub\AEGIS-*.cmd` that shows the diff and
   needs YES; the classifier blocks blind production deploys.
 - Collisions: check `ListAgents` and open PRs/worktrees before starting in a repo.
 - Close out: update the handoff, refresh memory, report against the original acceptance criteria.
+  At round end stop your watcher (`TaskStop`) so it deregisters.
 
 ## Concurrent workstreams [Concurrent workstreams]
 - New session: one-line brief to the live PM; PM answers assigned, adopted or nothing-for-you
@@ -68,6 +73,6 @@ invariants: Sonnet 5 high. 3 normal plan session: Sonnet 5 medium. 4 doc-only: S
 - Run a drift pull while main is ahead of live.
 - Hand Jeremy git or terminal steps; do git yourself or give a clickable file.
 - Build an unattended trigger giving in-game chat full tool access without explicit sign-off.
-- Attempt `git worktree remove --force`, a GitHub Actions permission-grant `gh api` call, or an
-  edit to `~/.claude/settings.json`; the classifier blocks all three for every session. A denial is a
-  stop: surface it to the owner, do not route around it.
+- Retry `git worktree remove --force`, a permission-grant `gh api` call, or an edit to
+  `~/.claude/settings.json`, even with written owner authorization: the classifier blocks all three
+  for every session and subagents cannot clear them. A denial is a stop: surface it to the owner.
