@@ -70,7 +70,7 @@
 .PARAMETER Restore       Re-apply saved backups exactly.
 .PARAMETER OnlyRepo      Limit to one manifest repo.
 .PARAMETER BackupFile    Backup for -Restore. Requires -OnlyRepo (one backup file belongs to one repo; refused otherwise). Without it, each repo uses its newest AEGIS-Require-Checks.<repo>.*.backup.json next to this script.
-.PARAMETER ScratchRepo   Test harness only: replaces the manifest with this one repo; name must match ^srt-scratch-checks-test-[a-z0-9-]+$ (case-sensitive).
+.PARAMETER ScratchRepo   Test harness only: replaces the manifest with this one repo; name must match ^srt-scratch-checks-test-[a-z0-9-]+\z (case-sensitive).
 .PARAMETER ScratchChecks Test harness only: the checks to require on the scratch repo.
 .PARAMETER AssumeYes     Honoured ONLY for scratch repos (test harness); ignored for every other repo.
 #>
@@ -105,7 +105,7 @@ $Manifest = @(
 $IsScratch = $false
 # Test harness only. The exemption is a whole-name pattern, not a prefix, so path-like or upper-case names are refused.
 if ($ScratchRepo) {
-    if (($ScratchRepo -cnotmatch '^srt-scratch-checks-test-[a-z0-9-]+$') -or -not $ScratchChecks) {
+    if (($ScratchRepo -cnotmatch '^srt-scratch-checks-test-[a-z0-9-]+\z') -or -not $ScratchChecks) {
         $Manifest = @()   # refused below
     } else {
         $IsScratch = $true
