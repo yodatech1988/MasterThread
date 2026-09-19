@@ -1,6 +1,7 @@
 <#
 .SYNOPSIS
   Offline tests for tools/click-files/AEGIS-Require-Passing-Checks.ps1 (Windows PowerShell 5.1, no Pester).
+  Windows PowerShell only, and NOT run by CI: run it by hand (powershell -File <this file>) after any change to the click-file.
   Every case copies the script into a fresh temp dir and runs it against a MOCK `gh` function. The real
   GitHub API is never called and the script is never pointed at a real repo.
   Prints PASS/FAIL per case and a final count; exits 1 if any case fails.
@@ -400,6 +401,32 @@ try {
         $r = Invoke-Under $e @{ WhatIf = $true; OnlyRepo = 'jarvis' }
         Check ($r.Exit -eq 4) "exit $($r.Exit) expected 4`n$($r.Out)"
         Check ((Put-Count) -eq 0) "PUT count $(Put-Count)"
+    }
+    Case '12d -BackupFile without -OnlyRepo is refused: exit 4' {
+        $e = New-TestEnv @{}
+        $r = Invoke-Under $e @{ Restore = $true; WhatIf = $true; BackupFile = 'C:\nowhere\x.backup.json' }
+        Check ($r.Exit -eq 4) "exit $($r.Exit) expected 4`n$($r.Out)"
+        Check ("$($r.Out)" -match 'REFUSED-ARG: -BackupFile needs -OnlyRepo') "refused for the wrong reason:`n$($r.Out)"
+        Check ((Put-Count) -eq 0) "PUT count $(Put-Count)"
+    }
+    foreach ($bad in 'srt-scratch-checks-test-', 'srt-scratch-checks-test-UPPER', 'srt-scratch-checks-test-a/../b', 'srt-scratch-checks-test-x_y', 'srt-scratch-checks-test-ok ', 'Srt-scratch-checks-test-ok') {
+        Case "12e scratch name '$bad' fails the whole-name pattern: exit 4, no PUT" {
+            $e = New-TestEnv @{}
+            $r = Invoke-Under $e @{ ScratchRepo = $bad; ScratchChecks = @('test'); AssumeYes = $true }
+            Check ($r.Exit -eq 4) "exit $($r.Exit) expected 4`n$($r.Out)"
+            # Exit 4 alone is not proof: a missing mock repo also exits 4 (branch mismatch). Require the pattern refusal itself.
+            Check ("$($r.Out)" -match 'REFUSED-ARG: -ScratchRepo must match') "refused for the wrong reason:`n$($r.Out)"
+            Check ((Put-Count) -eq 0) "PUT count $(Put-Count)"
+        }
+    }
+    Case '12f real deny names are refused: review / review, review / automerge' {
+        foreach ($n in 'review / review', 'review / automerge') {
+            $e = New-TestEnv @{}
+            $r = Invoke-Under $e @{ ScratchRepo = 'srt-scratch-checks-test-1'; ScratchChecks = @($n); AssumeYes = $true }
+            Check ($r.Exit -eq 4) "'$n': exit $($r.Exit) expected 4`n$($r.Out)"
+            Check ("$($r.Out)" -match 'never-require list') "'$n': refused for the wrong reason:`n$($r.Out)"
+            Check ((Put-Count) -eq 0) "'$n': PUT count $(Put-Count)"
+        }
     }
     Case '12b unprotected repo (GET protection fails): exit 4' {
         $repo = New-OpsScratch; $repo.Raw = $null

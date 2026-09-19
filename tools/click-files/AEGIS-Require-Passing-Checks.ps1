@@ -13,7 +13,8 @@
     services      (main): require admin-bot, gateway, ops-db, economy-db, economy-loot-db;
                           enforce_admins is already true and is left as is.
   NEVER in the manifest (checked in code, the script refuses to start if one appears):
-    `gate / gate`, `secret-scan`, `review`. Those fail on recent PRs; requiring them would freeze merges.
+    `gate / gate`, `secret-scan`, `review`, `review / review`, `review / automerge`. Those fail on recent
+    PRs or are not tests; requiring them would freeze merges.
   Repos deliberately NOT here: jarvis, payments, MasterThread, ops-business (a required check would
   freeze them today), and repos with no CI. See the PM_INBOX note for what each would need.
 
@@ -33,6 +34,13 @@
        is reported as FAILED and the run stops (later repos are not touched).
   RESTORE (-Restore [-OnlyRepo r] [-BackupFile path]): re-applies each saved backup exactly, then
     re-reads and verifies against the backup. Undo of an apply.
+  SECOND UNDO PATH (if this script or gh will not run): GitHub website > the repo > Settings >
+    Branches > edit the rule for main > untick the added required checks and, on ops-household,
+    "Do not allow bypassing the above settings"; save. The backup .json shows what it was before.
+
+  AFTER APPLY ON ops-household: administrators are included, so direct pushes to main stop and every
+    change goes through a pull request whose `test` check is green. Cleaner long term: move that
+    repo's `test` to the VPS runner first (the org rule for private repos), then require it.
 
   Branch protection is a repo security setting: no Claude session runs this for real. A real run
   refuses unless started from a real console. A session may run it only with -WhatIf (reads only,
@@ -61,8 +69,8 @@
 .PARAMETER WhatIf        Read only. Prints current, proposed and the guard verdict. Changes nothing.
 .PARAMETER Restore       Re-apply saved backups exactly.
 .PARAMETER OnlyRepo      Limit to one manifest repo.
-.PARAMETER BackupFile    Backup for -Restore (only with -OnlyRepo; default: newest for that repo next to this script).
-.PARAMETER ScratchRepo   Test harness only: replaces the manifest with this one repo; name must start with srt-scratch-checks-test-.
+.PARAMETER BackupFile    Backup for -Restore. Requires -OnlyRepo (one backup file belongs to one repo; refused otherwise). Without it, each repo uses its newest AEGIS-Require-Checks.<repo>.*.backup.json next to this script.
+.PARAMETER ScratchRepo   Test harness only: replaces the manifest with this one repo; name must match ^srt-scratch-checks-test-[a-z0-9-]+$ (case-sensitive).
 .PARAMETER ScratchChecks Test harness only: the checks to require on the scratch repo.
 .PARAMETER AssumeYes     Honoured ONLY for scratch repos (test harness); ignored for every other repo.
 #>
@@ -80,13 +88,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $Owner = 'yodatech1988'
 $ScratchPrefix = 'srt-scratch-checks-test-'
-$DenyChecks = @('gate / gate', 'secret-scan', 'review')
+$DenyChecks = @('gate / gate', 'secret-scan', 'review', 'review / review', 'review / automerge')
 
 $Manifest = @(
     [pscustomobject]@{
         Repo = 'ops-household'; Branch = 'main'
         Checks = @('test'); EnforceAdmins = $true
-        Effect = "A PR (yours included) cannot merge until check 'test' is green on its head commit. Red, pending or never-reported all block, and administrators are now included, so you cannot click through. If GitHub-hosted runners stop working, merges stay blocked until you run the Restore file."
+        Effect = "A PR (yours included) cannot merge until check 'test' is green on its head commit. Red, pending or never-reported all block, and administrators are now included, so you cannot click through, and direct pushes to main stop: every change goes through a pull request. If GitHub-hosted runners stop working, merges stay blocked until you run the Restore file."
     }
     [pscustomobject]@{
         Repo = 'services'; Branch = 'main'
@@ -95,8 +103,9 @@ $Manifest = @(
     }
 )
 $IsScratch = $false
+# Test harness only. The exemption is a whole-name pattern, not a prefix, so path-like or upper-case names are refused.
 if ($ScratchRepo) {
-    if (-not $ScratchRepo.StartsWith($ScratchPrefix, [StringComparison]::Ordinal) -or -not $ScratchChecks) {
+    if (($ScratchRepo -cnotmatch '^srt-scratch-checks-test-[a-z0-9-]+$') -or -not $ScratchChecks) {
         $Manifest = @()   # refused below
     } else {
         $IsScratch = $true
@@ -273,7 +282,8 @@ function Test-CheckGuard([string]$repo, [string]$branch, [string]$check) {
 }
 
 function Assert-Manifest {
-    if ($ScratchRepo -and -not $IsScratch) { throw "REFUSED-ARG: -ScratchRepo must start with '$ScratchPrefix' and -ScratchChecks must be given." }
+    if ($ScratchRepo -and -not $IsScratch) { throw "REFUSED-ARG: -ScratchRepo must match ^${ScratchPrefix}[a-z0-9-]+`$ and -ScratchChecks must be given." }
+    if ($BackupFile -and -not $OnlyRepo) { throw 'REFUSED-ARG: -BackupFile needs -OnlyRepo, because one backup file belongs to one repo.' }
     $seen = @{}
     foreach ($m in $Manifest) {
         if ($seen[$m.Repo]) { throw "REFUSED-ARG: manifest lists $($m.Repo) twice" }
