@@ -808,3 +808,45 @@ Three things are deliberately **not** repeated here, because they already have a
 - **Rule candidate:** a lane card that says "pick a substantive standard" should be checked with `wc -l` on the candidates before dispatch, not at pick time.
 - **Where it belongs:** lane-card checklist (`lane-card-writer` agent brief).
 - **Seen:** 1 - skill-rubric-extract.
+
+### A lane card's premise about existing state was wrong three times in one round — 2026-09-19
+- **False assumption:** that the facts a lane card states about what already exists are current.
+  Three were false: the advisor/drafter pairs were said to be in the claude-agents repo (39 live in
+  MasterThread `claude-agents/`, so the first skills worker stopped); the review workflow was said
+  to need "no Action dependency" and all four patterns added (it already called
+  `anthropics/claude-code-action@v1` with `--effort` and a scoped `--allowedTools`, so two of four
+  were missing); and the SDK experiment assumed `CLAUDE_CODE_OAUTH_TOKEN` was set (it was not, and
+  the run used the CLI login instead).
+- **Rule candidate:** before dispatch, the card writer checks each "exists / does not exist" claim
+  against `git ls-tree` or the file on `origin/<default>`, and the card names the repo that holds the
+  artifact being changed. A worker that finds a premise false stops and reports rather than
+  re-scoping itself.
+- **Where it belongs:** the lane-card checklist in the `lane-card-writer` agent brief, and
+  `worker_role.md` "Before starting".
+- **Seen:** 3 — anthropics-repos integration round, lanes 1, 3 and 4A (github-49 and its workers).
+  Three instances in one round; the promotion rule applies at close-out.
+
+### A grade the worker gave its own eval run is provisional — 2026-09-19
+- **False assumption:** that "10/10 verdicts matched, graded" means the advisor was verified.
+  The lane 2 worker both ran the cases and did the manual grading, on ten easy cases run once each.
+- **Rule candidate:** in an eval or verification lane, results graded by the same session that ran
+  them are marked "provisional, not human-graded" in the PR body and the recorded-results file, and
+  the PR names the cases a human should spot-check. A completion claim carries that gap.
+- **Where it belongs:** the eval harness README (`evals/` in claude-agents) and `worker_role.md`
+  "Delivering" under verified vs simulated.
+- **Seen:** 1 — claude-agents#37, `model-policy-advisor`, cases C03, C05 and C10 suggested for
+  spot-check. (github-49)
+
+### A trial on a look-alike host does not validate the real host — 2026-09-19
+- **False assumption:** that the sandbox-runtime trial in a fresh WSL2 Ubuntu distro answers whether
+  srt works on vault-dev. The probes passed in WSL2, whose kernel has no AppArmor
+  user-namespace restriction; vault-dev is Ubuntu 24.04-class with that restriction on, lacks
+  bubblewrap, socat, ripgrep and Node, and needs a sysctl or an AppArmor profile first.
+- **Rule candidate:** a trial report states which properties of the real target it did not
+  reproduce (kernel, security modules, installed packages) and says "does not validate <target>"
+  in its first lines, and a lane card lists the target's prerequisites from a live read-only check
+  rather than from docs. Also: an upstream pinned by repo URL can move (sandbox-runtime now lives
+  under `anthropic-experimental/`), so re-resolve the repo before citing it.
+- **Where it belongs:** `researcher_role.md` (report shape), and ops-infra issue #40 for the
+  vault-dev follow-up.
+- **Seen:** 1 — ops-infra#40, lane 5, WSL2 `srt-trial` distro vs vault-dev. (github-49)
