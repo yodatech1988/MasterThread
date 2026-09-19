@@ -190,6 +190,8 @@ below.
 | `load-test-plan-drafter` | sonnet | **D** | yes | Drafts a load test plan in the real format |
 | `standards-stub-finder` | haiku | R | yes | Sweeps `standards/`+`policies/` and reports stub vs real (>5 lines) — exists because this exact mistake happened repeatedly while building this roster |
 | `policy-coverage-reporter` | sonnet | R | yes | Cross-refs this file against every real standard/policy doc with no agent yet |
+| `session-plan-advisor` | sonnet | **A** | yes | Verdict against `PLAN_template.md` and `session_plan_standard.md`'s real shape and 12 rules; defers Status-table drift to `plan-status-check` |
+| `session-plan-drafter` | sonnet | **D** | yes | Drafts a multi-session plan in the real `PLAN_template.md` shape; `TODO: needs input` for anything not given |
 
 ## More global mechanical reporters (`~/.claude/agents/`)
 

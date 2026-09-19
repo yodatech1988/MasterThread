@@ -79,5 +79,7 @@
   "owner-instruction-verifier": {"role": "A", "headless": "yes", "readonly": "instruction", "dormant": false},
   "register-verifier": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
   "denial-card-drafter": {"role": "D", "headless": "yes", "readonly": "tools", "dormant": false, "group": "other"},
-  "standard-buildstate-checker": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false}
+  "standard-buildstate-checker": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
+  "session-plan-drafter": {"role": "D", "headless": "yes", "readonly": "tools", "dormant": false},
+  "session-plan-advisor": {"role": "A", "headless": "yes", "readonly": "tools", "dormant": false}
 }
