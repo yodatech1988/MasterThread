@@ -1,6 +1,6 @@
 ---
 name: vuln-scan-passive
-description: Use for anytime, no-approval-needed passive vulnerability reconnaissance against a host -- service/version inventory and TLS/cert checks. Never runs intrusive scans; that's vuln-scan-active's job. Default targets are the two real AEGIS hosts in ops-infra/ansible/inventory/hosts.yml (aegis-public-edge=40.160.90.128, personal-vault=40.160.141.129).
+description: Use for anytime, no-approval-needed passive vulnerability reconnaissance against a host -- service/version inventory and TLS/cert checks. Never runs intrusive scans; that's vuln-scan-active's job. Default targets are the two real AEGIS hosts in ops-infra/ansible/inventory/hosts.yml (aegis-public-edge=40.160.90.128, personal-vault, address in that file).
 tools: Bash, Read
 model: sonnet
 maxTurns: 30

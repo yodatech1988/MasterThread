@@ -63,8 +63,8 @@ medium for normal build lanes; Sonnet 5 low for docs; Haiku 4.5 for mechanical r
 |---|---|---|
 | OVH label | `aegis-public-edge` | `personal-vault` |
 | Service | `vps-736c134b.vps.ovh.us` | `vps-6bfe4b32.vps.ovh.us` |
-| IP | `40.160.90.128` | `40.160.141.129` |
-| SSH | `ssh -i ~/.ssh/aegis-vps-admin-bot ubuntu@40.160.90.128` | `ssh -i ~/.ssh/vault-admin ubuntu@40.160.141.129` |
+| IP | `40.160.90.128` | `<vault IP: see ops-infra/ansible/inventory/hosts.yml>` |
+| SSH | `ssh -i ~/.ssh/aegis-vps-admin-bot ubuntu@40.160.90.128` | `ssh -i ~/.ssh/vault-admin ubuntu@<vault-ip>` |
 | Host key | `SHA256:G13wP9RUgI4bgz2vgY6uQSmlmyMav54c9MeUFZBpjQw` | `SHA256:MopRFgQX4nTI4rCrE/zqHDYTnpzULoOmvlKDz+QGDes` |
 | Role | AEGIS game zone. **Live players. Don't change it.** | Vault: PM, router, ledger, gateway, approval app, finance, household |
 
@@ -139,7 +139,7 @@ Branch `agent/ops-infra/apparmor` @ `2cf4c80` (WIP, pushed), **draft PR
 > one clean `-Apply` proving `changed=0` and settling the `canary-platform` restart race; review the
 > AIDE diff and refresh the baseline only if every entry is explained by this work; update
 > `docs/PLAN.md` and clear the Session 8 blocker; mark PR #7 ready for review.
-> Vault: `ssh -i ~/.ssh/vault-admin ubuntu@40.160.141.129`. **Never touch the edge box**
+> Vault: `ssh -i ~/.ssh/vault-admin ubuntu@<vault-ip>`. **Never touch the edge box**
 > (40.160.90.128, live players).
 > Done when: the zone containers run under an enforcing AppArmor profile, proven by a negative test
 > (a denied action inside a container is actually blocked and logged) and by
