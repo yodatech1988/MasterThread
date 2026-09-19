@@ -1,0 +1,6 @@
+@echo off
+title AEGIS security docs (Saturday) - Remote Control
+rem Scheduled task target: Sat 2026-09-19 06:00. Documents only; see NEXT_STEPS_SECURITY_PROGRAM_2026-09-19.md.
+rem Open this session from your phone (Claude app) or claude.ai/code while it runs.
+cd /d C:\Users\yoda_\GitHub
+claude --disallowedTools "Bash(git push *),Bash(gh *),Bash(ssh *),Bash(scp *),Bash(wrangler *),mcp__claude_ai_Gmail,mcp__claude_ai_Google_Drive,mcp__claude_ai_Google_Calendar,mcp__claude_ai_Intuit_QuickBooks,mcp__claude_ai_Meridian_Connector_for_QuickBooks,mcp__claude_ai_Notion,mcp__claude_ai_Zapier" --model opus --permission-mode auto --remote-control "AEGIS security docs D1-D5" "Read C:\Users\yoda_\GitHub\NEXT_STEPS_SECURITY_PROGRAM_2026-09-19.md and the plan it points to, then finish sessions D1 to D5 as documents only. Never push, open PRs, run gh or ssh, change settings, or use the Gmail, Drive, Calendar, QuickBooks, Notion or Zapier connectors. Run MasterThread tools/usage-monitor/check-usage.ps1 first and stop cleanly at about 80 percent usage. Commit only inside the two local private folders. When done, write a short summary of what was written, the verification results, and the owner decisions waiting for Jeremy, including the MasterThread visibility question he wants to address today."
