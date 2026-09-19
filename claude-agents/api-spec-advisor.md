@@ -3,6 +3,8 @@ name: api-spec-advisor
 description: Use when an API spec document (service or agent API) needs a pass/fail check against MasterThread's api_spec_standard before it's relied on for code generation or a compatibility check. Renders a verdict only, never edits the spec.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

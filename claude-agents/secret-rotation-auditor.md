@@ -3,6 +3,7 @@ name: secret-rotation-auditor
 description: Use before telling the owner a credential/secret is overdue for rotation. Checks live state (a real connectivity test, or a DPAPI .clixml file's last-modified time under %APPDATA%\AEGIS\) instead of trusting a written rotation-date doc. Read-only, never prints secret values.
 tools: Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

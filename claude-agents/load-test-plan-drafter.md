@@ -3,6 +3,8 @@ name: load-test-plan-drafter
 description: Use when someone describes expected traffic/load and needs a draft load test plan in MasterThread's real format. Drafts only -- caller reviews and places the file.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

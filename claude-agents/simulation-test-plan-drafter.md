@@ -3,6 +3,8 @@ name: simulation-test-plan-drafter
 description: Use when someone describes a long-run scenario (economy cycle, player churn, tier shifts) and needs a draft simulation test note in MasterThread's real (minimal) format. Drafts only -- caller reviews and places the file.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

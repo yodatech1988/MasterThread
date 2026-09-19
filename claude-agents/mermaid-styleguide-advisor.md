@@ -3,6 +3,8 @@ name: mermaid-styleguide-advisor
 description: Use when a Mermaid diagram (any type) needs a pass/fail check against MasterThread's mermaid_styleguide before it ships in a doc. Renders a verdict only, never edits the diagram.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

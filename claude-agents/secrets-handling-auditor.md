@@ -3,6 +3,7 @@ name: secrets-handling-auditor
 description: Use when asked to audit a repo's actual secret-handling PRACTICE (not rotation age) against org policy -- checks for secrets in files/history, .gitignore coverage, and whether credential tools under tools/*Key.ps1 follow the DPAPI key-window "-Run" pattern. Read-only; never prints a secret value. Distinct from secret-rotation-auditor, which only checks rotation age/expiry.
 tools: Bash, Grep, Read
 model: sonnet
+maxTurns: 30
 ---
 
 ## Purpose

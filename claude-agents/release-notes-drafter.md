@@ -3,6 +3,8 @@ name: release-notes-drafter
 description: Use when someone has a list of changes for an upcoming or just-shipped release and needs player/patron/admin-facing release notes. Drafts them in the exact section structure required by MasterThread's release notes standard. Produces a draft only -- never publishes or posts it anywhere.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

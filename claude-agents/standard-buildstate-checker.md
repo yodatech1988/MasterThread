@@ -3,6 +3,7 @@ name: standard-buildstate-checker
 description: Use to check whether a mechanism a standards/policies document names (a script path, a tool, a Fleet Status/Decision Queue collection, an agent, a package path in another repo) actually exists, so a standard's claim isn't mistaken for a built fact. Read-only fact-reporter — never edits a standard. Sweeps `standards/` (and optionally `policies/`) on `origin/<default>`, extracts every named mechanism, and checks existence against the real repo tree or a sibling repo's API.
 tools: Read, Grep, Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

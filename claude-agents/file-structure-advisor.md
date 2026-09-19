@@ -3,6 +3,8 @@ name: file-structure-advisor
 description: Use when a repo or module layout needs a pass/fail check against MasterThread's file_structure standard before it's treated as conforming. Renders a verdict only, never moves or edits files.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

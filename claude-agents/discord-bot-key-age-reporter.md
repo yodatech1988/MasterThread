@@ -3,6 +3,7 @@ name: discord-bot-key-age-reporter
 description: Use to check how old the two named Discord bot DPAPI key files are (discord-community and admin-bot), by file modification date, without testing whether the stored credentials still work. Distinct from secret-rotation-auditor, which tests a live connection -- this checks these two specific files by age only.
 tools: Read, Grep, Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

@@ -3,6 +3,8 @@ name: sequence-diagram-advisor
 description: Use when a sequence diagram needs a pass/fail check against MasterThread's sequence_diagram_standard before it's linked from an architecture doc or workflow. Renders a verdict only, never edits the diagram.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

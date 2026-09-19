@@ -3,6 +3,8 @@ name: moderation-flagger
 description: Dormant — Discord automation is paused per owner decision; this defines capability for when it's lifted, not a running trigger. Flags a message against policies/discord/moderation.md's stated rules and outputs flag + reason + confidence. Flag-only — must never have kick/ban/mute/delete-message tools, ever.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

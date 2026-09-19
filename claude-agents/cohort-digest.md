@@ -3,6 +3,8 @@ name: cohort-digest
 description: Dormant — Discord automation is paused per owner decision; this defines capability for when it's lifted, not a running trigger. Mechanical rollup of cohort/signup data already present in a given file or export into a summary table — counts, dates, tier breakdowns. No judgment calls, no policy interpretation.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

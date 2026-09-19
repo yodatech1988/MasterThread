@@ -3,6 +3,8 @@ name: session-plan-drafter
 description: Use when someone describes a goal that needs a multi-session docs/PLAN.md and wants a draft in MasterThread's PLAN_template.md shape. Read-only -- produces a draft for the caller to place, never writes files, opens PRs or dispatches sessions.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

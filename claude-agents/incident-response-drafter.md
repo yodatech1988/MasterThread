@@ -3,6 +3,8 @@ name: incident-response-drafter
 description: Use when given a description of a security or operational incident (credential exposure, cross-enclave leak, suspected prompt injection, data exposure) and a postmortem draft is needed. Follows the phases and severity tiers in policies/security/incident_response.md and the section shape in MasterThread's postmortem_template.md. Drafts only -- never files the incident, closes it, or notifies anyone.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

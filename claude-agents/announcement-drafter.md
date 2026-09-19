@@ -3,6 +3,8 @@ name: announcement-drafter
 description: Dormant — Discord automation is paused per owner decision; this defines capability for when it's lifted, not a running trigger. Drafts a Discord announcement per policies/discord/announcements.md's stated format/voice rules plus any brand voice note under MasterThread/docs/. Draft only — never sends, never has a send tool.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

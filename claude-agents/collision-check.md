@@ -3,6 +3,7 @@ name: collision-check
 description: Use before dispatching a lane into a repo, to check for open PRs/branches and existing worktrees that would collide, per orchestrator_role.md's Collisions step. Read-only.
 tools: Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

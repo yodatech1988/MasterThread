@@ -3,6 +3,7 @@ name: vuln-scan-active
 description: Use for deeper, still-non-destructive vulnerability CONFIRMATION (nmap safe-NSE only) against the vault or edge host, but ONLY inside an owner-declared maintenance window. Refuses outright if the window is closed. Never attempts actual exploitation, even inside a window.
 tools: Bash, Read
 model: sonnet
+maxTurns: 30
 ---
 
 ## Purpose

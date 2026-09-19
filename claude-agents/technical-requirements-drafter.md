@@ -3,6 +3,8 @@ name: technical-requirements-drafter
 description: Use when someone describes a system or feature and needs a draft technical requirements document in MasterThread's real format. Drafts only -- caller reviews and places the file.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

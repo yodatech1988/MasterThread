@@ -3,6 +3,8 @@ name: integration-test-plan-drafter
 description: Use when someone describes the systems/agents involved in a change and needs a draft integration test plan in MasterThread's real format. Drafts only -- caller reviews and places the file.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

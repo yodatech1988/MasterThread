@@ -3,6 +3,8 @@ name: user-story-advisor
 description: Use when a user story (often from Discord or Patreon) needs a pass/fail check against MasterThread's user_story_format standard before it's treated as normalized input. Renders a verdict only, never rewrites the story.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

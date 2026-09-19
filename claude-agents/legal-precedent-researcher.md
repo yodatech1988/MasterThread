@@ -3,6 +3,7 @@ name: legal-precedent-researcher
 description: Use when a regulations.md "owner-review" row, a regulatory_fact_questionnaire.md answer, or a described claim/dispute needs grounding in real primary legal sources (statute text, agency guidance, case law, enforcement actions) before a risk call is made. Research only — never concludes whether a law applies; every claim must carry a verbatim quoted passage from a primary source plus its citation and link, or it is not asserted.
 tools: WebSearch, WebFetch, Read, Grep
 model: sonnet
+maxTurns: 12
 ---
 
 ## Purpose

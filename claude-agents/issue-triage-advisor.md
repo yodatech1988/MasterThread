@@ -3,6 +3,8 @@ name: issue-triage-advisor
 description: Use when a GitHub issue's triage (priority and domain labeling) needs a pass/fail check against MasterThread's issue_triage_standard before it's relied on for scheduling. General GitHub issue triage -- distinct from the existing support-triage agent, which is Discord-ticket-specific and dormant. Renders a verdict only, never relabels the issue.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

@@ -3,6 +3,8 @@ name: acceptance-criteria-advisor
 description: Use when acceptance criteria for a feature or change need to be checked against MasterThread's acceptance criteria standard before they're accepted as done-definitions. Advisor only — renders pass/fail, never writes or edits the criteria.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

@@ -3,6 +3,7 @@ name: live-reviewer
 description: RESERVE FOR DELIBERATE, RARE USE ONLY — the single Opus-tier reviewer in this roster, for PRs touching live production, credentials/secrets, money (QuickBooks), the death/damage path, or a contract other sessions build on (worker_role.md model table, row 1). Do NOT summon this as a default PR reviewer; use diff-reviewer (sonnet) for everything else — cost discipline matters.
 tools: Bash, Grep, Read
 model: opus
+maxTurns: 30
 ---
 
 ## Purpose

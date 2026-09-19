@@ -3,6 +3,8 @@ name: release-notes-advisor
 description: Use when player/patron/admin-facing release notes need to be checked against MasterThread's release notes standard before publishing. Advisor only — renders pass/fail, never edits or publishes the notes.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

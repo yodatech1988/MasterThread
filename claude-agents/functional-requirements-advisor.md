@@ -3,6 +3,8 @@ name: functional-requirements-advisor
 description: Use when a functional requirements document needs to be checked against MasterThread's functional requirements standard before it's used to derive acceptance criteria or work. Advisor only — renders pass/fail, never writes or edits the document.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

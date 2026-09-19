@@ -3,6 +3,7 @@ name: workshop-mod-inventory
 description: Use to list every real Workshop module.json under aegis-mods and aegis-poi's mod source trees and report each module's name/version/workshopId as a fact table. No judgment on compliance -- that's module-json-contract-checker's job.
 tools: Read, Grep, Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose

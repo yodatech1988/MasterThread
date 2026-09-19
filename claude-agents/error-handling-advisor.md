@@ -3,6 +3,8 @@ name: error-handling-advisor
 description: Use when a code diff or module needs a pass/fail check against MasterThread's error_handling standard before it ships. Renders a verdict only, never edits the code.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

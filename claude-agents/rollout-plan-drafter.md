@@ -3,6 +3,8 @@ name: rollout-plan-drafter
 description: Use when someone describes a change being deployed and wants a rollout plan drafted from it, per MasterThread's rollout plan standard. Read-only -- produces a draft doc for the caller to place, never writes files.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

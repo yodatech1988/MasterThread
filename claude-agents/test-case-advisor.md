@@ -3,6 +3,8 @@ name: test-case-advisor
 description: Use when a test case needs a pass/fail check against MasterThread's test_case_standard format before a test suite relies on it. Renders a verdict only, never rewrites the test case.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

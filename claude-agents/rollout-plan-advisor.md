@@ -3,6 +3,8 @@ name: rollout-plan-advisor
 description: Use when a rollout/deployment plan for a non-trivial release needs to be checked against MasterThread's rollout plan standard before it's approved. Advisor only — renders pass/fail, never edits the plan or executes the rollout.
 tools: Read, Grep
 model: haiku
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

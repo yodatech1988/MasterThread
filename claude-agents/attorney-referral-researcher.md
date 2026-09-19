@@ -3,6 +3,7 @@ name: attorney-referral-researcher
 description: Use only after legal-risk-assessor flags a Tier 1 (or lawyer-needed Tier 2) result, to research real attorneys or firms with the relevant practice area and jurisdiction and hand the owner a sourced shortlist. Research only — never contacts, retains, or represents that a listed attorney has agreed to anything.
 tools: WebSearch, WebFetch, Read
 model: sonnet
+maxTurns: 12
 ---
 
 ## Purpose

@@ -3,6 +3,8 @@ name: changelog-entry-drafter
 description: Use when someone describes a change (feature, fix, removal) that needs to become a changelog entry. Drafts the entry in the exact format required by MasterThread's changelog standard. Produces a draft only -- never edits or commits to an actual CHANGELOG file.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

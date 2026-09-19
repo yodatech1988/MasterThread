@@ -3,6 +3,8 @@ name: test-case-drafter
 description: Use when someone describes a scenario (unit, integration, or simulation) that needs to become a formal test case. Drafts it in the exact template required by MasterThread's test case standard. Produces a draft only -- never adds it to a test suite or marks it as run.
 tools: Read, Grep
 model: sonnet
+maxTurns: 12
+omitClaudeMd: true
 ---
 
 ## Purpose

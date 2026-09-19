@@ -3,6 +3,7 @@ name: standards-stub-finder
 description: Use before grounding any new agent or policy claim in a MasterThread (or other repo's) standards/ or policies/ file, to confirm the target file actually has content and isn't an empty stub. Sweeps every .md under standards/ and policies/ via wc -l and reports real vs stub files.
 tools: Read, Grep, Bash
 model: haiku
+maxTurns: 30
 ---
 
 ## Purpose
