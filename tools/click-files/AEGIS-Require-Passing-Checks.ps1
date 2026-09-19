@@ -346,7 +346,7 @@ function Invoke-ApplyRepo($m) {
     if ([IO.File]::ReadAllText($bkPath) -ne $raw) { Write-Host 'REFUSED: backup did not read back identical. Nothing changed.' -ForegroundColor Red; Add-Result "$repo : REFUSED (backup verify failed)"; Set-Worst 4; return }
     Write-Host "Backup saved: $bkPath"
     Write-Host "What a red or pending check now blocks: $($m.Effect)" -ForegroundColor Yellow
-    Write-Host 'Undo    : AEGIS-Restore-Passing-Checks.cmd (uses the backup above).'
+    Write-Host 'Undo    : zz-UNDO-Require-Passing-Checks.cmd (uses the backup above).'
     $typed = Confirm-Yes "Type YES to require [$($toAdd -join ', ')] on $repo/$branch and set admins included (anything else skips this repo)"
     $script:Typed.Add("$repo=$(if ($typed -ceq 'YES') { 'YES' } else { 'not YES' })")
     if ($typed -cne 'YES') { Write-Host "Skipped $repo. Nothing changed (the backup file was written, nothing else)." -ForegroundColor Yellow; Add-Result "$repo : skipped by owner"; return }
@@ -355,7 +355,7 @@ function Invoke-ApplyRepo($m) {
     try { $res = Send-Put $repo $branch $proposed }
     catch {
         Write-Host "PUT threw: $($_.Exception.GetType().FullName): $($_.Exception.Message)" -ForegroundColor Red
-        Write-Host 'State unknown - check the repo settings page; restore with AEGIS-Restore-Passing-Checks.cmd.' -ForegroundColor Red
+        Write-Host 'State unknown - check the repo settings page; restore with zz-UNDO-Require-Passing-Checks.cmd.' -ForegroundColor Red
         Add-Result "$repo : FAILED (PUT threw $($_.Exception.Message))"; Set-Worst 1; return
     }
     $afterRaw = Read-ProtectionRaw $repo $branch
