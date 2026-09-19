@@ -432,8 +432,9 @@ def sync_doc(doc_text: str, agent_files: dict, meta: dict | None, purposes: dict
         for row_line in body:
             cells = split_row(row_line)
             name = clean_cell(cells[agent_idx]) if agent_idx < len(cells) else ""
-            if is_advisors and name not in wanted:
-                continue  # no longer belongs here; --check then reports it if it has no other row
+            if is_advisors and name in agent_files and name not in wanted:
+                continue  # has a file but no longer belongs here; --check then reports it if it has no other row
+            # a row for an agent with no file (a file-less advisor) is hand-written: keep it as written
             orig_cells = list(cells)
             if name in agent_files and len(cells) == len(headers):
                 # Only rewrite a cell whose VALUE differs (clean_cell strips bold/backticks), so a
