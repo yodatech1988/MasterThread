@@ -268,6 +268,13 @@ class SyncDocTests(unittest.TestCase):
         out = gen.sync_doc(doc, self.FILES, self.META)
         self.assertNotIn("sample-reporter", out)
 
+    def test_advisors_section_keeps_a_row_for_an_agent_with_no_file(self):
+        # a hand-written row for an advisor that has no claude-agents/ file must survive --write
+        row = "| `hand-only-advisor` | **opus** | **A** | yes | hand text |"
+        doc = _doc(ADV_HEAD, "", "| Agent | Model | Role | Headless | Purpose |", "|---|---|---|---|---|", row)
+        out = gen.sync_doc(doc, self.FILES, self.META)
+        self.assertIn(row, out)
+
     def test_group_other_keeps_a_drafter_out_and_group_standards_brings_a_reporter_in(self):
         meta = dict(self.META)
         meta["y-drafter"] = {"role": "D", "headless": "yes", "group": "other"}
