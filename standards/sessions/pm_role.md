@@ -223,7 +223,7 @@ the PM's machine and are **not in this repo**; treat them as unverified from her
 1. **PM_INBOX reporting protocol - local only.** The PM reported a `PM_INBOX\README.md` on its own
    machine describing worker reports written to files (one `SendMessage` pointer line to the PM,
    full text in the file). That README is not in this repo, so its exact rules are not reproduced
-   here. Two categories are stated in this repo's own rules to go to chat directly: a classifier
+   here. Two categories are, as the round record states, sent to chat directly: a classifier
    denial and anything owner-safety.
 2. **"Two tasks on deck per session" - practice, not in standard.** Reported as an owner
    instruction on 2026-09-18 and applied in lane messages. The source note
