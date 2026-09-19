@@ -45,10 +45,12 @@ not something to silently resolve by copying over it.
 
 ## Regenerating the index
 
-`docs/AGENTS.md`'s "Global" table is generated from this directory's frontmatter, not
-hand-written — see `tools/generate_agents_md.py`. Run it after adding, editing, or removing any
-file here, and commit the regenerated table in the same PR as the file change. Never hand-edit the
-Global table directly; the next regeneration will overwrite a hand-edit without warning.
+`docs/AGENTS.md`'s Model, Role and Headless cells, and which agents sit in its "Advisors against
+MasterThread's own standards" section, are generated from this directory (frontmatter and
+`roster_meta.json`) by `tools/generate_agents_md.py --write`. Run it after adding, editing, or
+removing any file here and commit the result in the same PR. New advisor/drafter files get their row
+automatically; the Purpose/Grounded-in text is yours to edit and is never overwritten. Do not
+hand-edit the derived cells: `--check` (and CI) fails when they differ from what `--write` produces.
 
 ## Checking for drift
 

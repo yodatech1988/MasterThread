@@ -204,5 +204,89 @@ class CheckRosterTests(unittest.TestCase):
         self.assertEqual(problems, [])
 
 
+NL = chr(10)
+
+
+def _doc(*lines):
+    return NL.join(lines) + NL
+
+
+ADV_HEAD = "## Advisors against MasterThread's own standards (global, `~/.claude/agents/`)"
+GLOBAL_TABLE = _doc(
+    "## Global (`~/.claude/agents/`, available in every repo)",
+    "",
+    "| Agent | Model | Role | Headless | Purpose | Grounded in |",
+    "|---|---|---|---|---|---|",
+    "| `sample-reporter` | sonnet | A | local-only | Hand purpose | hand grounding |",
+    "",
+)
+
+
+class SyncDocTests(unittest.TestCase):
+    FILES = {"sample-reporter": "haiku", "x-advisor": "sonnet", "y-drafter": "haiku", "z-reporter": "haiku"}
+    META = {
+        "sample-reporter": {"role": "R", "headless": "yes"},
+        "x-advisor": {"role": "A", "headless": "yes"},
+        "y-drafter": {"role": "D", "headless": "yes"},
+        "z-reporter": {"role": "R", "headless": "yes", "group": "standards"},
+    }
+
+    def test_wrong_derived_cells_are_rewritten_and_prose_is_kept(self):
+        out = gen.sync_doc(GLOBAL_TABLE, self.FILES, self.META)
+        self.assertIn("| `sample-reporter` | haiku | R | yes | Hand purpose | hand grounding |", out)
+
+    def test_bold_emphasis_on_a_correct_value_is_not_fought_over(self):
+        doc = GLOBAL_TABLE.replace("| sonnet |", "| **haiku** |")
+        out = gen.sync_doc(doc, self.FILES, {"sample-reporter": {"role": "A", "headless": "local-only"}})
+        self.assertIn("**haiku**", out)
+
+    def test_role_style_advisor_and_drafter_bold_reporter_plain(self):
+        self.assertEqual(gen.role_cell("A"), "**A**")
+        self.assertEqual(gen.role_cell("D"), "**D**")
+        self.assertEqual(gen.role_cell("R"), "R")
+
+    def test_agent_with_no_file_is_left_exactly_as_written(self):
+        doc = _doc("## Repo-local", "", "| Agent | Model | Role | Headless | Repo | Purpose |", "|---|---|---|---|---|---|",
+                   "| `local-only-agent` | **opus** | **A** | yes | some-repo | hand text |")
+        self.assertEqual(gen.sync_doc(doc, self.FILES, self.META), doc)
+
+    def test_sync_is_idempotent(self):
+        once = gen.sync_doc(GLOBAL_TABLE, self.FILES, self.META)
+        self.assertEqual(gen.sync_doc(once, self.FILES, self.META), once)
+
+    def test_advisors_section_gets_new_rows_alphabetically_with_derived_cells(self):
+        doc = _doc(ADV_HEAD, "", "| Agent | Model | Role | Headless | Purpose |", "|---|---|---|---|---|",
+                   "| `y-drafter` | haiku | **D** | yes | hand y |")
+        out = gen.sync_doc(doc, self.FILES, self.META, {"x-advisor": "Verdict on X", "z-reporter": "Reports Z"})
+        rows = [l for l in out.split(NL) if l.startswith("| `")]
+        self.assertEqual([r.split("|")[1].strip() for r in rows], ["`y-drafter`", "`x-advisor`", "`z-reporter`"])
+        self.assertIn("| `x-advisor` | sonnet | **A** | yes | Verdict on X |", out)
+
+    def test_advisors_section_drops_a_row_that_no_longer_belongs(self):
+        doc = _doc(ADV_HEAD, "", "| Agent | Model | Role | Headless | Purpose |", "|---|---|---|---|---|",
+                   "| `sample-reporter` | haiku | R | yes | not an advisor |")
+        out = gen.sync_doc(doc, self.FILES, self.META)
+        self.assertNotIn("sample-reporter", out)
+
+    def test_group_other_keeps_a_drafter_out_and_group_standards_brings_a_reporter_in(self):
+        meta = dict(self.META)
+        meta["y-drafter"] = {"role": "D", "headless": "yes", "group": "other"}
+        self.assertEqual(gen.advisor_section_names(self.FILES, meta), ["x-advisor", "z-reporter"])
+
+    def test_check_reports_the_line_write_would_change(self):
+        lines = gen.drift_lines(GLOBAL_TABLE, gen.sync_doc(GLOBAL_TABLE, self.FILES, self.META))
+        self.assertEqual(len(lines), 1)
+        self.assertIn("sample-reporter", lines[0])
+
+    def test_no_drift_reports_nothing(self):
+        synced = gen.sync_doc(GLOBAL_TABLE, self.FILES, self.META)
+        self.assertEqual(gen.drift_lines(synced, gen.sync_doc(synced, self.FILES, self.META)), [])
+
+    def test_invalid_group_value_is_a_problem(self):
+        meta = {"sample-reporter": {"role": "R", "headless": "yes", "readonly": "n/a", "dormant": False, "group": "bogus"}}
+        problems = gen.check_roster(GLOBAL_TABLE, {"sample-reporter": "haiku"}, meta)
+        self.assertTrue(any("'group'" in p for p in problems))
+
+
 if __name__ == "__main__":
     unittest.main()

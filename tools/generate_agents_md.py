@@ -1,43 +1,31 @@
 #!/usr/bin/env python3
-"""Regenerate docs/AGENTS.md's "Global" table from claude-agents/*.md frontmatter.
+"""Keep docs/AGENTS.md's derived facts generated from claude-agents/, and fail CI when they drift.
 
-Why this exists: before 2026-09-16, docs/AGENTS.md's Global table was hand-written and hand-edited
-one PR at a time (see PR #50, #52) as the live roster under ~/.claude/agents grew past what the
-doc tracked -- it reached 70 live agents while the doc indexed 25. A hand-written index rots
-independently of the files it describes, silently, the same way any hand-maintained copy drifts
-from its source. This script removes the hand-editing step: the table is derived from the actual
-committed files every time, so the two cannot silently diverge.
+Why this exists: before 2026-09-16, docs/AGENTS.md was hand-written and hand-edited one PR at a
+time (see PR #50, #52) as the live roster under ~/.claude/agents grew past what the doc tracked --
+it reached 70 live agents while the doc indexed 25. A hand-written index rots independently of the
+files it describes, silently. The 2026-09-17 audit (docs/AGENT_ROSTER_AUDIT_2026-09-17.md, R4)
+found the result: three live agents missing, three rows for agents never merged, one model mismatch.
+
+What is generated, and what is not:
+  * DERIVED (rewritten by --write, verified by --check): the Model cell (from each agent file's
+    frontmatter), the Role and Headless cells (from claude-agents/roster_meta.json), and the
+    membership of the "Advisors against MasterThread's own standards" section (every *-advisor and
+    *-drafter file, plus any roster_meta.json entry with "group": "standards", minus any entry with
+    "group": "other"). A new advisor/drafter file therefore gets its row from --write with no hand
+    edit; its Purpose starts as the description's first sentence.
+  * HAND-WRITTEN (never touched once a row exists): the Purpose, Grounded in and Repo cells and the
+    prose around the tables -- editorial text, not facts about the files. Rows for agents that have
+    no file in claude-agents/ (MasterThread-local and repo-local agents) are left exactly as written.
+  The classification itself (Role, Headless, group) is an editorial judgment made once, in
+  roster_meta.json, and validated there.
 
 Usage:
-    python tools/generate_agents_md.py            # print the table to stdout
-    python tools/generate_agents_md.py --write     # replace the Global table in docs/AGENTS.md
+    python tools/generate_agents_md.py            # print a flat table of every agent to stdout
+    python tools/generate_agents_md.py --write     # make docs/AGENTS.md's derived cells match
     python tools/generate_agents_md.py --check     # verify docs/AGENTS.md against claude-agents/
-                                                    # and roster_meta.json; exit non-zero on drift
-
-Only the "## Global (...)" section of docs/AGENTS.md is touched -- the "MasterThread/.claude/agents/"
-and "Repo-local" sections describe agents that don't live in claude-agents/, so they're left alone.
-
-KNOWN GAP as of 2026-09-17 (audit: docs/AGENT_ROSTER_AUDIT_2026-09-17.md, MasterThread PR #84,
-recommendation R4): #52 landed and added a Role column (A = advisor / R = researcher, per
-`standards/sessions/advisor_role.md`) to every docs/AGENTS.md table by hand, plus a whole
-"Advisors against MasterThread's own standards" section -- none of it derived from this script,
-because it was never finished. The audit also found the predictable result of that: three live
-agents missing from the roster, three roster rows for agents that were never merged, and one
-model mismatch (F1-F3), with nothing anywhere checking for any of it (F4).
-
-This revision adds `--check` (see the module docstring's Usage section): a verification mode that
-parses whatever markdown tables already exist in docs/AGENTS.md -- it does NOT require the doc to
-have been produced by this script's own `--write`, so it can run against the current hand-edited
-file as-is. It also extends `build_rows`/`render_table` so that, when `claude-agents/roster_meta.json`
-exists, generation emits Role and Headless columns sourced from that file rather than needing them
-re-derived from frontmatter (the classification itself is still an editorial judgment call, made in
-roster_meta.json, not guessed here).
-
-Still true: `--write` has deliberately NOT been run against docs/AGENTS.md in the PR that adds
-`--check` (see that PR's body for why -- merge-order dependency on the roster-corrections PR).
-`--check` on current main fails for the reasons the roster-corrections PR is fixing; once that
-lands, `--check` should pass, and `--write` can be revisited separately with the Role/Headless
-columns it now knows how to emit.
+                                                    # and roster_meta.json; exit non-zero on drift.
+                                                    # Drift includes "--write would change a line".
 """
 import argparse
 import json
@@ -331,6 +319,12 @@ def check_roster(doc_text: str, agent_files: dict[str, str], meta: dict | None) 
                     f"roster_meta.json entry '{name}' field '{field}' is '{value}', not one of "
                     f"{sorted(allowed)}"
                 )
+        group = entry.get("group")
+        if group is not None and group not in ROSTER_META_GROUPS:
+            problems.append(
+                f"roster_meta.json entry '{name}' field 'group' is '{group}', not one of "
+                f"{sorted(ROSTER_META_GROUPS)} (or absent)"
+            )
         if not isinstance(entry.get("dormant"), bool):
             problems.append(
                 f"roster_meta.json entry '{name}' field 'dormant' is '{entry.get('dormant')}', "
@@ -358,33 +352,157 @@ def check_roster(doc_text: str, agent_files: dict[str, str], meta: dict | None) 
     return problems
 
 
-def replace_global_section(doc: str, table: str) -> str:
-    # Global section runs from its "## Global (...)" heading to the next "## " heading.
-    pattern = re.compile(
-        r"(## Global \(`~/\.claude/agents/`, available in every repo\)\n\n)"
-        r".*?"
-        r"(\n\n## )",
-        re.DOTALL,
-    )
-    replacement = r"\1" + table.replace("\\", "\\\\") + r"\2"
-    new_doc, count = pattern.subn(replacement, doc)
-    if count != 1:
-        raise SystemExit(
-            "could not find exactly one Global section to replace in docs/AGENTS.md "
-            f"(found {count}) -- check the heading text hasn't changed"
-        )
-    return new_doc
+# ---------------------------------------------------------------------------
+# Derived cells and the Advisors section. `--write` rewrites these in place; `--check` fails when
+# doing so would change anything. Prose columns (Purpose, Grounded in, Repo) stay hand-written
+# because they are editorial text, not facts about the agent's files.
+# ---------------------------------------------------------------------------
+
+NL = chr(10)
+ADVISORS_HEADING = "## Advisors against MasterThread's own standards"
+ROLE_CELLS = {"A": "**A**", "D": "**D**", "R": "R"}
+STANDARDS_SUFFIXES = ("-advisor", "-drafter")
+ROSTER_META_GROUPS = {"standards", "other"}
+
+
+def role_cell(role: str) -> str:
+    """How a Role value is written in the doc: Advisor and Drafter are bold, Researcher is plain."""
+    return ROLE_CELLS.get(role, role)
+
+
+def advisor_section_names(agent_files: dict, meta: dict | None) -> list[str]:
+    """Names that belong in the Advisors section, sorted. Rule: a file named *-advisor or
+    *-drafter, unless its roster_meta.json entry says `"group": "other"` (an advisor or drafter
+    grounded in a policy or a tool rather than a standards/ file); plus any entry that says
+    `"group": "standards"` (e.g. the two reporters that read the standards tree)."""
+    meta = meta or {}
+    names = []
+    for name in sorted(agent_files):
+        group = meta.get(name, {}).get("group") if isinstance(meta.get(name), dict) else None
+        if group == "standards" or (group != "other" and name.endswith(STANDARDS_SUFFIXES)):
+            names.append(name)
+    return names
+
+
+def _row_line(cells: list[str]) -> str:
+    return "| " + " | ".join(cells) + " |"
+
+
+def sync_doc(doc_text: str, agent_files: dict, meta: dict | None, purposes: dict | None = None) -> str:
+    """Returns docs/AGENTS.md with every derived cell made to match the files:
+    Model (from frontmatter), Role and Headless (from roster_meta.json) in every table that has
+    those columns, and the Advisors section's table rebuilt to hold exactly the right agents.
+    Existing rows keep their order and their prose cells; new rows are appended alphabetically with
+    `purposes[name]` (the one-line description) as their Purpose. Rows of agents that have no file
+    (repo-local, MasterThread-local) are left exactly as written."""
+    meta = meta or {}
+    purposes = purposes or {}
+    wanted = advisor_section_names(agent_files, meta)
+    lines = doc_text.split(NL)
+    out: list[str] = []
+    heading = None
+    i = 0
+    n = len(lines)
+    while i < n:
+        line = lines[i]
+        if line.startswith("## "):
+            heading = line[3:].strip()
+        is_table_start = _TABLE_ROW_RE.match(line) and i + 1 < n and _TABLE_SEP_RE.match(lines[i + 1])
+        if not is_table_start:
+            out.append(line)
+            i += 1
+            continue
+        headers = split_row(line)
+        agent_idx = _col_index(headers, "agent")
+        j = i + 2
+        body = []
+        while j < n and _TABLE_ROW_RE.match(lines[j]) and not _TABLE_SEP_RE.match(lines[j]):
+            body.append(lines[j])
+            j += 1
+        if agent_idx is None:
+            out.extend(lines[i:j])
+            i = j
+            continue
+        model_idx = _col_index(headers, "model")
+        role_idx = _col_index(headers, "role")
+        headless_idx = _col_index(headers, "headless")
+        is_advisors = (heading or "").startswith(ADVISORS_HEADING[3:])
+        new_body = []
+        seen = set()
+        for row_line in body:
+            cells = split_row(row_line)
+            name = clean_cell(cells[agent_idx]) if agent_idx < len(cells) else ""
+            if is_advisors and name not in wanted:
+                continue  # no longer belongs here; --check then reports it if it has no other row
+            orig_cells = list(cells)
+            if name in agent_files and len(cells) == len(headers):
+                # Only rewrite a cell whose VALUE differs (clean_cell strips bold/backticks), so a
+                # deliberate emphasis such as **opus** is not fought over.
+                entry = meta.get(name) if isinstance(meta.get(name), dict) else {}
+                if model_idx is not None and agent_files[name] and clean_cell(cells[model_idx]) != agent_files[name]:
+                    cells[model_idx] = agent_files[name]
+                if role_idx is not None and entry.get("role") and clean_cell(cells[role_idx]) != entry["role"]:
+                    cells[role_idx] = role_cell(entry["role"])
+                if headless_idx is not None and entry.get("headless") and clean_cell(cells[headless_idx]) != entry["headless"]:
+                    cells[headless_idx] = entry["headless"]
+                if cells != orig_cells:
+                    row_line = _row_line(cells)
+            seen.add(name)
+            new_body.append(row_line)
+        if is_advisors:
+            for name in wanted:
+                if name in seen:
+                    continue
+                entry = meta.get(name) if isinstance(meta.get(name), dict) else {}
+                cells = [""] * len(headers)
+                cells[agent_idx] = "`" + name + "`"
+                if model_idx is not None:
+                    cells[model_idx] = agent_files[name]
+                if role_idx is not None:
+                    cells[role_idx] = role_cell(entry.get("role", ""))
+                if headless_idx is not None:
+                    cells[headless_idx] = entry.get("headless", "")
+                for k, h in enumerate(headers):
+                    if h.strip().lower() == "purpose":
+                        cells[k] = purposes.get(name, "")
+                new_body.append(_row_line(cells))
+        out.extend([line, lines[i + 1]])
+        out.extend(new_body)
+        i = j
+    return NL.join(out)
+
+
+def drift_lines(doc_text: str, synced: str, limit: int = 12) -> list[str]:
+    """Human-readable list of the lines --write would change (for --check's report)."""
+    import difflib
+
+    a, b = doc_text.split(NL), synced.split(NL)
+    found = []
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if tag == "equal":
+            continue
+        was = " // ".join(x.strip()[:90] for x in a[i1:i2]) or "(nothing)"
+        now = " // ".join(x.strip()[:90] for x in b[j1:j2]) or "(removed)"
+        found.append(f"line {i1 + 1}: {was}  ->  {now}")
+    return found[:limit] + ([f"... and {len(found) - limit} more"] if len(found) > limit else [])
+
+
+
+def load_agent_facts() -> tuple[dict, dict]:
+    """(agent name -> model, agent name -> one-line purpose) from claude-agents/*.md."""
+    rows = build_rows()
+    return {r["name"]: r["model"] for r in rows}, {r["name"]: r["purpose"] for r in rows}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     group = parser.add_mutually_exclusive_group()
-    group.add_argument("--write", action="store_true", help="write docs/AGENTS.md in place")
+    group.add_argument("--write", action="store_true", help="make docs/AGENTS.md's derived cells match the files")
     group.add_argument(
         "--check",
         action="store_true",
         help="verify docs/AGENTS.md against claude-agents/*.md and roster_meta.json; "
-        "exits non-zero with a problem list if anything disagrees",
+        "exits non-zero with a problem list if anything disagrees or --write would change a line",
     )
     args = parser.parse_args()
 
@@ -393,9 +511,11 @@ def main() -> int:
     if args.check:
         for warning in meta_warnings:
             print(f"warning: {warning}", file=sys.stderr)
-        agent_files = {row["name"]: row["model"] for row in build_rows()}
+        agent_files, purposes = load_agent_facts()
         doc_text = AGENTS_MD.read_text(encoding="utf-8")
         problems = check_roster(doc_text, agent_files, meta)
+        for line in drift_lines(doc_text, sync_doc(doc_text, agent_files, meta, purposes)):
+            problems.append(f"docs/AGENTS.md is not what --write would produce: {line}")
         if not problems:
             print("generate_agents_md.py --check: in sync, no problems found.")
             return 0
@@ -404,17 +524,19 @@ def main() -> int:
             print(f"  - {problem}")
         return 1
 
-    rows = build_rows(meta)
-    table = render_table(rows, meta_present=meta is not None)
-
     if not args.write:
-        sys.stdout.write(table)
+        rows = build_rows(meta)
+        sys.stdout.write(render_table(rows, meta_present=meta is not None))
         return 0
 
+    agent_files, purposes = load_agent_facts()
     doc = AGENTS_MD.read_text(encoding="utf-8")
-    new_doc = replace_global_section(doc, table)
+    new_doc = sync_doc(doc, agent_files, meta, purposes)
+    if new_doc == doc:
+        print("docs/AGENTS.md already matches; nothing written.", file=sys.stderr)
+        return 0
     AGENTS_MD.write_text(new_doc, encoding="utf-8")
-    print(f"Wrote {len(rows)} agents into {AGENTS_MD}", file=sys.stderr)
+    print(f"Updated derived cells in {AGENTS_MD}", file=sys.stderr)
     return 0
 
 
