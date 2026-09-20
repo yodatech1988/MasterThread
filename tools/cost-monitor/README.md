@@ -20,6 +20,11 @@ python -m unittest discover -s tools/tests                # the tests (fake data
 
 Tested on Python 3.13; needs PyYAML (`pip install pyyaml`). Without PyYAML it exits 3 rather than guess a rate.
 
+The tests need PyYAML too: without it, the test classes that run the tool end to end are **skipped** with the
+reason "PyYAML is not installed" (they cannot pass, because the tool exits 3 by design). Install PyYAML to run
+them. CI's `agents-roster-check` job does not install PyYAML today, so there those tests are skipped and CI
+does not exercise the cost monitor end to end; run them locally with PyYAML installed.
+
 ## Exit codes
 
 | Code | Meaning |
@@ -45,7 +50,7 @@ Precedence when several apply: 2, then 1, then 3, then 0. Checks apply to the ev
     300 KB, so an unthrottled busy day would grow by tens of KB per run.
   - `status.json`: latest totals, breaches, thresholds, rate source and timestamp. Rewritten each run.
 - Session rows carry a `label` (the `aiTitle`). **The label reaches stdout, the ledger rows and `status.json`.** **Anything that ever copies the ledger or status off this PC must drop
-  `label`**; the counts, model, day and id are content-free, the title may not be.
+  `label`**; the counts, model and day are content-free, the session id is stored as-is (not hashed), and the title may not be content-free.
 
 ## Rates
 

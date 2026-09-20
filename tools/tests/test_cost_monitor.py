@@ -18,6 +18,12 @@ import tempfile
 import unittest
 from unittest import mock
 
+# The rates loader needs PyYAML. Without it the tool exits 3 by design (README), so every test that
+# runs the tool end to end cannot pass; skip those cleanly instead of failing (CI job `check` installs
+# no PyYAML). The tests that never reach the rates loader still run.
+HAVE_YAML = importlib.util.find_spec("yaml") is not None
+requires_yaml = unittest.skipUnless(HAVE_YAML, "PyYAML is not installed (pip install pyyaml)")
+
 HERE = pathlib.Path(__file__).resolve().parent
 TOOL = HERE.parent / "cost-monitor" / "cost_monitor.py"
 _spec = importlib.util.spec_from_file_location("cost_monitor", TOOL)
@@ -110,6 +116,7 @@ class EnvTestCase(unittest.TestCase):
 
 
 # ------------------------------------------------------------------ counting
+@requires_yaml
 class DedupeTests(EnvTestCase):
     def test_streamed_response_counts_once_with_its_final_output(self):
         # The real shape: one response, three lines, output_tokens 7, 7, 920.
@@ -149,6 +156,7 @@ class DedupeTests(EnvTestCase):
 
 
 # ------------------------------------------------------------------ pricing
+@requires_yaml
 class PricingTests(EnvTestCase):
     def test_opus_dollars_are_exact(self):
         # base = 1e6*5 + 1e5*25 + 2e6*5*0.1 = 8.5e6 ; write low +5e5*5*1.25, high +5e5*5*2.0
@@ -198,6 +206,7 @@ class PricingTests(EnvTestCase):
         self.assertIn("ASSUMED", cm.load_config(str(TOOL.parent / "config.json"))["cache_multipliers"]["status"])
 
 
+@requires_yaml
 class RatesSourceTests(unittest.TestCase):
     def test_default_source_is_origin_main_not_the_working_tree(self):
         with tempfile.TemporaryDirectory() as repo:
@@ -225,6 +234,7 @@ class RatesSourceTests(unittest.TestCase):
 
 
 # ------------------------------------------------------------------ labels and rows
+@requires_yaml
 class RowTests(EnvTestCase):
     def test_sessions_and_subagents_are_separate_rows_labelled_by_title(self):
         self.env.session(SID1, [title(SID1, "Fake planning session"), assistant("msg_1", "claude-opus-5", 10)])
@@ -250,6 +260,7 @@ class RowTests(EnvTestCase):
 
 
 # ------------------------------------------------------------------ privacy
+@requires_yaml
 class PrivacyTests(EnvTestCase):
     def test_message_text_never_reaches_stdout_stderr_status_or_ledger(self):
         self.env.session(SID1, [title(SID1, "Fake title"), assistant("msg_1", "claude-opus-5", 10, text=TEXT_SENTINEL)])
@@ -329,6 +340,7 @@ class DefaultProjectsTests(unittest.TestCase):
 
 
 # ------------------------------------------------------------------ thresholds and exit codes
+@requires_yaml
 class ThresholdTests(unittest.TestCase):
     def run_with(self, lines, **thresholds):
         env = Env(config(**thresholds))
@@ -408,6 +420,7 @@ class ThresholdTests(unittest.TestCase):
         self.assertIn("ASSUMED", shipped["cache_multipliers"]["status"])
 
 
+@requires_yaml
 class CouldNotReadTests(EnvTestCase):
     def test_missing_transcripts_dir_is_exit_3(self):
         self.env.projects.rmdir()
@@ -474,6 +487,7 @@ class CouldNotReadTests(EnvTestCase):
 
 
 # ------------------------------------------------------------------ ledger
+@requires_yaml
 class LedgerTests(EnvTestCase):
     def test_no_write_touches_nothing(self):
         self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
@@ -521,6 +535,7 @@ class LedgerTests(EnvTestCase):
         self.assertEqual(st["thresholds"]["status"], "TEST", "status.json echoes the config's own status marker")
 
 
+@requires_yaml
 class LedgerThrottleTests(unittest.TestCase):
     """A ledger line is a full snapshot of its day, so the current day is appended at most once per
     interval; a finished day is appended at once so its final line is never lost."""
