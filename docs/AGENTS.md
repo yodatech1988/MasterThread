@@ -40,6 +40,7 @@ Scheduler state) and has no path to running anywhere else.
 | `pr-state-sweep` | haiku | R | yes | PR/CI state sweep across named repos | Token-efficiency audit B1 |
 | `plan-status-check` | haiku | R | yes | PLAN.md Status table vs real PR state, origin only | B3; `researcher_role.md` |
 | `worktree-sweep` | haiku | R | yes | Reports safe-to-remove worktrees; never removes | B2; `aegis-worktree-remove-no-force` |
+| `worktree-prune-executor` | haiku | R | yes | Prunes only stale worktree registrations whose directory is already gone, dry run first; the separate authorized step `worktree-sweep` points to; never removes | B2; `aegis-worktree-remove-no-force` |
 | `origin-reader` | haiku | R | yes | Reads a file/dir from `origin/<default>`, never local | `researcher_role.md` |
 | `collision-check` | haiku | R | yes | Pre-dispatch PR/branch/worktree collision check | `orchestrator_role.md` "Collisions"; `parallel-session-collision` |
 | `handoff-drift-reviewer` | sonnet | **A** | yes | Checks a session handoff against the documented procedure; called by the outgoing session, not the incoming one | `orchestrator_role.md` "PM handoff"; `aegis-skills-program` |
@@ -84,6 +85,7 @@ running in a different lane; this PR only adds the files and their rows.
 | `owner-instruction-verifier` | sonnet | **A** | yes | Executability check on an action card's steps before it's filed/relayed — traces each step to a primary source or a runnable command, WebFetches current vendor docs for named UI screens; verdict EXECUTABLE / UNVERIFIED-STEP n / IMPOSSIBLE-STEP n | `decision_queue_standard.md` "Executability check"; PM-process advisory §8 |
 | `register-verifier` | haiku | R | yes | Checks `workstreams` register rows against live `gh`/`git` state; flags disagreement, empty `next` on staffed rows, stale `verified`, and the `dispatchable-and-idle` count the PM heartbeat must drive to 0 | `pm_role.md` "The workstream register", "The control loop"; PM-process advisory §8 |
 | `denial-card-drafter` | haiku | **D** | yes | Drafts a complete Decision Queue action card in the "Permission-denial cards" shape from a classifier denial's raw facts; never files it | `decision_queue_standard.md` "Permission-denial cards"; PM-process advisory §8 |
+| `click-file-builder` | sonnet | **D** | yes | Drafts an owner-run click-file pair (typed-YES gate, -WhatIf, retired guard, interactive-only gate); same-folder zz-UNDO; never runs anything it wrote | `skills/owner-click/SKILL.md` |
 | `standard-buildstate-checker` | haiku | R | yes | Sweeps `standards/`(+`policies/`) on `origin/<default>` for named mechanisms (scripts, tools, collections, agents, cross-repo paths) and reports which don't exist or lack a build-state marker | `pm_role.md` "Scaling and rotation" build-state rule; PM-process advisory §8 |
 
 "Dormant" = Discord/Patreon automation stays paused per the standing owner decision
