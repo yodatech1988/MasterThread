@@ -4,7 +4,7 @@
   - Points public hostnames at the VPS tunnel (aegis-vps).
   - Checks them, stops the old PC copy of community-api once the VPS one answers.
   - Starts every remaining VPS service whose key window has been saved.
-  Gates: typed YES per target, -WhatIf to show DNS changes without applying.
+  Gate: one typed YES (exact, case-sensitive) before anything changes; -WhatIf changes nothing.
   Undo: run zz-UNDO-AEGIS-VPS-Finish.ps1.
 
 .PARAMETER WhatIf
@@ -36,11 +36,14 @@ if ($WhatIf) {
 } else {
     Write-Host ""
     Write-Host "== GATE: Confirm before routing public hostnames to the VPS tunnel" -ForegroundColor Red
-    Write-Host "This action points community-api, economy-api, and events at the VPS tunnel." -ForegroundColor Yellow
+    Write-Host "This does three things, on this one YES:" -ForegroundColor Yellow
+    Write-Host "  1. Overwrites the DNS records for community-api, economy-api and events to point at the VPS tunnel." -ForegroundColor Yellow
+    Write-Host "  2. If community-api answers 200 on the VPS, stops the PC copy of community-api and its tunnel (pm2)." -ForegroundColor Yellow
+    Write-Host "  3. Runs PushVpsSecrets.ps1 to start each VPS service whose key window is saved." -ForegroundColor Yellow
     Write-Host "It cannot be undone by running this script; use zz-UNDO-AEGIS-VPS-Finish.ps1 instead." -ForegroundColor Yellow
     Write-Host ""
     $confirm = Read-Host "Type YES (capital letters) to confirm, or anything else to cancel"
-    if ($confirm -ne "YES") {
+    if ($confirm -cne "YES") {
         Write-Host "Cancelled. No changes made." -ForegroundColor Green
         exit 0
     }
@@ -121,7 +124,3 @@ if ($WhatIf) {
     }
 }
 
-if (-not $WhatIf) {
-    Write-Host "`n== Done. Press Enter to close" -ForegroundColor Cyan
-    Read-Host "" > $null
-}

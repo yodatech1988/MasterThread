@@ -63,11 +63,12 @@ Test-Case "Undo files in same click-files folder as main scripts" {
 }
 
 # Test 3: YES gate
-Test-Case "YES gate checks for exact capital YES value" {
+Test-Case "YES gate is case-sensitive (-cne) so yes/Yes are refused" {
     $content = Get-Content (Join-Path $clickFilesDir 'AEGIS-VPS-Finish.ps1') -Raw
-    if ($content -notmatch 'confirm.*-ne.*"YES"') {
-        throw "Gate does not check -ne YES"
-    }
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $clickFilesDir 'AEGIS-VPS-Finish.ps1'), [ref]$null, [ref]$null)
+    $cmp = $ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.BinaryExpressionAst] -and $n.Left.Extent.Text -eq '$confirm' -and $n.Right.Extent.Text -eq '"YES"' }, $true)
+    if (-not $cmp) { throw "No comparison of `$confirm against YES found" }
+    foreach ($b in $cmp) { if ("$($b.Operator)" -ne 'Cne') { throw "Gate uses $($b.Operator); must be -cne so yes/Yes are refused" } }
 }
 
 Test-Case "YES gate has Read-Host prompt" {
@@ -147,7 +148,7 @@ Test-Case "Mutating calls (cloudflared, pm2, push, Add-Content) only run when -W
 # Test 5c: the YES gate comes before any mutating call
 Test-Case "YES gate (exit on non-YES) precedes the first mutating call" {
     $content = Get-Content (Join-Path $clickFilesDir 'AEGIS-VPS-Finish.ps1') -Raw
-    $gate = $content.IndexOf('-ne "YES"')
+    $gate = $content.IndexOf('-cne "YES"')
     $first = $content.IndexOf('--overwrite-dns')
     if ($gate -lt 0 -or $first -lt 0 -or $gate -gt $first) { throw "Gate does not precede the first mutating call" }
 }
@@ -160,6 +161,22 @@ Test-Case "PushVpsSecrets.ps1 path corrected to services/tools (not dead worktre
     if ($content -notmatch 'services\\tools\\PushVpsSecrets') {
         throw "Corrected path to services/tools not found"
     }
+}
+
+# Test: gate text names every action the single YES authorises
+Test-Case "Gate text names DNS, pm2 stop and PushVpsSecrets" {
+    $content = Get-Content (Join-Path $clickFilesDir 'AEGIS-VPS-Finish.ps1') -Raw
+    foreach ($needle in @('Overwrites the DNS', 'stops the PC copy', 'PushVpsSecrets.ps1')) {
+        if ($content -notmatch [regex]::Escape($needle)) { throw "Gate text does not mention: $needle" }
+    }
+}
+
+# Test: all five files are LF-only
+Test-Case "All five files use LF endings (no CR)" {
+    $names = @('AEGIS-VPS-Finish.ps1', 'AEGIS-VPS-Finish.cmd', 'zz-UNDO-AEGIS-VPS-Finish.ps1', 'zz-UNDO-AEGIS-VPS-Finish.cmd')
+    $paths = $names | ForEach-Object { Join-Path $clickFilesDir $_ }
+    $paths += (Join-Path $here 'test-vps-finish-gates.ps1')
+    foreach ($p in $paths) { if ([IO.File]::ReadAllBytes($p) -contains 13) { throw "CR found in $p" } }
 }
 
 Write-Host ""

@@ -7,7 +7,7 @@ REM Usage:
 REM   AEGIS-VPS-Finish.cmd         -- Routes hostnames (requires YES gate)
 REM   AEGIS-VPS-Finish.cmd -WhatIf -- Shows what would happen (read-only)
 REM
-echo This will route the community-api, economy-api and events hostnames to the OVH VPS tunnel.
+echo This will overwrite DNS for community-api, economy-api and events to the OVH VPS tunnel, may stop the PC community-api, and starts VPS services.
 echo Confirm with YES when prompted. To undo, run zz-UNDO-AEGIS-VPS-Finish.cmd.
 echo.
 pause
