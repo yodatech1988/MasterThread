@@ -30,6 +30,45 @@ Each entry:
 
 ## Entries
 
+### A merge card described a PR from an earlier sweep, not from the PR - 2026-09-17
+- **False assumption:** that a path summary taken an hour earlier still described the PRs, and that
+  "canon dossier" meant "documents only".
+- **Rule candidate:** a merge card's file count, file list and "docs only / contains code" line are
+  read with `gh pr view <n> --json files,changedFiles` at filing time, and every path outside
+  `docs/` is named. **A number that moved is a reason to re-read, not a detail:** the filing session
+  saw the additions had grown (569 -> 776 on #111) and did not follow it up.
+- **Where it belongs:** `claude-agents/blocked-work-sweep.md` step 3 (PR #92); sent to the owner of
+  `decision_queue_standard.md` for "Filing a card".
+- **Seen:** 1 - github-b5's cards for site-chernarus #111/#112/#113 said "two new files, documents
+  only". Each had three (a questlines doc was missing), and #113 had six, three of them Python under
+  `tools/quest_grounding/`. The owner merged #111 and #112 on the wrong description before github-ff
+  caught it; MasterThread #82's card also said one file for two.
+
+### A stacked PR carded before its base is main merges into the side branch - 2026-09-17
+- **False assumption:** that an action card step saying "check the PR page says it merges into
+  main; if not, stop" is a safeguard.
+- **Rule candidate:** never file an owner merge card for a PR whose `baseRefName` is not the repo's
+  default branch. Retarget first, card second. A sequencing note in a title ("only after #13") does
+  not survive an owner working down a list of cards quickly, and should not have to.
+- **Where it belongs:** `claude-agents/blocked-work-sweep.md` step 3 (added); on a second occurrence,
+  `decision_queue_standard.md` "Action cards".
+- **Seen:** 1 - ops-infra #17: carded by github-b5 while based on
+  `agent/ops-infra/decision-a-cloudflare`; merged 18:07:07Z, 26 seconds after parent #13, into that
+  branch. GitHub shows MERGED; `docs/PRODUCTION_LAYOUT.md` is 404 on main. Caught by the
+  owner-wait watcher plus a base-branch check on the merge event, within minutes. Nothing lost;
+  needs a replacement PR.
+
+### The owner's newest words on a card can reverse the summary a peer gives you - 2026-09-17
+- **False assumption:** that a PM's one-line description of a card's state ("the licence question is
+  parked") was current.
+- **Rule candidate:** before filing a card that depends on another card's state, read that card
+  from the store at filing time - including `claimComment`, which is where he now types.
+- **Where it belongs:** not yet promoted - `decision_queue_standard.md` "Filing a card" on a second
+  occurrence.
+- **Seen:** 1 - site-chernarus #114 (Chiemsee dossier): about to be carded as "Canon 4 of 4" when
+  the licence card's latest `claimComment` read "lets just omit it then, we have enough content
+  without it". Not filed; put back to the lane that owns Chiemsee.
+
 ### A "Done" answer on a card is a claim, not a state - 2026-09-17 (seen enough to promote)
 - **False assumption:** that an owner answering an action card "Done - I ran it" / "Merged" means the
   click-file ran or the PR merged.
