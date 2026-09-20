@@ -1,0 +1,19 @@
+{
+  "_readme": "Defaults pending owner approval (PM plan, 2026-09-20). They alert, they never enforce. Cache multipliers are ASSUMED, not checked against a current price page.",
+  "thresholds": {
+    "status": "DEFAULT - pending owner approval, not yet approved",
+    "opus_whatif_alert_usd_per_day": 50,
+    "opus_whatif_stop_usd_per_day": 100,
+    "opus_share_alert_fraction": 0.5,
+    "opus_share_min_day_usd": 10,
+    "session_output_alert_tokens": 300000
+  },
+  "cache_multipliers": {
+    "status": "ASSUMED - not checked against a current Anthropic price page",
+    "read": 0.1,
+    "write_low": 1.25,
+    "write_high": 2.0
+  },
+  "alert_on_api_key": true,
+  "ledger_min_interval_minutes": 60
+}
