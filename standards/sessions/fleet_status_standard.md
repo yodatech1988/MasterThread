@@ -6,9 +6,37 @@ conversation's context.
 
 **Current URL:** https://claude.ai/artifact/AAiVG3MxK1r3yNgm8tzMmf
 
-**Sibling artifacts:** Ops Decision Queue (https://claude.ai/artifact/1fMqNA1zdQKsq1FDEFvyzf) and
-Ops Roster (https://claude.ai/artifact/U23uudrKWTT1RJ8rrews4N), cross-linked via each page's
-`nav.pack` bar.
+**Sibling artifacts:** Ops Decision Queue (https://claude.ai/artifact/1fMqNA1zdQKsq1FDEFvyzf),
+Ops Roster (https://claude.ai/artifact/U23uudrKWTT1RJ8rrews4N), and Platform Status
+(https://claude.ai/artifact/Rghr5wDHXKzZRJNy1z5P2o, see "Per-domain siblings" below), cross-linked
+via each page's `nav.pack` bar.
+
+## Per-domain siblings
+
+2026-09-20 owner direction: split the whole-estate view into one status page per domain, starting
+with the platform/shared-core domain (the fleet's own tooling and infrastructure — as opposed to
+the game-network or personal/financial enclaves defined in `_security-public/policies/`).
+**Platform Status** (https://claude.ai/artifact/Rghr5wDHXKzZRJNy1z5P2o) is the first of these,
+scoped to MasterThread, ops-platform, ops-policies, ops-infra, gh-federation and
+claude-session-archive.
+
+It reuses Fleet Status's exact panel shapes and document schema (`sessions`, `queue`, `blocked`,
+`health`, `prs`, `costs` — see each panel's write contract in Fleet Status's own footer, not
+restated here) minus the fleet-wide-only panels (wind-down/team-consolidation banner, the 93-task
+goals tree, usage). It adds one new panel, `repos`, seeded from a 2026-09-20 snapshot of this
+repo's `docs/REPOS.md` until a session wires it live.
+
+**The one-database-per-artifact constraint above applies here too, and it is the operative fact
+for this page:** Platform Status has its own separate store from Fleet Status's. Nothing written to
+one appears in the other. A session working a platform-domain repo has to write to *this* artifact's
+collections (in addition to Fleet Status's, if it also matters fleet-wide) for anything to show up
+here — a real extra-write cost, not a one-time setup step, and one that will compound if more
+per-domain pages are added for the other enclaves. Whoever builds the next one should re-litigate
+whether that's still the right tradeoff versus tagging existing Fleet Status rows with a
+domain/enclave field and filtering client-side instead of forking the database.
+
+This page starts exactly as empty as Fleet Status did on 2026-09-16 — nobody is currently
+committed to writing to it. Treat its panels as unverified until a session actually reports here.
 
 ## Platform constraint: one database per artifact
 
