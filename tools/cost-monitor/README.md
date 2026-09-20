@@ -27,14 +27,14 @@ Tested on Python 3.13; needs PyYAML (`pip install pyyaml`). Without PyYAML it ex
 | 0 | ok |
 | 1 | alert (Opus what-if over the alert line, Opus share of the day, one session's output spike, or `ANTHROPIC_API_KEY` set) |
 | 2 | stop-and-ask (Opus what-if over the stop line) |
-| 3 | unknown / could not read (missing transcripts, rates, config or state dir), **or** nothing was read at all (an empty or mistyped folder is not a quiet week), **or** a model with no verified rate on the evaluated day |
+| 3 | unknown / could not read (missing transcripts, rates, config or state dir), **or** nothing was read at all (an empty or mistyped folder is not a quiet week), **or** the evaluated day has no data and either some transcript files could not be read or the newest transcript is more than 24 hours old (a possible blind spot, not a quiet day), **or** a model with no verified rate on the evaluated day |
 
 Precedence when several apply: 2, then 1, then 3, then 0. Checks apply to the evaluated day only (today UTC, or
 `--day`). A breach on an earlier day is reported in the tables but does not change the exit code.
 
 ## What it reads and writes
 
-- **Reads** `~/.claude/projects/c--Users-yoda--GitHub/**/*.jsonl` (sessions and `subagents/`), read-only. From
+- **Reads** `~/.claude/projects/<slug>/**/*.jsonl` (sessions and `subagents/`), read-only. `<slug>` is derived from where this checkout lives (the folder that holds the repo, with every non-alphanumeric character turned into `-` and a drive letter lower-cased), not hardcoded; pass `--projects-dir` for any other layout. From
   each line it takes only the usage numbers, message id, model, timestamp and the session's `aiTitle`. It never
   prints or stores message text (a test plants a sentinel in the text and checks every output for it).
 - **Writes** only under `%APPDATA%\AEGIS\cost\` (override with `--state-dir`):
@@ -44,7 +44,7 @@ Precedence when several apply: 2, then 1, then 3, then 0. Checks apply to the ev
     finished day is appended immediately so its final line is never lost. Measured: a five-day snapshot is about
     300 KB, so an unthrottled busy day would grow by tens of KB per run.
   - `status.json`: latest totals, breaches, thresholds, rate source and timestamp. Rewritten each run.
-- Session rows carry a `label` (the `aiTitle`). **Anything that ever copies the ledger off this PC must drop
+- Session rows carry a `label` (the `aiTitle`). **The label reaches stdout, the ledger rows and `status.json`.** **Anything that ever copies the ledger or status off this PC must drop
   `label`**; the counts, model, day and id are content-free, the title may not be.
 
 ## Rates
@@ -56,9 +56,9 @@ output quotes the source, commit and the file's `verified_on` date. The tool doe
 - A model is matched by exact id, or a known id plus a dated snapshot suffix (`claude-haiku-4-5-20251001` matches
   `claude-haiku-4-5`) and the output labels that match. Nothing else is matched. **Any other model is reported
   `UNPRICED`, adds nothing to the dollar total, and makes the day's total a floor.**
-- `models.yaml` prices Sonnet 5 at $2 / $10 per MTok while its own `document_draft` records $3 / $15. The tool
-  trusts the file, as agreed, and does not resolve that. If the draft is the right one, every Sonnet figure is
-  low by a third.
+- `models.yaml` prices Sonnet 5 at $2 / $10 per MTok. That is a deliberate correction of the earlier $3 / $15
+  in its `document_draft`, recorded in `ops-policies` `docs/VERIFICATION.md` Record 1; it is not an open
+  conflict. The tool trusts the file.
 - Fable 5.1 carries its own `cache_read_factor_override` (0.025) in that file, and the tool honours it.
 
 ## Honest caveats
@@ -72,13 +72,17 @@ output quotes the source, commit and the file's `verified_on` date. The tool doe
 - **This project folder only.** Other Claude project folders (for example the DayZ workspace) and any usage not
   written to a transcript are not included. If Claude prunes old transcripts, a live read cannot see them; the
   ledger is what keeps them.
+- **The last hour of a day is only captured if a run happens after UTC midnight** while `--days` still covers that
+  day. There is no scheduler yet (see below), so a day's final ledger line depends on someone running the tool
+  after midnight; the current day is also throttled to one append per `ledger_min_interval_minutes`.
 - **Thresholds are DEFAULTS pending owner approval**: Opus what-if $50 a day alert, $100 a day stop-and-ask, Opus
   share of the day at or above 50% (only once the day is at least $10), one session's output at or above
   300,000 tokens in a day. The last was calibrated to the real distribution (p99 of 1,032 day x session rows
   over five days was about 264K; 8 rows reached 300K), so it flags the unusual and not the ordinary. They alert;
   nothing here enforces a limit.
 - **`ANTHROPIC_API_KEY` check is presence only**: the current process, the User environment and the Machine
-  environment (Windows registry). It records that the name exists, never the value, and scans no files. A key
+  environment (Windows registry). It enumerates value **names** only and discards the data that comes back with
+  each name, so the value is never stored, printed or assigned; it scans no files. A key
   there silently outranks the subscription token and turns work into metered billing.
 
 ## The first snapshot undercounted output. Do not use it.

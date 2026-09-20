@@ -32,16 +32,35 @@ except ImportError:  # reported as exit 3 in main()
 NL = chr(10)
 BS = chr(92)
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_PROJECTS = os.path.join(os.path.expanduser("~"), ".claude", "projects", "c--Users-yoda--GitHub")
+
+
+def project_slug(path):
+    """Every non-alphanumeric character becomes a hyphen; a Windows drive letter is lower-cased."""
+    slug = re.sub(r"[^A-Za-z0-9]", "-", path)
+    return slug[0].lower() + slug[1:] if re.match(r"^[A-Za-z]:", path) else slug
+
+
+def default_projects_dir():
+    """Claude Code names a project folder after the working directory with every character that is not a
+    letter or digit turned into '-'. The workspace is the folder that holds this checkout
+    (<workspace>/<repo>/tools/cost-monitor), so the slug is derived from where the tool lives rather
+    than hardcoded. Pass --projects-dir for any other layout."""
+    workspace = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+    return os.path.join(os.path.expanduser("~"), ".claude", "projects", project_slug(workspace))
+
+
+DEFAULT_PROJECTS = default_projects_dir()
 DEFAULT_RATES_REPO = os.path.join(os.path.expanduser("~"), "GitHub", "ops-policies")
 RATES_REF = "origin/main"
 RATES_PATH = "routing/models.yaml"
 DATED_SUFFIX = re.compile(r"^-[0-9]{8}$")
 FIELDS = ("in", "out", "cache_read", "cache_write", "msgs")
 API_KEY_NAME = "ANTHROPIC_API_KEY"
+ERROR_NO_MORE_ITEMS = 259   # winreg.EnumValue past the last value
 MACHINE_ENV_KEY = BS.join(["SYSTEM", "CurrentControlSet", "Control", "Session Manager", "Environment"])
 
 OK, ALERT, STOP, UNKNOWN = 0, 1, 2, 3
+STALE_HOURS = 24   # newest transcript older than this on a day with no data is a blind spot
 STATE_NAMES = {OK: "ok", ALERT: "alert", STOP: "stop-and-ask", UNKNOWN: "unknown"}
 
 
@@ -136,10 +155,13 @@ def scan(projects_dir, today, days):
     first_day = today - dt.timedelta(days=days - 1)
     cutoff_mtime = dt.datetime.combine(first_day, dt.time(), tzinfo=dt.timezone.utc).timestamp()
     best, titles = {}, {}
-    stats = {"files": 0, "unreadable": 0, "lines": 0, "responses": 0}
+    stats = {"files": 0, "unreadable": 0, "lines": 0, "responses": 0, "newest_mtime": None}
     for path in glob.glob(os.path.join(projects_dir, "**", "*.jsonl"), recursive=True):
         try:
-            if os.path.getmtime(path) < cutoff_mtime:
+            mtime = os.path.getmtime(path)
+            if stats["newest_mtime"] is None or mtime > stats["newest_mtime"]:
+                stats["newest_mtime"] = mtime
+            if mtime < cutoff_mtime:
                 continue
             fh = open(path, encoding="utf-8", errors="replace")
         except OSError:
@@ -209,8 +231,19 @@ def _registry_has_key(hive_name):
                  else (winreg.HKEY_LOCAL_MACHINE, MACHINE_ENV_KEY))
     try:
         with winreg.OpenKey(hive, sub) as key:
-            winreg.QueryValueEx(key, API_KEY_NAME)
-            return True
+            # Names only. EnumValue returns (name, data, type); the data is dropped unread, so the
+            # value is never assigned to anything, printed or stored.
+            index = 0
+            while True:
+                try:
+                    name = winreg.EnumValue(key, index)[0]
+                except OSError as exc:
+                    if getattr(exc, "winerror", None) == ERROR_NO_MORE_ITEMS:
+                        return False   # ran out of names without seeing the key
+                    raise
+                if name.upper() == API_KEY_NAME:
+                    return True
+                index += 1
     except FileNotFoundError:
         return False
     except OSError:
@@ -219,8 +252,9 @@ def _registry_has_key(hive_name):
 
 def check_api_key(env=None, registry=_registry_has_key):
     """Presence only, in the current process and the User and Machine environments. Only the fact
-    that the name exists is kept; the value is never assigned to anything, printed or stored, and
-    no files are scanned."""
+    that the name exists is kept. The registry is enumerated by NAME only and the data that comes back
+    with each name is discarded unread; the value is never assigned to anything, printed or stored,
+    and no files are scanned."""
     env = os.environ if env is None else env
     result = {"process": API_KEY_NAME in env, "user": registry("user"), "machine": registry("machine")}
     result["present_anywhere"] = any(v is True for v in result.values())
@@ -376,7 +410,7 @@ def report(out, by_model, rows, rates, meta, cfg, stats, totals, breaches, api_k
         p("  (no usage recorded for that day)")
     p()
     names = {True: "SET", False: "not set", None: "could not check"}
-    p("%s (presence only, value never read): %s" % (API_KEY_NAME, ", ".join("%s=%s" % (k, names[api_key[k]]) for k in ("process", "user", "machine"))))
+    p("%s (presence only, value never stored or printed): %s" % (API_KEY_NAME, ", ".join("%s=%s" % (k, names[api_key[k]]) for k in ("process", "user", "machine"))))
     p()
     p("Evaluated day %s: what-if $%.2f-$%.2f (Opus $%.2f = %.0f%%)" % (totals["day"], totals["usd_low"], totals["usd_high"], totals["opus_usd_high"], totals["opus_share"] * 100))
     for sev, kind, detail in breaches:
@@ -401,7 +435,8 @@ def load_config(path):
 def main(argv=None, now=None, out=None, err=None, registry=_registry_has_key):
     out, err = out or sys.stdout, err or sys.stderr
     ap = argparse.ArgumentParser(description="Zero-model-call Claude Code cost monitor (what-if, not a bill).")
-    ap.add_argument("--projects-dir", default=DEFAULT_PROJECTS)
+    ap.add_argument("--projects-dir", default=DEFAULT_PROJECTS,
+                    help="Claude Code project folder to read (default: derived from where this checkout lives)")
     ap.add_argument("--state-dir", default=default_state_dir())
     ap.add_argument("--rates-file", help="test seam; default reads origin/main of the ops-policies checkout")
     ap.add_argument("--rates-repo", default=DEFAULT_RATES_REPO)
@@ -436,6 +471,21 @@ def main(argv=None, now=None, out=None, err=None, registry=_registry_has_key):
         return UNKNOWN
     api_key = check_api_key(registry=registry)
     code, breaches, totals = evaluate(args.day or today.isoformat(), by_model, rows, rates, cfg, api_key)
+    if not any(r["day"] == totals["day"] for r in rows):
+        # A day with no data is a quiet day only if we could have seen its data. Files we could not
+        # read, or a newest transcript that stopped growing, mean it may be a blind spot instead.
+        why = []
+        if stats["unreadable"]:
+            why.append("%d transcript file(s) could not be read" % stats["unreadable"])
+        newest = stats["newest_mtime"]
+        if newest is None or newest < (now - dt.timedelta(hours=STALE_HOURS)).timestamp():
+            why.append("the newest transcript is more than %d hours old" % STALE_HOURS)
+        if why:
+            detail = "no usage recorded for %s, and %s; this may be a blind spot, not a quiet day" % (totals["day"], " and ".join(why))
+            breaches.append(("unknown", "no_data_for_day", detail))
+            err.write("cost-monitor: " + detail + NL)
+            if code == OK:
+                code = UNKNOWN
     report(out, by_model, rows, rates, meta, cfg, stats, totals, breaches, api_key, code, args.top)
     if not args.no_write:
         try:

@@ -289,6 +289,45 @@ class PrivacyTests(EnvTestCase):
         self.assertIn("process=not set, user=not set, machine=not set", out)
 
 
+class RegistryProbeTests(unittest.TestCase):
+    """The API key check must enumerate value NAMES and never call QueryValueEx."""
+
+    def fake_winreg(self, names, no_more=True):
+        fake = mock.MagicMock()
+        fake.HKEY_CURRENT_USER, fake.HKEY_LOCAL_MACHINE = object(), object()
+        fake.OpenKey.return_value.__enter__.return_value = "key"
+        fake.QueryValueEx.side_effect = AssertionError("QueryValueEx must not be called")
+
+        def enum(key, i):
+            if i < len(names):
+                return (names[i], "SECRET-VALUE-NEVER-SEEN", 1)
+            exc = OSError("no more data")
+            exc.winerror = 259
+            raise exc
+        fake.EnumValue.side_effect = enum
+        return fake
+
+    def test_finds_the_name_without_querying_the_value(self):
+        with mock.patch.dict(sys.modules, {"winreg": self.fake_winreg(["Path", "anthropic_api_key"])}):
+            self.assertIs(cm._registry_has_key("user"), True)
+
+    def test_absent_name_is_false_not_could_not_check(self):
+        with mock.patch.dict(sys.modules, {"winreg": self.fake_winreg(["Path", "TEMP"])}):
+            self.assertIs(cm._registry_has_key("machine"), False)
+
+
+class DefaultProjectsTests(unittest.TestCase):
+    def test_default_slug_is_derived_from_the_checkout_location_not_hardcoded(self):
+        source = pathlib.Path(TOOL).read_text(encoding="utf-8")
+        self.assertNotIn("c--Users-yoda", source)
+        workspace = str(pathlib.Path(TOOL).resolve().parents[3])
+        self.assertEqual(os.path.basename(cm.default_projects_dir()), cm.project_slug(workspace))
+
+    def test_slug_rules_match_claude_codes_folder_names(self):
+        self.assertEqual(cm.project_slug("C:" + chr(92) + "Users" + chr(92) + "yoda_" + chr(92) + "GitHub"), "c--Users-yoda--GitHub")
+        self.assertEqual(cm.project_slug("/home/a.b/work"), "-home-a-b-work")
+
+
 # ------------------------------------------------------------------ thresholds and exit codes
 class ThresholdTests(unittest.TestCase):
     def run_with(self, lines, **thresholds):
@@ -397,6 +436,30 @@ class CouldNotReadTests(EnvTestCase):
         self.env.session(SID1, [assistant("m1", "claude-opus-5", 5, day="2026-09-19")])
         code, out, _ = self.env.run()
         self.assertEqual(code, 0, "no usage today, but the window has data, so this is a quiet day")
+
+    def test_a_day_with_no_data_and_an_unreadable_file_is_unknown(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5, day="2026-09-19")])
+        (self.env.projects / "locked.jsonl").mkdir()   # matches *.jsonl but cannot be opened as a file
+        code, out, err = self.env.run()
+        self.assertEqual(code, 3)
+        self.assertIn("could not be read", err)
+        self.assertIn("no_data_for_day", out)
+        self.assertEqual(self.env.status()["exit_code"], 3)
+
+    def test_a_day_with_no_data_and_a_stale_newest_transcript_is_unknown(self):
+        path = self.env.session(SID1, [assistant("m1", "claude-opus-5", 5, day="2026-09-19")])
+        old = (NOW - dt.timedelta(days=3)).timestamp()
+        os.utime(path, (old, old))
+        code, _, err = self.env.run()
+        self.assertEqual(code, 3)
+        self.assertIn("more than 24 hours old", err)
+
+    def test_stale_transcripts_do_not_matter_when_the_evaluated_day_has_data(self):
+        path = self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        old = (NOW - dt.timedelta(days=3)).timestamp()
+        os.utime(path, (old, old))
+        (self.env.projects / "locked.jsonl").mkdir()
+        self.assertEqual(self.env.run()[0], 0)
 
     def test_malformed_config_is_exit_3(self):
         self.env.config.write_text(json.dumps({"thresholds": {}}), encoding="utf-8")
