@@ -38,7 +38,7 @@ body says this explicitly; the plan's Status table also now records the gap inst
 Session 3 is finished.
 
 **What you need to do, whenever you're ready:**
-1. `wrangler deploy` the Worker in `C:\Users\yoda_\GitHub\_wt-gh-federation-session3` (or wherever
+1. `wrangler deploy` the Worker in `<USER_HOME>\GitHub\_wt-gh-federation-session3` (or wherever
    the merged code lives after #5 merges — same repo, `wrangler.toml` is already committed).
 2. Create the D1 database and bind it (the `DB` binding in `wrangler.toml` currently has a
    placeholder `database_id`).

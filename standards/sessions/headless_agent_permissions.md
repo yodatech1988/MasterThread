@@ -306,7 +306,7 @@ doesn't duplicate that table, it points to it.
 ## Verification
 
 Environment: Claude Code `2.1.273` (`claude --version`), Windows 11, tested from a scratch directory
-under the OS temp dir (`C:\Users\yoda_\AppData\Local\Temp\claude\headless-test`), never a repo.
+under the OS temp dir (`<USER_HOME>\AppData\Local\Temp\claude\headless-test`), never a repo.
 
 **Mid-session budget note:** the coordinator capped this task to at most 2 headless runs once usage
 became uncertain, after 3 had already been made. The 3rd run (the intended "confirm one allowed read

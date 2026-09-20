@@ -75,12 +75,12 @@ fourth lane to either repo this round.
 Worktree setup (run in each repo folder before opening the session):
 
 ```
-cd C:\Users\yoda_\GitHub\aegis-services
+cd <USER_HOME>\GitHub\aegis-services
 git fetch origin
 git worktree add ..\_wt-services-economy-hosting -b agent/services/economy-api-hosting origin/main
 git worktree add ..\_wt-services-economy-grants -b agent/services/admin-bot-economy-grants origin/main
 
-cd C:\Users\yoda_\GitHub\aegis-mods
+cd <USER_HOME>\GitHub\aegis-mods
 git fetch origin
 git worktree add ..\_wt-mods-economy-market -b agent/aegis-mods/economy-market-bridge origin/master
 ```

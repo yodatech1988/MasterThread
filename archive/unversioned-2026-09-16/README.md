@@ -7,10 +7,10 @@ Same condition, originally found in three places; this commit covers two of them
 - **`_security-public/policies/`** (12 files, org-wide C0-C3 data-classification policy) is
   **deliberately excluded from this push** — the auto-mode classifier flagged pushing that content
   to a remote as data exfiltration and declined it twice. Not worked around; verified locally
-  backed up at `C:\Users\yoda_\AEGIS-Backups\unversioned-2026-09-16\security-public-policies\`,
+  backed up at `<USER_HOME>\AEGIS-Backups\unversioned-2026-09-16\security-public-policies\`,
   and flagged to Jeremy directly for an explicit decision on how (or whether) to push it.
 - **`session-handoffs/`** — the ~36 loose `.md` files (session handoffs, `NEXT_STEPS_*`,
-  `SESSION_ROUNDS_*`) that live at `C:\Users\yoda_\GitHub\` root, itself not a git repo.
+  `SESSION_ROUNDS_*`) that live at `<USER_HOME>\GitHub\` root, itself not a git repo.
 - **`tooling/`** — `AEGIS-Merge-Queue.ps1`, `AEGIS-Push-Agent-Roster-Backup.cmd`,
   `New-ParallelWorktrees.ps1`, `merge-queue.json`, also loose at that same root.
 
@@ -31,7 +31,7 @@ than moving anything:
 
 So: this directory exists so the *content* survives in git history even if the live copies are
 ever lost again, verified byte-for-byte against
-`C:\Users\yoda_\AEGIS-Backups\unversioned-2026-09-16\` before this commit. It is a safety copy,
+`<USER_HOME>\AEGIS-Backups\unversioned-2026-09-16\` before this commit. It is a safety copy,
 refreshed periodically or after major rounds — not the new canonical location.
 
 ## What this deliberately does NOT decide

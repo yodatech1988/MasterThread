@@ -3,8 +3,8 @@
 **Starter prompt** — paste this into a fresh Claude Code conversation to pick up where the prior
 session left off:
 
-> Read `C:\Users\yoda_\GitHub\NEXT_STEPS_WEAPONS_2026-09-12.md` in full, then continue the
-> investigation and fix it. Work in `C:\Users\yoda_\GitHub\aegis-site-chernarus` (branch
+> Read `<USER_HOME>\GitHub\NEXT_STEPS_WEAPONS_2026-09-12.md` in full, then continue the
+> investigation and fix it. Work in `<USER_HOME>\GitHub\aegis-site-chernarus` (branch
 > `ammo-market-categories`). If a fix requires deploying to the live server, tell Jeremy what to
 > click rather than doing it yourself — see `jeremy-no-git-commands` guidance (do git myself, but
 > hand off anything that needs the Shockbyte panel or an in-game/server-side action).
@@ -18,7 +18,7 @@ duplicate-classname parse failure) rather than a per-item typo.
 
 ## What's already known
 
-Repo: `C:\Users\yoda_\GitHub\aegis-site-chernarus`, currently on branch `ammo-market-categories`
+Repo: `<USER_HOME>\GitHub\aegis-site-chernarus`, currently on branch `ammo-market-categories`
 (up to date with `origin/ammo-market-categories`). Two untracked files sitting in the working tree
 that are **not part of this investigation** — leave them alone unless they turn out to be related:
 `docs/aegis-discord-kofi-setup-kit.md`, `rs_tmp.yml`.

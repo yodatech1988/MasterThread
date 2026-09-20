@@ -65,7 +65,7 @@ buffing zombie reputation (T3 is an AI-kill gate), anything in Phase 3+ of #41.
 ## Housekeeping (cheap, any time)
 
 - MasterThread issues #1 and #2 are from 2025-11 and predate the current plan. Close as obsolete.
-- Nine `_wt-*` worktree folders sit in `C:\Users\yoda_\GitHub`. Prune the ones whose PR is
+- Nine `_wt-*` worktree folders sit in `<USER_HOME>\GitHub`. Prune the ones whose PR is
   merged (`_wt-core-review-cost` = core#43, `_wt-chernarus-golive-plan` = #42,
   `_wt-chernarus-pvpguard` = #43, `_wt-chernarus-questlines` = #45, `_wt-website-pr6`).
 - core#8 and core#7 (RFFS folder name, HelloWorld import) are Jeremy-only checks against the
@@ -73,7 +73,7 @@ buffing zombie reputation (T3 is an AI-kill gate), anything in Phase 3+ of #41.
 
 ## First command when tokens reset
 
-Open Claude Code in `C:\Users\yoda_\GitHub\aegis-core`, then:
+Open Claude Code in `<USER_HOME>\GitHub\aegis-core`, then:
 "Do queue item A from NEXT_STEPS_2026-09-12.md: rebase core#42 onto core#35 in a new worktree,
 re-run the proof, push." Expect one short session.
 

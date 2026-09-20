@@ -11,7 +11,7 @@ re-deriving anything.
 **1. Start the usage watcher** (required of every orchestrator; do not skip):
 
 ```
-Monitor  command: MT=C:/Users/yoda_/GitHub/MasterThread; N=ops-cycle-pm; git -C $MT fetch -q origin main; git -C $MT show origin/main:tools/usage-monitor/usage-watch.ps1 > "$APPDATA/AEGIS/usage-watch.$N.ps1" && powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$APPDATA/AEGIS/usage-watch.$N.ps1" -HandoffRoot C:/Users/yoda_/GitHub -Name $N -Program "autonomous ops cycle PM" 2>&1 || echo "USAGE-ERROR could not load or run usage-watch.ps1 from MasterThread origin/main"
+Monitor  command: MT=<USER_HOME>/GitHub/MasterThread; N=ops-cycle-pm; git -C $MT fetch -q origin main; git -C $MT show origin/main:tools/usage-monitor/usage-watch.ps1 > "$APPDATA/AEGIS/usage-watch.$N.ps1" && powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$APPDATA/AEGIS/usage-watch.$N.ps1" -HandoffRoot <USER_HOME>/GitHub -Name $N -Program "autonomous ops cycle PM" 2>&1 || echo "USAGE-ERROR could not load or run usage-watch.ps1 from MasterThread origin/main"
          description: Claude usage tiers for ops-cycle-pm
          timeout_ms: 1800000
 ```
@@ -74,7 +74,7 @@ OVH API from the PC: `core\tools\OvhApiKey.ps1 -Call GET /vps` (scope `/vps/*` o
 ### Repos (all five created, seeded, and their first work merged)
 
 `ops-infra` · `ops-policies` · `ops-platform` · `ops-business` · `ops-household`, all under
-`yodatech1988`, all private, all cloned at `C:\Users\yoda_\GitHub\<name>`.
+`yodatech1988`, all private, all cloned at `<USER_HOME>\GitHub\<name>`.
 
 ### What is live on the vault (verified on the box)
 
@@ -99,7 +99,7 @@ allowlists, egress rules, the AEGIS-separation invariants, redaction corpus.
 - Encryption: **split** — data volume auto-unlocks, a small sealed volume for finance credentials
   needs the owner's passphrase.
 - Backups: **OVH Object Storage** in Public Cloud project "vault"
-  (`945a44a4d2ef4350a513d018ab28d0e1`) + an append-only copy on the PC.
+  (`<ovh-project-id>`) + an append-only copy on the PC.
 - Egress gate: **a new separate gateway** in `ops-platform`, never the AEGIS `services` one.
 - Budgets: game $10/month; platform, business, household, finance $0.
 
@@ -110,7 +110,7 @@ allowlists, egress rules, the AEGIS-separation invariants, redaction corpus.
 **ops-infra Session 11 — AppArmor. Nearly done; paused for the session change.**
 Branch `agent/ops-infra/apparmor` @ `2cf4c80` (WIP, pushed), **draft PR
 [#7](https://github.com/yodatech1988/ops-infra/pull/7)**, worktree
-`C:\Users\yoda_\GitHub\_wt-ops-infra-apparmor`.
+`<USER_HOME>\GitHub\_wt-ops-infra-apparmor`.
 
 - **Root cause found:** Ubuntu 26.04 sets `kernel.apparmor_restrict_unprivileged_unconfined=1`, so an
   unprivileged process that *asks* for a profile (systemd `AppArmorProfile=`, `aa-exec`, crun,
@@ -133,7 +133,7 @@ Branch `agent/ops-infra/apparmor` @ `2cf4c80` (WIP, pushed), **draft PR
 
 > Lane card: **ops-infra Session 11 — AppArmor, final steps.** Opus 5 / high.
 > Role: follow `MasterThread\standards\sessions\worker_role.md`.
-> Worktree: `C:\Users\yoda_\GitHub\_wt-ops-infra-apparmor`, branch `agent/ops-infra/apparmor`
+> Worktree: `<USER_HOME>\GitHub\_wt-ops-infra-apparmor`, branch `agent/ops-infra/apparmor`
 > (work ONLY here). A previous session got the profiles enforcing and paused; read draft PR
 > `yodatech1988/ops-infra#7` and `docs/PLAN.md` Session 11 first, then do exactly what remains:
 > one clean `-Apply` proving `changed=0` and settling the `canary-platform` restart race; review the
@@ -198,7 +198,7 @@ Lanes sometimes open stacked PRs anyway. If a PR's base is not `main`, merging i
 that parent branch, **not** `main`, and every PR above it shows a false "Conflict".
 
 - `gh pr merge` fails on stacked PRs with "must be merged using the asynchronous merge REST API".
-- Helper written today: `C:\Users\yoda_\AppData\Local\Temp\...\scratchpad\merge-async.ps1` is gone
+- Helper written today: `<USER_HOME>\AppData\Local\Temp\...\scratchpad\merge-async.ps1` is gone
   with the old session; it was just
   `gh api -X PUT repos/yodatech1988/<repo>/pulls/<n>/merge-async -f merge_method=merge`, then poll
   `gh api repos/.../pulls/<n>/merge-async/<uuid>`.

@@ -40,7 +40,7 @@
 #   dependency, never waved through.
 
 param(
-    [string]$QueuePath = "C:\Users\yoda_\GitHub\merge-queue.json"
+    [string]$QueuePath = "$env:USERPROFILE\GitHub\merge-queue.json"
 )
 
 $ErrorActionPreference = 'Stop'

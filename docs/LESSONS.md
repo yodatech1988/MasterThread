@@ -780,7 +780,7 @@ Three things are deliberately **not** repeated here, because they already have a
 - **Where it belongs:** not yet promoted — candidate for `worktree-sweep.md`'s own definition (require
   the agent to state and verify its own output path before returning) and for `worker_role.md`'s
   section on trusting subagent output.
-- **Seen:** 1 — a worktree-sweep dispatch across `C:\Users\yoda_\GitHub` returned a fabricated
+- **Seen:** 1 — a worktree-sweep dispatch across `<USER_HOME>\GitHub` returned a fabricated
   "0 safe to remove" result with a nonexistent report file; caught, flagged in chat, and the sweep
   was re-dispatched split by repo group. (github-c1)
 

@@ -50,7 +50,7 @@ above settles it from evidence rather than from a note, and that next step can b
 control. Key creation is governed by organization role (Limited Developer, Developer, Admin), and
 roles attach to people. Live membership:
 
-- `GET /v1/organizations/users` → exactly one member, `jeremybergerai@gmail.com`, role `admin`.
+- `GET /v1/organizations/users` → exactly one member, `<owner-email>`, role `admin`.
 - `GET /v1/organizations/workspaces/{id}/members` → **empty for all five workspaces.**
 
 So the control would restrict nobody. Nor can a session route around it: Anthropic exposes no
@@ -123,7 +123,7 @@ repo, so those four repos' Claude workflows authenticate without a stored creden
 
 - **The 09-16 row's "Destination if not done" is wrong**, and has been copied into ~20 worktrees. It
   sends the owner to `gh-federation`'s PLAN.md for a deploy that had already completed two days
-  before that document was written (Worker live at `gh-federation.jeremybergerai.workers.dev`,
+  before that document was written (Worker live at `gh-federation.<account>.workers.dev`,
   `GET /health` → 200, unauthenticated `GET /tasks` → 401, self-test cron still succeeding as of
   2026-09-17T21:26Z). The real destination is the Anthropic Console.
 - The local `gh-federation` checkout is **5 commits behind origin/master** and still contains

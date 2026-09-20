@@ -42,7 +42,7 @@ most one open agent PR per repo, and read only the Read list.
 - Both workflows have green `workflow_dispatch` runs (sync [34794714668](https://github.com/yodatech1988/services/actions/runs/34794714668),
   monitor [34794715866](https://github.com/yodatech1988/services/actions/runs/34794715866)). The sync
   log confirms the quiet no-op path (`applied inserted=0 updated=0 unchanged=3248`).
-- `C:\Users\yoda_\.claude\settings.json` now allows `Bash(ssh-keygen:*)`, so agent sessions can run
+- `<USER_HOME>\.claude\settings.json` now allows `Bash(ssh-keygen:*)`, so agent sessions can run
   `rotate_deploy_key.py`.
 - **No open PRs** in services or core. site-chernarus#64 is open (not from this track).
 
@@ -110,9 +110,9 @@ most one open agent PR per repo, and read only the Read list.
    Then in GitHub: `services` → Settings → Secrets and variables → Actions → New repository secret →
    name `DISCORD_WEBHOOK_OPS`, paste the URL, Add secret. Don't paste the URL into chat.
 2. **Check Actions usage (finding 10):** GitHub → your avatar → Settings → Billing and plans → Usage.
-3. *Optional:* narrow `"Bash(ssh-keygen:*)"` by moving it from `C:\Users\yoda_\.claude\settings.json`
+3. *Optional:* narrow `"Bash(ssh-keygen:*)"` by moving it from `<USER_HOME>\.claude\settings.json`
    (applies everywhere, and also allows things like `ssh-keygen -R`) to
-   `C:\Users\yoda_\GitHub\aegis-core\.claude\settings.local.json` (only where the tool lives).
+   `<USER_HOME>\GitHub\aegis-core\.claude\settings.local.json` (only where the tool lives).
 
 ---
 

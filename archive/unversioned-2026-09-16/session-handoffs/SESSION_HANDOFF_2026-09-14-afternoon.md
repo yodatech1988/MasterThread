@@ -66,7 +66,7 @@ explosives-removal lane). **All three need Jeremy's click in the GitHub web UI.*
 
 **After core#74 and services#86 merge:** try the actual VPS install from a **fresh** Claude Code
 session (not this one — see "SSH permission" below for why). Once that succeeds, extract the
-handoff script `C:\Users\yoda_\GitHub\AEGIS-Install-VPS-CI-Runner.cmd` and also run
+handoff script `<USER_HOME>\GitHub\AEGIS-Install-VPS-CI-Runner.cmd` and also run
 services#87's install steps (`ops/vps/install-credential-check.sh` on the box, schedule
 `tools\CredentialCheck.ps1` on the PC) — both were built this session with no SSH access available.
 

@@ -13,7 +13,7 @@ this one. Write and read this doc with that in mind — it now needs both halves
 
 ## 1. The merge queue is the queue-of-record, and it is *not* this document
 
-`C:\Users\yoda_\GitHub\merge-queue.json` (+ `merge-queue-NOTES.md` for context outside the JSON
+`<USER_HOME>\GitHub\merge-queue.json` (+ `merge-queue-NOTES.md` for context outside the JSON
 schema), maintained by `github-8e`, is the authoritative, continuously-verified state of every PR
 this fleet touched tonight — tier, CI check state, mergeable/behind status, dependency chains,
 per-entry `qcSummary`. **Read that file directly.** It is far more current and detailed than
@@ -118,7 +118,7 @@ to compile at all under Expansion (~130 cascading errors) — the defect was ins
 `#ifdef EXPANSIONMODMARKET` block a diff read cannot see. A disclosed limitation ("I didn't test
 this") is not the same as a scoped one ("I tested X but not Y") — only the second tells a reader
 what's actually still at risk. A longer reflective writeup (six lessons, not just this one) exists
-at `C:\Users\yoda_\AppData\Local\Temp\claude\c--Users-yoda--GitHub\ce9674fa-46dd-43e7-a0d1-4d69ee3eb1dc\scratchpad\qc-lane-lessons-2026-09-16.md`
+at `<USER_HOME>\AppData\Local\Temp\claude\c--Users-<user>--GitHub\ce9674fa-46dd-43e7-a0d1-4d69ee3eb1dc\scratchpad\qc-lane-lessons-2026-09-16.md`
 on this machine but is NOT itself committed anywhere — a fresh session with room to do it should
 consider folding the durable parts into `MasterThread/docs/LESSONS.md` (built earlier tonight
 specifically for this purpose, with a seen-twice promotion rule).

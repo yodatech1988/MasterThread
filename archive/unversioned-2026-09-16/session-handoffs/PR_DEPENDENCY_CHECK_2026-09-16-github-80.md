@@ -75,7 +75,7 @@ Split finding — the 7 agents PR #52 indexes are NOT all in the same situation:
 - **6 of them** (`review-tier-recommender`, `automerge-preflight`, `secrets-handling-auditor`,
   `incident-response-drafter`, `agent-automation-gatekeeper`, `data-classification-tagger`) exist
   **only as uncommitted, staged files** in one local worktree on this machine:
-  `C:\Users\yoda_\GitHub\_wt-MasterThread-agent-roster-git-backup`
+  `<USER_HOME>\GitHub\_wt-MasterThread-agent-roster-git-backup`
   (branch `agent/MasterThread/agent-roster-git-backup`, confirmed via `git log --oneline`: *"your
   current branch ... does not have any commits yet"* — zero commits, ever). `git status --short`
   there shows all 6 as `A  claude-agents/<name>.md` alongside **771 other staged-but-never-committed

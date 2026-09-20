@@ -1,7 +1,7 @@
 # Archive: _wt-ops-infra-session7-encryption
 
 - Repo: ops-infra
-- Path: `C:\Users\yoda_\GitHub\_wt-ops-infra-session7-encryption`
+- Path: `<USER_HOME>\GitHub\_wt-ops-infra-session7-encryption`
 - Branch: `agent/ops-infra/session7-encryption`
 - Captured: 2026-09-16 by lane L2 (worktree-archive)
 - PR: ops-infra#8 "Session 7: LUKS containers and production age identities (1.6, 1.8b)" — **MERGED** 2026-09-16T01:16:54Z

@@ -136,7 +136,7 @@ phase):
 **Still needed from Jeremy**, in his own terminal (not through the session, so the panel password
 never appears in a transcript):
 ```powershell
-cd C:\Users\yoda_\GitHub\aegis-core
+cd <USER_HOME>\GitHub\aegis-core
 $env:NASDARASYNC_SFTP_PASSWORD = "<Shockbyte panel password>"
 python sync\nasdarasync.py status
 python sync\phase0_write_test.py
@@ -219,7 +219,7 @@ the GitHub root first — transport discovery itself (SFTP, main account) was al
 machine's current sync/config.toml (gitignored, already filled in with host/username, no password)
 against the real Shockbyte account. Confirm config.toml and phase0_write_test.py are still present,
 then walk Jeremy through, in HIS OWN terminal window (never have him paste the password into chat):
-  cd C:\Users\yoda_\GitHub\aegis-core
+  cd <USER_HOME>\GitHub\aegis-core
   $env:NASDARASYNC_SFTP_PASSWORD = "<Shockbyte panel password, typed only in his terminal>"
   python sync\nasdarasync.py status
   python sync\phase0_write_test.py

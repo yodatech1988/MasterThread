@@ -870,7 +870,7 @@ All code is merged. Session G2 (Discord approve/deny UI) was skipped by owner re
 of a CLI stopgap (`gateway/tools/review-held.js` / `decide-held.js`, run over SSH once deployed).
 
 `gh-federation`'s Cloudflare Worker is separately now **live**
-(https://gh-federation.jeremybergerai.workers.dev, `gh-federation`#6, pull+ack verified
+(https://gh-federation.<account>.workers.dev, `gh-federation`#6, pull+ack verified
 end-to-end) — built by a parallel session, not part of this track, but this track's `forward.js`
 depends on it and is now wired to point at it (#83).
 

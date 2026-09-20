@@ -23,7 +23,7 @@ echo session (or Claude, next time you ask) opens the PR for this branch. You do
 echo to do anything else right now.
 echo.
 
-set "WORKTREE=C:\Users\yoda_\GitHub\_wt-MasterThread-agent-roster-git-backup"
+set "WORKTREE=%USERPROFILE%\GitHub\_wt-MasterThread-agent-roster-git-backup"
 set "EXPECTED_COMMIT=8c4da85fd79001410a2c95f06414bc813617b571"
 
 REM --- Preflight: verify there is actually something real to push before asking for a YES. ---

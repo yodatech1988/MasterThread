@@ -7,7 +7,7 @@ and the owner gives a separate go-ahead.
 
 ## How it starts (automatic)
 
-- **Scheduled task:** Windows task `AEGIS Security Docs (Sat 2026-09-19 0600)` runs `C:\Users\yoda_\GitHub\AEGIS-Security-Docs-Saturday.cmd` at 06:00 EDT.
+- **Scheduled task:** Windows task `AEGIS Security Docs (Sat 2026-09-19 0600)` runs `<USER_HOME>\GitHub\AEGIS-Security-Docs-Saturday.cmd` at 06:00 EDT.
   - Settings: wake the PC, catch up if missed, run only while logged on.
 - **Session it opens:** an interactive Claude Code session named "AEGIS security docs D1-D5".
   - Remote Control is on, so it can be opened from the Claude phone app or claude.ai/code.
@@ -16,10 +16,10 @@ and the owner gives a separate go-ahead.
 - **Cancel:** delete the task in Task Scheduler.
 - **Manual fallback:** double-click the `.cmd`, or paste the prompt below.
 
-## Starter prompt (manual fallback; paste into a fresh Claude Code session at `C:\Users\yoda_\GitHub`)
+## Starter prompt (manual fallback; paste into a fresh Claude Code session at `<USER_HOME>\GitHub`)
 
 ```
-Read C:\Users\yoda_\GitHub\NEXT_STEPS_SECURITY_PROGRAM_2026-09-19.md and the plan it points to,
+Read <USER_HOME>\GitHub\NEXT_STEPS_SECURITY_PROGRAM_2026-09-19.md and the plan it points to,
 then finish sessions D1–D5 as documents only. Do not push, open PRs, use gh write commands, SSH,
 change settings, or use the Gmail/Drive/Calendar/QuickBooks/Notion/Zapier connectors. Check usage
 with MasterThread tools/usage-monitor/check-usage.ps1 first and stop cleanly at ~80%.
@@ -27,7 +27,7 @@ with MasterThread tools/usage-monitor/check-usage.ps1 first and stop cleanly at 
 
 ## Read
 
-- **Plan (spec):** `C:\Users\yoda_\.claude\plans\ive-changed-you-to-immutable-forest.md`, whole file. Its STATUS block is the pause record.
+- **Plan (spec):** `<USER_HOME>\.claude\plans\ive-changed-you-to-immutable-forest.md`, whole file. Its STATUS block is the pause record.
 - **House style:** `MasterThread\standards\sessions\priority_classification.md` and `PLAN_template.md`.
 
 ## State at pause

@@ -18,7 +18,7 @@ night and then failed in every way a seat built on a session can fail:
 |---|---|
 | The seat died with its session. | `github-8e` is no longer in `ListAgents`; its Fleet Status row is parked on "owner's first YES". Nobody has held the seat since, and merges have happened by direct owner action outside it. |
 | The queue was a copy of GitHub, and it drifted. | Three documents gave three counts for the same queue; 18 PRs merged in one batch and the queue file still listed them as pending (`merge-queue-NOTES.md`). |
-| The queue lived in one unversioned file on one machine. | `C:\Users\yoda_\GitHub\merge-queue.json`; a snapshot was committed to a branch that never merged. |
+| The queue lived in one unversioned file on one machine. | `<USER_HOME>\GitHub\merge-queue.json`; a snapshot was committed to a branch that never merged. |
 | Nothing enforces it. | Read live 2026-09-17: MasterThread (public), ops-infra, ops-platform, ops-policies, claude-agents and aegis-mods have **no branch protection at all**. No repo requires a review. Every session pushes and merges as `yodatech1988`, so GitHub cannot tell a session from the owner. The seat is a convention any session can walk past. |
 | A click was taken as intent. | A session's "dry run" rendered real merge dialogs on the owner's desktop; he approved several believing he had started the queue (`fleet_structure.md`, "Approval and authorisation"). |
 | Two standards disagree. | `fleet_structure.md` says one combined review+merge seat for the fleet; `orchestrator_role.md` says every workstream has its own merge authority. |

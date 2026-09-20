@@ -3,13 +3,13 @@
 **Starter prompt** — paste this into a fresh Claude Code conversation (any folder is fine; it
 `cd`s where it needs to) to run the walkthrough below:
 
-> Read `C:\Users\yoda_\GitHub\NEXT_STEPS_OPS_2026-09-13.md` in full, then walk me through it one
+> Read `<USER_HOME>\GitHub\NEXT_STEPS_OPS_2026-09-13.md` in full, then walk me through it one
 > step at a time in order. Do every step marked **[Claude does this]** yourself and tell me the
 > result before moving on. Stop and wait for me at every step marked **[You click this]** — tell
 > me exactly what to click, and confirm you got what you need before continuing. Skip a step only
 > if the file says it's already done.
 
-This assumes `C:\Users\yoda_\GitHub\aegis-services`, `aegis-core`, and `aegis-site-chernarus` are
+This assumes `<USER_HOME>\GitHub\aegis-services`, `aegis-core`, and `aegis-site-chernarus` are
 the checkouts already on this machine (they are, as of 2026-09-13).
 
 ## What's already done (verified 2026-09-13) — nothing to do here
@@ -37,7 +37,7 @@ stop — don't proceed on stale assumptions.
 Nightly backups (step 3) need both, and both are still the passwords pasted into chat on
 2026-09-12 — see `SECRET-ROTATION.md` §6.
 
-- **Economy** has its own detailed walkthrough already: `C:\Users\yoda_\GitHub\NEXT_STEPS_ECONOMY_2026-09-13.md`,
+- **Economy** has its own detailed walkthrough already: `<USER_HOME>\GitHub\NEXT_STEPS_ECONOMY_2026-09-13.md`,
   "Round 0," item 1. Do that item now (rotate + run `EconomyDbKey.ps1`'s **Apply pending**).
 - **Community**: Shockbyte panel → Databases → the `f3ff781782-community` database → change the
   password. Then run `db\community\tools\CommunityDbKey.ps1` from `aegis-services` (double-click,

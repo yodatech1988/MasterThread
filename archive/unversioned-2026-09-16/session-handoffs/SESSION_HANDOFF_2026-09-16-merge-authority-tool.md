@@ -1,10 +1,10 @@
 # Session handoff: merge-authority tool (session github-85, Team B)
 
 ## Done / verified
-- Built `C:\Users\yoda_\GitHub\AEGIS-Merge-Queue.cmd` + `AEGIS-Merge-Queue.ps1`: a standing,
+- Built `<USER_HOME>\GitHub\AEGIS-Merge-Queue.cmd` + `AEGIS-Merge-Queue.ps1`: a standing,
   human-gated merge tool for the merge-authority lane (github-8e), matching the existing
   `AEGIS-*.cmd` wrapper convention (echo context -> `pause` -> invoke same-named `.ps1`).
-- Reads a queue file (default `C:\Users\yoda_\GitHub\merge-queue.json`, JSON array; schema
+- Reads a queue file (default `<USER_HOME>\GitHub\merge-queue.json`, JSON array; schema
   documented in the `.ps1` header comment: repo, pr, tier, qcVerdict, qcVerifier, qcSummary,
   authorSession, mergeMethod, liveWarning).
 - Groups PRs by tier, shows full QC context per PR (not just repo+number) before the decision
@@ -29,7 +29,7 @@
 - Tier 4 (or any entry with a `liveWarning` field) gets a red banner before its prompt.
 - Syntax-validated via `[System.Management.Automation.Language.Parser]::ParseFile` — no parse
   errors. **Not yet exercised against a real queue file or a real `gh pr merge` call.**
-- `C:\Users\yoda_\GitHub` is NOT a git repo (`git status` -> "not a git repository"), same as
+- `<USER_HOME>\GitHub` is NOT a git repo (`git status` -> "not a git repository"), same as
   the other top-level `AEGIS-*.cmd` tools — nothing to commit/push here; this note is the
   durable record instead.
 - Added real dependency enforcement (github-8e flagged the original script had none): a new
@@ -45,7 +45,7 @@
   the queue file per the PM's note; whoever re-adds them should use this field.
 
 ## Next step
-- **DONE, not open anymore**: github-8e wrote `C:\Users\yoda_\GitHub\merge-queue.json` —
+- **DONE, not open anymore**: github-8e wrote `<USER_HOME>\GitHub\merge-queue.json` —
   26 entries (Tier 1: 19, Tier 2: 1, Tier 3: 2, Tier 4: 4), JSON-validated, independently
   spot-checked by this session (tier distribution and the 4 Tier-4/`liveWarning` entries —
   site-chernarus #96/#94/#88 live economy, ops-infra #10 vault auth — match what was
@@ -108,11 +108,11 @@
   summon the `vps-drift-checker` agent (live-reviewer verdict: CHANGES REQUESTED/HOLD FOR
   OWNER — unenforced read-only claim, needs passwordless root sudo on vault + live server,
   bypasses `Invoke-Ansible.ps1`). Do **not** read, copy, or use the vault-admin or
-  aegis-vps-admin-bot SSH keys in `C:\Users\yoda_\.ssh\` for any reason, including from the
+  aegis-vps-admin-bot SSH keys in `<USER_HOME>\.ssh\` for any reason, including from the
   merge tool.
 - **Flagged risk (not acted on — placement is Jeremy's call, not ours)**: the merge tool
   (`AEGIS-Merge-Queue.cmd/.ps1`) and its state (`merge-queue.json`, now gating 26 real PRs
-  including 4 live-system Tier-4 items) both live in `C:\Users\yoda_\GitHub\`, which is not a
+  including 4 live-system Tier-4 items) both live in `<USER_HOME>\GitHub\`, which is not a
   git repo — a single unversioned, unbacked-up copy on one machine. Same structural problem as
   the `_security-public` policy tree (per PM). Where this should actually live long-term
   (`claude-agents` alongside the other `*Key.ps1` tools? `MasterThread`? deliberately stay

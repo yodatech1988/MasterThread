@@ -25,7 +25,7 @@ to that standard by its successors, not exempted from it. Every correction here 
    not. `%APPDATA%\AEGIS\vault-tunnel-credentials.clixml` — the path `VaultTunnelKey.ps1` writes to —
    **does not exist** (verified by direct `ls`, 2026-09-18). The DPAPI store itself is healthy: 16
    other `.clixml` files sit in the same directory, so this is one credential never written, not a
-   broken store. Two plaintext tunnel credentials remain, unencrypted, in `C:\Users\yoda_\.cloudflared\`:
+   broken store. Two plaintext tunnel credentials remain, unencrypted, in `<USER_HOME>\.cloudflared\`:
    `878f9af5-cdd7-4e20-a6d5-e58b4b2bb66d.json` and `e46f99f6-7e27-4b90-8501-7ef57f8f6cd4.json`, both
    mode `-r--r--r--`. **The credential ID this document and the c5 handoff both name,
    `48cb0a9e-2c4a-49ef-8727-e3ceb75aa044.json`, does not exist on disk at all** — either the tunnel was
@@ -64,7 +64,7 @@ to that standard by its successors, not exempted from it. Every correction here 
    stable fact worth asserting.** It has moved three times in under two hours as click-files ran
    repeatedly tonight — 5, then 7 (this correction's own first draft), then **4** as of `github-43`'s
    second read (2026-09-18T05:00Z, independently re-confirmed here: `ls *.dryrun.log` under
-   `C:\Users\yoda_\GitHub\` returns 4). A document meant to be read later should not carry a fourth
+   `<USER_HOME>\GitHub\` returns 4). A document meant to be read later should not carry a fourth
    guess at a number that will have moved again by the time anyone reads it — the mechanism is the
    durable fact, the count is not. Disk also still shows the one genuine `.log`
    (`AEGIS-Allow-PM-Seat-Tools.20260917-210644.log`, the owner's 01:06Z permission grant, correctly left
@@ -416,7 +416,7 @@ DPAPI and **deleting the plaintext**. On any re-run it looks for that plaintext,
 throws:
 
 ```
-Expected the credential at C:\Users\yoda_\.cloudflared\48cb0a9e-...json and it is not there.
+Expected the credential at <USER_HOME>\.cloudflared\48cb0a9e-...json and it is not there.
 If this tunnel was created on another machine, its secret cannot be recovered --
 delete it in the dashboard and run this again.
 ```
