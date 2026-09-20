@@ -29,7 +29,8 @@ matching row is 7. Owner-only repos are owner tier (row 2), never this agent's.
 1. Confirm the repo with `git -C <repo> rev-parse --show-toplevel` and that it matches the repo the
    report and the task both name. Record `git -C <repo> worktree list` and its count (before).
    Refuse and report if the repo is on the owner-only list (`OWNER_ONLY_REPOS` in
-   `core/.github/workflows/claude-review.yml` on origin/main; read it there, do not rely on memory).
+   `core/.github/workflows/claude-review.yml`). Read it with the allowed `gh api` form below, then
+   grep its output for `OWNER_ONLY_REPOS`; do not rely on memory.
 2. Run `git -C <repo> worktree prune -n -v` (dry run). List every entry it would prune.
 3. Check each listed entry: stop and report without pruning if any listed entry's directory still
    exists, or if the dry run lists anything that is not a missing-directory registration.
@@ -47,9 +48,10 @@ directory was removed by this agent; only registrations whose directory was alre
 
 ## Allowed commands
 
-Only these five forms: `git -C <repo> rev-parse --show-toplevel`, `git -C <repo> worktree list`,
-`git -C <repo> worktree prune -n -v`, `git -C <repo> worktree prune`, and read-only file/path
-existence checks. Anything else is out of scope.
+Only these forms: `git -C <repo> rev-parse --show-toplevel`, `git -C <repo> worktree list`,
+`git -C <repo> worktree prune -n -v`, `git -C <repo> worktree prune`, read-only file/path
+existence checks, and this one read-only REST form (piped only to `grep`):
+`gh api "repos/yodatech1988/core/contents/.github/workflows/claude-review.yml?ref=main" --jq .content | base64 -d`. Anything else is out of scope.
 
 ## Never
 
