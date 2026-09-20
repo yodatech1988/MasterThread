@@ -78,7 +78,8 @@ this in the same working pass, not "later":
 
 1. Find every holder. Search the org for the decision's name and its option names:
    `gh search code --owner yodatech1988 "<term>"` (a lead only: it can lag and miss repos, so "no
-   hits" proves nothing), plus `git grep` on `origin/<default>` of each repo the decision touches. Holders are usually one `PLAN.md` "Open decisions" entry, the sessions it
+   hits" proves nothing), plus `git grep` on `origin/<default>` of each repo the decision touches.
+   Holders are usually one `PLAN.md` "Open decisions" entry, the sessions it
    gates, a Status-table row reading *blocked: decision X*, and sometimes a Fleet Status `blocked` doc.
 2. In each, replace the held entry with the `**Decided:**` pointer line (rule 2), move losing-option
    analysis under `Considered and not chosen`, and rewrite any dependent session that was drafted
@@ -103,7 +104,8 @@ explicit option - rather than a fresh choose-one card. That card kind is not def
 `decision_queue_standard.md`; until it is, file it as an ordinary decision card obeying that standard's
 shape (options, `recommendedOption` and `recommendedRationale`, `bestPractice`, never filed resolved). If
 the record is itself a queue card the owner already answered, do not file anything: follow the answer and
-cite the card (that standard's "if a standard already answers it, decide it yourself" applies). One click for the owner instead of a
+cite the card.
+When a card is filed, it is one click for the owner instead of a
 re-decision. If no record exists, the hold is real and the card presents the actual choices with
 their costs.
 
