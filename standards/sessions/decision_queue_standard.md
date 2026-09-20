@@ -504,12 +504,23 @@ against: two writers touching the same document, last-writer-wins, no warning.
 
 ## The approval-device gate
 
-Resolving a card (clicking Approve/Override) is only enabled on one paired browser at a time —
-a client-side speed bump against an accidental phone tap or a wrong-device click while the fleet
-runs headless, **not real security**: it's a `localStorage` id matched against a shared-db pairing
-record, bypassable by anyone with DevTools access to the paired browser. Treat it as a policy nudge.
-Pairing is deliberately re-claimable (last claim wins) so a lost browser/cleared storage doesn't
-permanently lock the owner out.
+**2026-09-20 change:** resolving a card is enabled on any device paired via `settings/approval-device`
+— now a *list* (`{devices: [{deviceId, label, pairedAt}, ...]}`), not a single record, so a computer and
+a phone can both be paired and both act at once (Jeremy: "My computer and my phone both need to be
+paired"). Pairing adds a device; unpairing removes only the device doing the unpairing. The page reads
+either the current list shape or an older single-device doc (`{deviceId, label, pairedAt}`) so a page
+that hasn't been re-paired since this change still shows its existing device correctly.
+
+The phone/tablet-viewport check no longer blocks approving outright — it used to, and a phone-shaped
+screen simply couldn't act even if paired. It now adds **one extra tap to every confirm** (three taps
+total instead of the normal two, with a longer 10s arm window instead of 8s) as a guard against an
+accidental tap, since a phone is now a legitimate paired device rather than an automatic
+disqualification.
+
+None of this is real security, same as before: it's a `localStorage` id matched against a shared-db
+pairing list, bypassable by anyone with DevTools access to a paired browser. Treat it as a policy
+nudge — a guard against an accidental tap or a wrong-device click while the fleet runs headless, not
+an access-control mechanism.
 
 ## What this queue is explicitly not
 
