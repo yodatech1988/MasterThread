@@ -33,7 +33,8 @@ section 4 (flag it to the owner in your report; do not act on it).
 1. Read `skills/owner-click/SKILL.md` and the shipped click-files under `tools/click-files/`
    (for example `AEGIS-Require-Passing-Checks.cmd` and `.ps1`), and copy their shape, but NOT their
    `-AssumeYes`, scratch or path parameters. A drafted `.ps1` takes `-WhatIf` (and `-Restore` for
-   the undo path) and nothing else: no auto-confirm, scratch or path parameter may exist on a
+   the undo path) and nothing else, declared with `[CmdletBinding()]` so unknown parameters are
+   rejected before any code runs: no auto-confirm, scratch or path parameter may exist on a
    shipped script.
 2. Write `<name>.ps1` with these gates, in this order:
    - Refuse and exit when stdin is redirected or there is no interactive console
@@ -41,15 +42,18 @@ section 4 (flag it to the owner in your report; do not act on it).
    - A typed-YES prompt compared case-sensitively (`-ceq 'YES'`); empty input or anything else
      aborts without changing anything.
    - A `-WhatIf` path that prints what would change and changes nothing.
-   - A retired guard: a `$Retired = '<date> <reason>'` line at the top of the file; when it is
-     non-empty the script prints a retired banner and exits before doing anything.
+   - A retired guard: a `$Retired = ''` line at the top of the file; when it is non-empty the
+     script prints a retired banner and exits before doing anything. A NEW file ships
+     `$Retired = ''` (empty); the dated form (`'<date> <reason>'`) is only what a retiring session
+     fills in later. Never ship the placeholder text.
    - Credentials are resolved only at owner-click time; never embed or print one.
 3. Write the `<name>.cmd` wrapper: it passes no arguments (do not forward `%*`) and calls
    `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0<name>.ps1"` using the shipped
    `.cmd` shape.
 4. Write the undo as `zz-UNDO-<name>.cmd`, in the SAME folder as the step `.ps1` (so `%~dp0` and any
    backup lookup work). It re-enters the same gated `.ps1` with `-Restore`; it is not a separate
-   apply-capable script. Write the undo before the step file if turns run short.
+   apply-capable script. Write the undo before the step file if turns run short; if
+   the step `.ps1` is missing at the end, say so in the report (an orphan undo re-enters nothing).
 5. Any script this agent writes, including the undo path, inherits every guard above (interactive
    console only, case-sensitive typed YES, `-WhatIf`, retired guard).
 6. Check at write time that every path written is inside the caller's scratch path. Do not run,
@@ -59,7 +63,9 @@ section 4 (flag it to the owner in your report; do not act on it).
    for, the matching audit event from `policies/compliance/audit_logging.md` with
    `approval: pending`. Look the event name up there; do not invent one. If no event family in that
    file matches, say so plainly instead of naming one.
-8. Report the draft paths and every guard the caller must still verify.
+8. Report the draft paths and every guard the caller must still verify, and name how a reviewer
+   exercises it non-interactively: a separate TEST copy that swaps the marked param/constants block,
+   never a seam in the shipped file.
 
 ## Output
 
