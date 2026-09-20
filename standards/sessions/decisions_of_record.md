@@ -1,7 +1,7 @@
 # Decisions of record
 
-**Status:** merged 2026-09-20 (MasterThread #93); revised by the follow-up PR that addressed its
-review. Asked for by the owner on Decision Queue card
+**Status:** merged 2026-09-20 (MasterThread #93); this revision is MasterThread #162 (a draft until the
+owner merges it). Asked for by the owner on Decision Queue card
 `ops-infra-decision-a-tailscale-vs-cloudflare-conflict-2026-09-17` ("create a policy specific to
 this... inform me of my choices better"). Parts marked **Proposal** need an edit to another standard
 before they bind anyone.
@@ -41,8 +41,10 @@ another, with nothing connecting them.
 1. **One place of record per decision.** For an owner decision it is, in this order of preference:
    - the **Ops Decision Queue card** the owner answered (the card id is the citation); or
    - for a program that has one, its **authority artifact**, in a section headed `Decided: ...`
-     with the date - and then a queue card is still filed as a one-click *confirm-the-record* card
-     the first time a session needs to rely on it, so the citation exists in the queue too.
+     with the date - and then, **Proposal**, a queue card is still filed as a one-click
+     *confirm-the-record* card the first time a session needs to rely on it, so the citation exists in
+     the queue too (that card kind is not yet defined in `decision_queue_standard.md`; see "Before a
+     session honours a held flag" below for the shape to use meanwhile).
    A decision made in chat is not yet on record. The session he said it to files a card that quotes
    him and asks him to confirm it (`decision_queue_standard.md`); until he does, it is a claim.
 2. **Everything else cites, never restates.** A `PLAN.md`, a standard, a handoff file, a PR body or a
@@ -69,8 +71,9 @@ another, with nothing connecting them.
 owner decides", and `session_plan_standard.md` rule 7 says an open owner decision gets a stated default so
 sessions are not blocked on it. A plan should therefore carry a default, not a hold. Some plans still
 mark one **held** (no dependent session starts), as ops-infra's did; that is off-template, and it is the
-case that failed. A held flag or a default-in-force entry is a lock on someone's work, and either needs a
-release procedure. The procedure below covers both.
+case that failed. A held flag is a lock on someone's work and needs a release procedure; a
+default-in-force entry blocks nobody but still goes stale once the owner decides, so it needs the same
+clean-up. The procedure below covers both.
 
 **When a decision lands** (the owner answers a card, or a `Decided:` section appears in the authority
 artifact), the session that receives the answer - or the PM, if that session has ended - does all of
