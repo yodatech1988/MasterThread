@@ -81,5 +81,7 @@
   "denial-card-drafter": {"role": "D", "headless": "yes", "readonly": "tools", "dormant": false, "group": "other"},
   "standard-buildstate-checker": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
   "session-plan-drafter": {"role": "D", "headless": "yes", "readonly": "tools", "dormant": false},
-  "session-plan-advisor": {"role": "A", "headless": "yes", "readonly": "tools", "dormant": false}
+  "session-plan-advisor": {"role": "A", "headless": "yes", "readonly": "tools", "dormant": false},
+  "click-file-builder": {"role": "D", "headless": "yes", "readonly": "instruction", "dormant": false, "group": "other"},
+  "worktree-prune-executor": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false}
 }
