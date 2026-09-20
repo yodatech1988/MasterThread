@@ -96,7 +96,7 @@ each worktree's branch against its PR's merge state via `gh pr view --json state
 every worktree, every repo. Currently done ad hoc by whatever session notices stale worktrees
 (no fixed cadence, no citation of a specific automated run — it's manual). **Replacement:** a
 PowerShell or bash sweep run on a schedule against the PC (not the VPS, since worktrees live in
-`C:\Users\yoda_\GitHub`) — `Cleanup-Worktrees.ps1` iterating every repo's `git worktree list
+`<USER_HOME>\GitHub`) — `Cleanup-Worktrees.ps1` iterating every repo's `git worktree list
 --porcelain`, resolving each branch's PR via `gh pr view <branch> --json state,mergedAt`, and
 removing (never `--force`) only worktrees with a clean `git status` whose PR is merged or closed.
 Windows equivalent of a systemd timer is Task Scheduler; since the PC isn't always on, a simple

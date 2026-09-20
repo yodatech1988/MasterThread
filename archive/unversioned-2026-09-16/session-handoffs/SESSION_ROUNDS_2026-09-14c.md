@@ -66,7 +66,7 @@ Status table is stale.
 **claude-agents #14:** the GUID formula, the chat-line format and whether `say` is private all
 still need Jeremy in game.
 
-**gh-federation:** deployed at `gh-federation.jeremybergerai.workers.dev`. The selftest repo passed
+**gh-federation:** deployed at `gh-federation.<account>.workers.dev`. The selftest repo passed
 its pull and ack.
 
 **website:** #3 is done but still open. Session 5 (connect widget) is unblocked. Session 4 waits on
@@ -122,7 +122,7 @@ These come from MasterThread's session standard and memory:
 |---|---|---|---|
 | R0-W | `GitHub\` | Sonnet 5 | medium |
 
-> List every git worktree under C:\Users\yoda_\GitHub (_wt-*, _worktrees\*, core-tmp-pr69, aegis-mods-mechanics-wt). For each: git status, unpushed commits, PR state via `gh pr list --head <branch> --state all`. Remove only clean, fully pushed worktrees whose PR is merged/closed, with `git worktree remove` from the owning repo — never --force, never rm, never a main checkout. Keep core's `agent/core/session3-secret-rotation`. Output one table (folder, repo, branch, PR state, kept-why), then `git worktree prune` per repo.
+> List every git worktree under <USER_HOME>\GitHub (_wt-*, _worktrees\*, core-tmp-pr69, aegis-mods-mechanics-wt). For each: git status, unpushed commits, PR state via `gh pr list --head <branch> --state all`. Remove only clean, fully pushed worktrees whose PR is merged/closed, with `git worktree remove` from the owning repo — never --force, never rm, never a main checkout. Keep core's `agent/core/session3-secret-rotation`. Output one table (folder, repo, branch, PR state, kept-why), then `git worktree prune` per repo.
 
 ---
 

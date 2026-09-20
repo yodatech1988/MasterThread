@@ -12,7 +12,7 @@ and not yet returned.
 **1. Start the usage watcher** (required of every orchestrator; do not skip):
 
 ```
-Monitor  command: MT=C:/Users/yoda_/GitHub/MasterThread; N=ops-cycle-pm; git -C $MT fetch -q origin main; git -C $MT show origin/main:tools/usage-monitor/usage-watch.ps1 > "$APPDATA/AEGIS/usage-watch.$N.ps1" && powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$APPDATA/AEGIS/usage-watch.$N.ps1" -HandoffRoot C:/Users/yoda_/GitHub -Name $N -Program "autonomous ops cycle PM" 2>&1 || echo "USAGE-ERROR could not load or run usage-watch.ps1 from MasterThread origin/main"
+Monitor  command: MT=<USER_HOME>/GitHub/MasterThread; N=ops-cycle-pm; git -C $MT fetch -q origin main; git -C $MT show origin/main:tools/usage-monitor/usage-watch.ps1 > "$APPDATA/AEGIS/usage-watch.$N.ps1" && powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$APPDATA/AEGIS/usage-watch.$N.ps1" -HandoffRoot <USER_HOME>/GitHub -Name $N -Program "autonomous ops cycle PM" 2>&1 || echo "USAGE-ERROR could not load or run usage-watch.ps1 from MasterThread origin/main"
          description: Claude usage tiers for ops-cycle-pm
          timeout_ms: 1800000
 ```
@@ -34,7 +34,7 @@ handoff, 98 = commit it, 99 = stop. `USAGE-ERROR` (429s from the endpoint) means
 genuinely UNKNOWN, not just unlucky — treat it as high and hold all new dispatch until a clean
 `USAGE-OK`/`USAGE START` line comes back. This happened twice this round and self-resolved within
 a few minutes each time; no manual `/usage` check was needed either time, though the fallback if it
-doesn't self-resolve is `C:\Users\yoda_\GitHub\MasterThread\tools\usage-monitor\check-usage.ps1` in
+doesn't self-resolve is `<USER_HOME>\GitHub\MasterThread\tools\usage-monitor\check-usage.ps1` in
 a real terminal (this session couldn't run it — sandboxed, working directory locked, no APPDATA
 read — so it has to be you or a less-sandboxed session).
 
@@ -317,7 +317,7 @@ detail is in the 2026-09-16 handoff §4 if you need the reasoning; summary:
 ## 5. Not deployed / not done — unchanged from 2026-09-16
 
 `ops-platform` (154 tests) and `ops-policies` are fully built and idle until SPIRE/federation exist.
-The 8-step owner click-through (`C:\Users\yoda_\GitHub\Complete-OpsCycleOwnerTasks.cmd`) is
+The 8-step owner click-through (`<USER_HOME>\GitHub\Complete-OpsCycleOwnerTasks.cmd`) is
 untouched this round — AIDE baseline refresh (step 1) is still the most urgent one given §2's note
 about Session 8's apply colliding with AIDE drift.
 

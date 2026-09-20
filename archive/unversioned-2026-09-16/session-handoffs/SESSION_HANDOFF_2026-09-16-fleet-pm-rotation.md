@@ -125,7 +125,7 @@ instead. Reproduced here so it survives the worktree. It also sits, uncommitted,
 `_wt-ops-infra-vps-ssh-permission-fix\LANE_STATUS.md` — **do not clean that worktree.**
 
 > **What was found.** The "auto-mode classifier blocking SSH writes to the VPS" is this machine's
-> global `C:\Users\yoda_\.claude\settings.json`. Its `permissions.allow` list pre-approves exactly
+> global `<USER_HOME>\.claude\settings.json`. Its `permissions.allow` list pre-approves exactly
 > two SSH invocations to the ops VPS (40.160.90.128): `ssh -i ~/.ssh/aegis-vps-admin-bot
 > ubuntu@40.160.90.128*` and the same for user `aegis`. Anything else — different command shape,
 > different key/user, scp, non-Bash SSH — falls through to an interactive prompt, blocking the

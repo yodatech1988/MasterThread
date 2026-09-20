@@ -94,9 +94,9 @@ it could remove a worktree a parallel session is using.
 
 | ID | Open in | Model | Effort |
 |---|---|---|---|
-| R0-W | `C:\Users\yoda_\GitHub` | Sonnet 5 | medium |
+| R0-W | `<USER_HOME>\GitHub` | Sonnet 5 | medium |
 
-> `List every git worktree under C:\Users\yoda_\GitHub (the _wt-* folders, _worktrees\*, and core-tmp-pr69). For each one, show git status, unpushed commits, and whether its branch's PR is merged, closed or open (gh pr list --head <branch> --state all). Remove only worktrees that are clean, fully pushed, and whose PR is merged or closed. Use git worktree remove from the owning repo — never --force, never rm, never touch a main checkout. Leave everything else and give me one table: folder, repo, branch, PR state, why it was kept. Then git worktree prune in each repo.`
+> `List every git worktree under <USER_HOME>\GitHub (the _wt-* folders, _worktrees\*, and core-tmp-pr69). For each one, show git status, unpushed commits, and whether its branch's PR is merged, closed or open (gh pr list --head <branch> --state all). Remove only worktrees that are clean, fully pushed, and whose PR is merged or closed. Use git worktree remove from the owning repo — never --force, never rm, never touch a main checkout. Leave everything else and give me one table: folder, repo, branch, PR state, why it was kept. Then git worktree prune in each repo.`
 
 ---
 
@@ -183,7 +183,7 @@ Prompts:
 - **R2-9:** the plan's starter prompt, plus: *"You: ollama pull what you propose."*
 - **R2-4 is different.** The code goes in claude-agents, but the plan lives in gh-federation:
 
-> `Read C:\Users\yoda_\GitHub\gh-federation\docs\PLAN.md Session 5 only. Work in claude-agents in your own worktree. The Worker is live at <URL from R1-4's Status table>. The WIF rule for claude-agents exists (ask me for the 4 identifiers — they're not secrets). Wire bug-report-agent's two-hop enqueue + WIF triage, open one PR in claude-agents, then a one-line Status-table PR in gh-federation.`
+> `Read <USER_HOME>\GitHub\gh-federation\docs\PLAN.md Session 5 only. Work in claude-agents in your own worktree. The Worker is live at <URL from R1-4's Status table>. The WIF rule for claude-agents exists (ask me for the 4 identifiers — they're not secrets). Wire bug-report-agent's two-hop enqueue + WIF triage, open one PR in claude-agents, then a one-line Status-table PR in gh-federation.`
 
 ## Round 3: go-live prep and the next module sessions
 

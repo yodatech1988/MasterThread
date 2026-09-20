@@ -11,7 +11,7 @@ what actually happened, including two corrections to that file's own assumptions
 **1. Start the usage watcher** (required of every orchestrator; do not skip):
 
 ```
-Monitor  command: MT=C:/Users/yoda_/GitHub/MasterThread; N=ops-cycle-pm; git -C $MT fetch -q origin main; git -C $MT show origin/main:tools/usage-monitor/usage-watch.ps1 > "$APPDATA/AEGIS/usage-watch.$N.ps1" && powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$APPDATA/AEGIS/usage-watch.$N.ps1" -HandoffRoot C:/Users/yoda_/GitHub -Name $N -Program "autonomous ops cycle PM" 2>&1 || echo "USAGE-ERROR could not load or run usage-watch.ps1 from MasterThread origin/main"
+Monitor  command: MT=<USER_HOME>/GitHub/MasterThread; N=ops-cycle-pm; git -C $MT fetch -q origin main; git -C $MT show origin/main:tools/usage-monitor/usage-watch.ps1 > "$APPDATA/AEGIS/usage-watch.$N.ps1" && powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$APPDATA/AEGIS/usage-watch.$N.ps1" -HandoffRoot <USER_HOME>/GitHub -Name $N -Program "autonomous ops cycle PM" 2>&1 || echo "USAGE-ERROR could not load or run usage-watch.ps1 from MasterThread origin/main"
          description: Claude usage tiers for ops-cycle-pm
          timeout_ms: 1800000
 ```
@@ -107,7 +107,7 @@ and sitting idle until SPIRE/federation exist on the vault.
 
 ## 3. New tool built this session: the owner click-through
 
-**`C:\Users\yoda_\GitHub\Complete-OpsCycleOwnerTasks.cmd`** — one double-click wizard, 8 steps, for
+**`<USER_HOME>\GitHub\Complete-OpsCycleOwnerTasks.cmd`** — one double-click wizard, 8 steps, for
 everything left that only the owner can do. Safe to re-run; nothing destructive. As of this
 handoff:
 

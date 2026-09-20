@@ -83,51 +83,51 @@ sitting (~15 min). If fewer terminals are available, run lanes top-to-bottom.
 | R1-5 | aegis-website | Sonnet 5 | PLAN + CLAUDE, PR, closes #15 |
 | R1-6 | aegis-mods (exists; PR #1 merged) | Opus 5 | PLAN, PR |
 | R1-7 | handymansfield | Sonnet 5 | Session 1 PR (framework + job-intake) |
-| R1-8 | `C:\Users\yoda_\GitHub` root | Sonnet 5 | no PR: close MasterThread #1 #2, prune worktrees, reset checkouts |
+| R1-8 | `<USER_HOME>\GitHub` root | Sonnet 5 | no PR: close MasterThread #1 #2, prune worktrees, reset checkouts |
 
 Worktree setup for R1-1 and R1-2 (run in the repo folder before opening the session):
 
 ```
-cd C:\Users\yoda_\GitHub\aegis-core
+cd <USER_HOME>\GitHub\aegis-core
 git fetch origin; git worktree add ..\_wt-core-session0 -b agent/core/session-0-plan origin/main
-cd C:\Users\yoda_\GitHub\aegis-site-chernarus
+cd <USER_HOME>\GitHub\aegis-site-chernarus
 git fetch origin; git worktree add ..\_wt-chernarus-session0 -b agent/site-chernarus/session-0-plan origin/main
 ```
 
 ### R1-1 core Session 0 (Opus 5, open in `_wt-core-session0`)
 
 ```
-Follow C:\Users\yoda_\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 for this repo (issue #44), using C:\Users\yoda_\GitHub\MasterThread\standards\sessions\PLAN_template.md. Read only README.md, docs/OUTSTANDING.md, the open issue and PR titles (gh issue list; gh pr list), and the docs those name. Facts to fold in: (1) the pr-review workflow currently skips on every PR because no ANTHROPIC_API_KEY secret is set, so a green review check means skipped; (2) key rotation (#5) and the vendored drift check (#35/#42) must become numbered sessions, not live only in issues; (3) #39 belongs in aegis-mods per the Workshop mod standard, recommend closing it; (4) #7 and #8 are owner-only checks. "Backlog first" must list every open PR as merge/close/rebase with one reason. Write docs/PLAN.md and a <=15-line CLAUDE.md, commit on this branch, open one PR, and tell me which MasterThread REPOS.md row to update. Don't read the source tree.
+Follow <USER_HOME>\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 for this repo (issue #44), using <USER_HOME>\GitHub\MasterThread\standards\sessions\PLAN_template.md. Read only README.md, docs/OUTSTANDING.md, the open issue and PR titles (gh issue list; gh pr list), and the docs those name. Facts to fold in: (1) the pr-review workflow currently skips on every PR because no ANTHROPIC_API_KEY secret is set, so a green review check means skipped; (2) key rotation (#5) and the vendored drift check (#35/#42) must become numbered sessions, not live only in issues; (3) #39 belongs in aegis-mods per the Workshop mod standard, recommend closing it; (4) #7 and #8 are owner-only checks. "Backlog first" must list every open PR as merge/close/rebase with one reason. Write docs/PLAN.md and a <=15-line CLAUDE.md, commit on this branch, open one PR, and tell me which MasterThread REPOS.md row to update. Don't read the source tree.
 ```
 
 ### R1-2 site-chernarus Session 0 (Opus 5, open in `_wt-chernarus-session0`)
 
 ```
-Follow C:\Users\yoda_\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 for this repo (issue #44), using C:\Users\yoda_\GitHub\MasterThread\standards\sessions\PLAN_template.md. Read only README.md, STATUS.md, docs/aegis-chernarus-golive-plan.md, issues #41 and #40 (body plus last three comments each), and the 13 open PRs' titles and descriptions. Do not open server/ or any Market file. "Backlog first" must give one line per open PR: merge / close / rebase, with the reason; post that same list as a comment on #40. Known: #35 is blocked on a Krasnostav T3 design conflict with merged #39 and gets its own session; #19 is recommended close; #29 merges after core#42. Sequence the sessions from #41's phases and do not schedule Phase 1.1 before Phase 0's exit criterion. Write docs/PLAN.md and a <=15-line CLAUDE.md, commit on this branch, open one PR, and tell me which MasterThread REPOS.md row to update.
+Follow <USER_HOME>\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 for this repo (issue #44), using <USER_HOME>\GitHub\MasterThread\standards\sessions\PLAN_template.md. Read only README.md, STATUS.md, docs/aegis-chernarus-golive-plan.md, issues #41 and #40 (body plus last three comments each), and the 13 open PRs' titles and descriptions. Do not open server/ or any Market file. "Backlog first" must give one line per open PR: merge / close / rebase, with the reason; post that same list as a comment on #40. Known: #35 is blocked on a Krasnostav T3 design conflict with merged #39 and gets its own session; #19 is recommended close; #29 merges after core#42. Sequence the sessions from #41's phases and do not schedule Phase 1.1 before Phase 0's exit criterion. Write docs/PLAN.md and a <=15-line CLAUDE.md, commit on this branch, open one PR, and tell me which MasterThread REPOS.md row to update.
 ```
 
 ### R1-3 services Session 0 (Sonnet 5, open in `aegis-services`)
 
 ```
-Follow C:\Users\yoda_\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 for this repo (issue #9), using C:\Users\yoda_\GitHub\MasterThread\standards\sessions\PLAN_template.md. Read only README.md, the open issue and PR titles, docs they reference, and the "claude-agents" and "What needs Jeremy" sections of C:\Users\yoda_\GitHub\aegis-core\docs\OUTSTANDING.md. admin-bot is the only live agent; RCON comes from the be-rcon submodule. Write docs/PLAN.md and a <=15-line CLAUDE.md, branch agent/services/session-0-plan, open one PR, and tell me which MasterThread REPOS.md row to update.
+Follow <USER_HOME>\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 for this repo (issue #9), using <USER_HOME>\GitHub\MasterThread\standards\sessions\PLAN_template.md. Read only README.md, the open issue and PR titles, docs they reference, and the "claude-agents" and "What needs Jeremy" sections of <USER_HOME>\GitHub\aegis-core\docs\OUTSTANDING.md. admin-bot is the only live agent; RCON comes from the be-rcon submodule. Write docs/PLAN.md and a <=15-line CLAUDE.md, branch agent/services/session-0-plan, open one PR, and tell me which MasterThread REPOS.md row to update.
 ```
 
 ### R1-4 claude-agents Session 0 (Sonnet 5, open in `claude-agents`)
 
 ```
-Follow C:\Users\yoda_\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 for this repo (issue #5), using C:\Users\yoda_\GitHub\MasterThread\standards\sessions\PLAN_template.md. Read only README.md, the open issue and PR titles, docs they reference, and the "claude-agents" section of C:\Users\yoda_\GitHub\aegis-core\docs\OUTSTANDING.md. Apply the zero-cost-first rule: no new hosted service or paid API in any session without a "You" step. Write docs/PLAN.md and a <=15-line CLAUDE.md, branch agent/claude-agents/session-0-plan, open one PR, and tell me which MasterThread REPOS.md row to update.
+Follow <USER_HOME>\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 for this repo (issue #5), using <USER_HOME>\GitHub\MasterThread\standards\sessions\PLAN_template.md. Read only README.md, the open issue and PR titles, docs they reference, and the "claude-agents" section of <USER_HOME>\GitHub\aegis-core\docs\OUTSTANDING.md. Apply the zero-cost-first rule: no new hosted service or paid API in any session without a "You" step. Write docs/PLAN.md and a <=15-line CLAUDE.md, branch agent/claude-agents/session-0-plan, open one PR, and tell me which MasterThread REPOS.md row to update.
 ```
 
 ### R1-5 website Session 0 (Sonnet 5, open in `aegis-website`)
 
 ```
-Follow C:\Users\yoda_\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 for this repo (issue #15), using C:\Users\yoda_\GitHub\MasterThread\standards\sessions\PLAN_template.md. Read only README.md, STATUS.md, issues #15 and #3, and docs they reference. Issue #3 (build.py lost; site never deployed to Cloudflare Workers) is Session 1; the Cloudflare connector is not authorized in this environment, so deployment is a "You" step. The donations plan (MasterThread docs/DONATIONS_PLAN.md, PayPal, no perks) needs a page in a later session. Write docs/PLAN.md and a <=15-line CLAUDE.md, branch agent/website/session-0-plan, open one PR, and tell me which MasterThread REPOS.md row to update.
+Follow <USER_HOME>\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 for this repo (issue #15), using <USER_HOME>\GitHub\MasterThread\standards\sessions\PLAN_template.md. Read only README.md, STATUS.md, issues #15 and #3, and docs they reference. Issue #3 (build.py lost; site never deployed to Cloudflare Workers) is Session 1; the Cloudflare connector is not authorized in this environment, so deployment is a "You" step. The donations plan (MasterThread docs/DONATIONS_PLAN.md, PayPal, no perks) needs a page in a later session. Write docs/PLAN.md and a <=15-line CLAUDE.md, branch agent/website/session-0-plan, open one PR, and tell me which MasterThread REPOS.md row to update.
 ```
 
-### R1-6 aegis-mods Session 0 (Opus 5, open in `C:\Users\yoda_\GitHub`)
+### R1-6 aegis-mods Session 0 (Opus 5, open in `<USER_HOME>\GitHub`)
 
 ```
-The repo yodatech1988/aegis-mods already exists and is cloned at C:\Users\yoda_\GitHub\aegis-mods (created 2026-09-12). PR #1 (AEGIS_Metrics) is merged; start with git checkout master; git pull. Follow C:\Users\yoda_\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 there. Read only C:\Users\yoda_\GitHub\MasterThread\standards\dayz\workshop_mod_standard.md (all of it, especially "Repo layout", "Contract: module.json" and "Where existing work goes"), the session plan standard and PLAN template, and the folder names under P:\ (dir P:\AEGIS_*; do not read their contents). Session 1 is the import of P:\AEGIS_Core, AEGIS_Vehicles, AEGIS_Aircraft, AEGIS_HelloWorld with junctions and a HelloWorld boot test. AEGIS_Metrics is already imported with tools/build.ps1 and tools/boot-test.ps1 (PR #1, site-chernarus#48), so reuse those tools and record Metrics as done in the plan. later sessions are one module each, including PvPGuard (from site-chernarus#43) and Skins (from core#39 / the local dayz-skin-library folder). The AEGIS signing key and the Workshop publisher account are "You" steps. Write docs/PLAN.md and a <=15-line CLAUDE.md, branch agent/aegis-mods/session-0-plan, open one PR, and tell me the MasterThread REPOS.md row to add.
+The repo yodatech1988/aegis-mods already exists and is cloned at <USER_HOME>\GitHub\aegis-mods (created 2026-09-12). PR #1 (AEGIS_Metrics) is merged; start with git checkout master; git pull. Follow <USER_HOME>\GitHub\MasterThread\standards\sessions\session_plan_standard.md Session 0 there. Read only <USER_HOME>\GitHub\MasterThread\standards\dayz\workshop_mod_standard.md (all of it, especially "Repo layout", "Contract: module.json" and "Where existing work goes"), the session plan standard and PLAN template, and the folder names under P:\ (dir P:\AEGIS_*; do not read their contents). Session 1 is the import of P:\AEGIS_Core, AEGIS_Vehicles, AEGIS_Aircraft, AEGIS_HelloWorld with junctions and a HelloWorld boot test. AEGIS_Metrics is already imported with tools/build.ps1 and tools/boot-test.ps1 (PR #1, site-chernarus#48), so reuse those tools and record Metrics as done in the plan. later sessions are one module each, including PvPGuard (from site-chernarus#43) and Skins (from core#39 / the local dayz-skin-library folder). The AEGIS signing key and the Workshop publisher account are "You" steps. Write docs/PLAN.md and a <=15-line CLAUDE.md, branch agent/aegis-mods/session-0-plan, open one PR, and tell me the MasterThread REPOS.md row to add.
 ```
 
 ### R1-7 handymansfield Session 1 (Sonnet 5, open in `handymansfield`)
@@ -140,10 +140,10 @@ Read docs/PLAN.md Session 1 only. Build the agent framework and job-intake agent
 
 You: confirm the goal paragraph and the Rates table on the PR.
 
-### R1-8 housekeeping (Sonnet 5, open in `C:\Users\yoda_\GitHub`)
+### R1-8 housekeeping (Sonnet 5, open in `<USER_HOME>\GitHub`)
 
 ```
-Housekeeping only; open no PRs and delete nothing that is unpushed. (1) Close MasterThread issues #1 and #2 with the comment "Obsolete: predates the 2026-09-12 session plan (docs/REPOS.md)." (2) For each of aegis-core, aegis-site-chernarus, aegis-website, aegis-services, claude-agents, jarvis, MasterThread, handymansfield, repo-template: if the checked-out branch's PR is merged or the branch is behind and its work exists on origin, checkout the default branch and pull; if the branch has unpushed commits or untracked files, list them and leave the repo alone. Known: aegis-core's a8dc166 is the pre-rebase copy of core#42, superseded by origin/ci/validate-without-core-token; verify with git diff before discarding. aegis-site-chernarus has an untracked Ko-fi kit that is obsolete (donations use PayPal) and rs_tmp.yml; show me both before deleting. (3) For every worktree under C:\Users\yoda_\GitHub\_wt-* and C:\Users\yoda_\GitHub\.worktrees\*: remove it (git worktree remove, then git branch -d) only if its branch is merged into the remote default branch and has no unpushed commits; keep _wt-chernarus-35 (unpushed merge attempt for site#35). (4) Print one table: folder, branch, action taken, reason.
+Housekeeping only; open no PRs and delete nothing that is unpushed. (1) Close MasterThread issues #1 and #2 with the comment "Obsolete: predates the 2026-09-12 session plan (docs/REPOS.md)." (2) For each of aegis-core, aegis-site-chernarus, aegis-website, aegis-services, claude-agents, jarvis, MasterThread, handymansfield, repo-template: if the checked-out branch's PR is merged or the branch is behind and its work exists on origin, checkout the default branch and pull; if the branch has unpushed commits or untracked files, list them and leave the repo alone. Known: aegis-core's a8dc166 is the pre-rebase copy of core#42, superseded by origin/ci/validate-without-core-token; verify with git diff before discarding. aegis-site-chernarus has an untracked Ko-fi kit that is obsolete (donations use PayPal) and rs_tmp.yml; show me both before deleting. (3) For every worktree under <USER_HOME>\GitHub\_wt-* and <USER_HOME>\GitHub\.worktrees\*: remove it (git worktree remove, then git branch -d) only if its branch is merged into the remote default branch and has no unpushed commits; keep _wt-chernarus-35 (unpushed merge attempt for site#35). (4) Print one table: folder, branch, action taken, reason.
 ```
 
 **Round 1 merge batch (Jeremy):** merge the six Session 0 PRs and handymansfield's Session 1 PR.

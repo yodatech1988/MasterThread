@@ -108,7 +108,7 @@ refused precondition, `-WhatIf`, and unhandled exception — each paired with it
 
 A click-file that reads-modifies-writes a JSON settings file (`.claude/settings.json`,
 `settings.local.json`) is tested by pointing `-SettingsPath` at a scratch copy under
-`C:\Users\yoda_\AppData\Local\Temp\claude\`, never by editing the live file "to see what happens."
+`<USER_HOME>\AppData\Local\Temp\claude\`, never by editing the live file "to see what happens."
 Copy the real file there first so the test exercises real content, not a synthetic fixture that
 might not trigger a real bug.
 
@@ -164,7 +164,7 @@ unconditionally, regardless of `-SettingsPath`, which blocks the very testing th
 weakening the guard ad hoc under pressure to get a test to run.
 
 Fix, applied to both: resolve `-SettingsPath`, compare it against the `Temp\claude\` prefix
-(`$SettingsPath.StartsWith('C:\Users\yoda_\AppData\Local\Temp\claude\', [StringComparison]::
+(`$SettingsPath.StartsWith('<USER_HOME>\AppData\Local\Temp\claude\', [StringComparison]::
 OrdinalIgnoreCase)`), and only refuse when the path is NOT that prefix and the run is not
 `-WhatIf`. **Check that fails if ignored:** if a script's header claims a test exemption, try
 exercising it — a refusal on a `Temp\claude\` path means the doc and the code disagree, and the
