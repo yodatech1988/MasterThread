@@ -13,7 +13,7 @@ mechanisms rather than stay outside them.
    could happen yet — per `worker_intro_prompt.md` item 4, this is the "PM not present" branch, not
    the normal handshake.
 2. **Open PRs on `yodatech1988/MasterThread`** at introduction time: #159 (cost-monitor, draft,
-   fix-forward hold) and #93 (decisions-of-record standard, draft, owner review). Neither is this
+   fix-forward hold) and #93 (decisions-of-record standard; since merged, 2026-09-20T15:04Z). Neither is this
    session's to act on; noted only so a PM picking this file up has the same snapshot this session
    had.
 
@@ -52,4 +52,4 @@ by the time this is read.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-https://claude.ai/code/session_015tXApY4U7tC3kWsUDMcu83
+Session record held privately.
