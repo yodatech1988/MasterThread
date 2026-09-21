@@ -26,6 +26,7 @@
   "data-classification-tagger": {"role": "A", "headless": "yes", "readonly": "tools", "dormant": false},
   "vuln-scan-passive": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
   "vuln-scan-active": {"role": "R", "headless": "local-only", "readonly": "instruction", "dormant": false},
+  "security-auditor": {"role": "A", "headless": "yes", "readonly": "instruction", "dormant": false},
   "dependency-cve-scanner": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
   "legal-precedent-researcher": {"role": "R", "headless": "yes", "readonly": "tools", "dormant": false},
   "legal-risk-assessor": {"role": "A", "headless": "yes", "readonly": "tools", "dormant": false},

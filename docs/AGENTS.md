@@ -66,6 +66,7 @@ Scheduler state) and has no path to running anywhere else.
 | `vuln-scan-passive` | sonnet | R | yes | Non-intrusive recon (`nmap -sV --open`, TLS check); runs anytime, no window needed | Owner-scoped security testing round |
 | `vuln-scan-active` | sonnet | R | local-only | Safe-NSE vulnerability confirmation only, gated on `ops-infra`'s maintenance-window check | Owner-scoped security testing round; never attempts exploitation |
 | `dependency-cve-scanner` | haiku | R | yes | `npm audit`/`pip-audit` against a repo's dependencies | Owner-scoped security testing round |
+| `security-auditor` | sonnet | A | yes | Whole-estate security review (ops-cycle 7.1): passive-only, read-only audit of edge/vault-dev/ops-ca and the GitHub pipeline against `ops-infra` `docs/CONTROLS.md` + ansible verify tests; findings only, never fixes; active tests only via its caller inside an owner window | `ops-infra` `docs/CONTROLS.md`, `security/README.md`; `merge_authority.md`; `policies/security/*` are unratified stubs, not cited as rules |
 
 ## Legal research (global, `~/.claude/agents/`)
 
