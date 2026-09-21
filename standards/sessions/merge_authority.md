@@ -81,18 +81,18 @@ The seat may merge an `ops-infra` PR that meets **every** condition below. This 
 that reaches into `ops-infra` outside `.github`; it is deliberately narrow because ops-infra content
 is applied to the vault by a later run.
 
-- **One file, about 5 changed lines at most.**
-- **The change is only comments, docs (`*.md`) or scanner-exception files** (`.trivyignore.yaml` and
-  similar). Not Ansible tasks, vars, handlers or templates that render live config. A comment-only
-  change inside a template is allowed only if the diff is exactly comment lines: the reviewer proves
-  it by reading `git diff --unified=0` and confirming every added and removed line is a comment line
-  in that file's own comment syntax (for a Jinja2 template, wholly inside `{# ... #}`), with no
-  changed non-comment line and no line whose comment marker sits inside a rendered value. Any doubt
-  means route C (PR #48 was such a case: a comment line in a role template that tripped a guard).
-  A scanner-exception change must be reviewed for what finding it hides; an added exception is not
-  trivial merely because it is one line.
+- **One file, at most 5 changed lines, counting added plus removed.**
+- **The change is only comments in a non-template file, docs (`*.md`) or scanner-exception files.**
+  Docs: not `CLAUDE.md`, `standards/`, `policies/`, `.claude/agents/` or any file that holds commands
+  to be run (runbooks, click-file docs). Scanner-exception files: `.trivyignore.yaml` only, or a file
+  the owner names on a card; adding or widening an exception (a new finding id, path or wildcard) is
+  route C, while removing an exception or fixing its comment is allowed. Not Ansible tasks, vars,
+  handlers or templates; a change under `ansible/` is route C. Whether a comment-only change inside a
+  rendered template may join this class is an open owner question; until he answers it, it is route C.
+  Any doubt means route C (PR #48 was such a case: a comment line in a role template that tripped a
+  guard).
 - **Not** `tools/*Key.ps1`, not workflow permissions, secrets or `pull_request_target`.
-- **An independent read-only review verdict, recorded as `MERGE-VERDICT v1` (see "What the seat does")
+- **An independent read-only review that says MERGE, recorded as `MERGE-VERDICT v1` (see "What the seat does")
   on the exact head SHA.**
 - **All checks green.** A `startup_failure` or an absent check does not count as green.
 - **The merger is not the author**, and merges with `gh pr merge --squash --match-head-commit <sha>`
@@ -109,8 +109,7 @@ passes it; (4) all checks are green. Any owner undo pauses this rule until the o
 The four conditions were recorded on the card; the card's own text did not restate the pinned-SHA
 and verdict-comment requirements, which apply to every route B merge regardless.
 
-**Mechanism.** Today an interim acting seat (session `github-10`, at the owner's chat instruction of
-2026-09-21) performs route B by hand. For unattended operation the owner chose (card
+**Mechanism.** Today the acting seat (named on the Fleet Status board) performs route B by hand. For unattended operation the owner chose (card
 `decision-headless-merge-mechanism-2026-09-21`, answered 2026-09-21T18:29:58Z, option A: "GitHub
 workflow with fixed rules (fix the startup failure first, one repo at a time, ops-platform before
 ops-infra)") a GitHub workflow: the `automerge` job in core's `claude-review.yml` with deterministic
