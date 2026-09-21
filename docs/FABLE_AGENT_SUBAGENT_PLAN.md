@@ -2,7 +2,7 @@
 
 Status: **DRAFT for owner review, 2026-09-21.** Plan only. Nothing here is built, no lane is
 dispatched, no standard is edited, no Decision Queue card is filed. Every task below is written to
-be handed to a worker; **the Fable seat writes this plan and does not build it.**
+be handed to a worker. **This is a planning artifact: the session that wrote it does not build it.**
 
 Scope: how the estate's existing headless infrastructure (`tools/headless/`,
 `claude-agents/`, `standards/sessions/headless_readiness_ladder.md`, `tools/pm-heartbeat/`,
@@ -43,7 +43,7 @@ model, 0 of 88 pin an effort**.
 **Inferred, not probed:** that an unpinned subagent therefore inherits its caller's effort — so a
 Haiku reporter summoned from an `xhigh` seat would think at `xhigh`. That follows from the config
 resolution (an absent key has nothing to override the session value with), but no probe in this
-document tests inheritance across a spawn, and it is listed as unverified in §9. **Task F1b adds
+document tests inheritance across a spawn, and it is listed as unverified in §10. **Task F1b adds
 that probe**, and F1 should not land before it reports: if inheritance does not work this way, the
 gap is smaller than it looks. What is certain is the count itself, and that closing it is a file
 edit rather than new machinery.
@@ -172,54 +172,135 @@ UNENFORCED=0 gate.
 
 ---
 
-## 2. The three layers
+## 2. The binding constraint: the owner's seat is Sonnet 5 / low
+
+**Owner constraint, stated 2026-09-21:** *"I will have to be able to interface with this production
+and development using only one session of sonnet 5 low."*
+
+This is the constraint everything else has to fit, and an earlier draft of this document did not fit
+it. That draft treated Fable as a **seat** — something a person sits in to design a round. Under
+this constraint no one sits in a Fable seat, because the owner has exactly one seat and it is
+Sonnet 5 at `low` effort. So:
+
+> **Fable and Opus are never seats. They are headless callees that the Sonnet 5 / low seat invokes
+> and that return a report.** The routing table in §4 picks the *callee's* model and effort. It
+> never picks the seat's, which is fixed.
+
+### What a Sonnet 5 / low seat can and cannot do
+
+`low` effort means fewer and more-consolidated tool calls, less preamble, terser output. That is a
+capable seat for *routing* and a poor one for *deriving*. Four rules follow, and they are
+requirements on the system, not advice to the operator:
+
+1. **Every decision the seat makes must be a table lookup, not a judgment.** §4's first-row-that-
+   matches table is exactly this shape and is the reason it must stay mechanical. A rule the seat
+   has to reason about is a rule that will be applied wrong at `low`.
+2. **The seat never hand-assembles an invocation.** The lines in §5 run to ten flags; composing them
+   correctly per call is precisely the work `low` effort is bad at, and a mis-typed `--settings` or
+   a dropped `--permission-prompts none` fails open. They belong in wrappers the seat calls by name
+   with two or three arguments (task F12).
+3. **Every callee returns a schema, not prose.** A Sonnet 5 / low seat cannot deeply evaluate a wall
+   of reviewer prose — it will summarise it, and a summary is the thing this estate keeps mistaking
+   for a fact (`fleet_structure.md`). `--json-schema` is therefore not an optimisation at L1; it is
+   how a high-tier callee's output becomes safe for a low-effort seat to act on. Every Opus- and
+   Fable-tier call gets one.
+4. **The seat never judges production.** Row 1 work is dispatched to an Opus callee or to an owner
+   click-file (`skills/owner-click`), never decided in the seat. This was already the estate's rule;
+   the constraint makes it structural rather than a discipline.
+
+### How the seat reaches a Fable-tier callee — measured
+
+A long-lived callee is driven from the seat by **pinning a session id once and resuming it
+headlessly**, which keeps the context warm across separate processes:
+
+```
+# once, to open the callee
+claude -p --model fable --effort high --fallback-model opus \
+  --session-id <stable uuid> --output-format json --json-schema <schema> "<first question>"
+
+# every question after that, a separate process, same id
+claude -p --resume <stable uuid> --output-format json --json-schema <schema> "<next question>"
+```
+
+Verified on this machine with Haiku standing in for the callee: a `--session-id` call followed by a
+`--resume` call **in a separate process** carried context correctly, and the resumed call reported
+`cache_read_input_tokens` 28,870 against `cache_creation_input_tokens` 136 — essentially the whole
+context served warm.
+
+That is what makes the constraint affordable. A cold Fable spawn pays ~$0.51 of preamble before it
+reads anything (§1b); a resumed Fable call reading ~29K cached tokens pays about **$0.007** of
+input at Fable's $0.25/MTok cache-read rate. **Per design question, resume is roughly seventy times
+cheaper than respawn.** The earlier draft's "one long-lived resumed session" instinct was right; its
+reason was wrong. It is not a seat kept warm for a person — it is a callee kept warm for a
+low-effort seat that cannot afford to re-explain the estate on every question.
+
+Caveat: `--no-session-persistence` disables resume and must never appear on a callee invocation.
+Whether a pinned session id survives a machine reboot, and what the seat does when a resume target
+has expired, are not verified here — F12 must define the cold-start path, because a seat at `low`
+will not improvise one.
+
+## 3. The three layers
 
 **Fable is not a new tier.** The estate already has T0 owner → T1 program PM → T2 round
 orchestrator → T3 lane lead → T4 task subagent → T5 deterministic script
 (`orchestrator_role.md`, `docs/AGENTS.md`). Adding a "Fable tier" would add a relay hop, and
 `fleet_structure.md` is explicit that a layer which only forwards is not earning its place. Fable is
-a **model assignment available to an existing seat**, and the most expensive one in the estate.
+a **model assignment on a headless callee**, and the most expensive one in the estate.
 
-| Layer | What it is | Seat | Model | Effort | Headless shape |
+Per §2, only the first row is a seat. The other two are things that seat invokes.
+
+| Layer | What it is | Who holds it | Model | Effort | Shape |
 |---|---|---|---|---|---|
-| **Fable** | The round's *designer*: turns a negotiated ask into a fixed executable workload, settles a design call, does a hard three-way merge | T1/T2 (PM or round orchestrator), **one at a time** | `claude-fable-5-1` | `high`, `xhigh` on a failed retry | **One long-lived session, resumed** (`--session-id` / `--resume`), never a per-task spawn |
-| **Agent** | The lane worker: one repo, one worktree, one branch, one PR | T3 | `claude-sonnet-5` (Opus 5 for row 1) | `medium` (`high` for invariant-heavy edits) | `claude -p` per lane, own worktree |
-| **Subagent** | The roster agent: a report or a verdict, no worktree, no PR | T4 | pinned in frontmatter (haiku / sonnet / opus) | **pinned in frontmatter** (task F1) | `claude -p --agent <name> --restricted`, batched |
+| **Seat** | The owner's single interface to production and development. Routes, dispatches, relays, files cards. Derives nothing. | T1/T2, **the only seat**, owner-operated | `claude-sonnet-5` | **`low`, always** | Interactive. Never changes model or effort to suit a task — it changes the callee instead |
+| **Fable callee** | The *designer*: turns a negotiated ask into a fixed executable workload, settles a design call, resolves a hard three-way merge | invoked by the seat, **one at a time** | `claude-fable-5-1` | `high` (`xhigh` on a failed retry) | **A warm resumed callee**: `--session-id` once, `-p --resume` per question, `--fallback-model opus`, schema-constrained output |
+| **Agent** | The lane worker: one repo, one worktree, one branch, one PR | invoked by the seat | `claude-sonnet-5` (Opus 5 for row 1) | `medium` (`high` for invariant-heavy edits) | `claude -p` per lane, own worktree |
+| **Subagent** | The roster agent: a report or a verdict, no worktree, no PR | invoked by the seat or by a lane | pinned in frontmatter (haiku / sonnet / opus) | **pinned in frontmatter** (task F1) | `claude -p --agent <name> --restricted`, batched |
 
 ### The two jobs Fable must not take
 
-1. **It never builds.** No worktree, no branch, no PR authored by the Fable seat. Its outputs are a
+1. **It never builds.** No worktree, no branch, no PR authored by a Fable callee. Its outputs are a
    dispatch plan, a design verdict, or a resolved merge conflict. Everything that produces lines of
    code or documentation is a Sonnet lane. Cost says so (2× Opus on output); `orchestrator_role.md`
    already says so of the orchestrator generally ("It doesn't do the implementation itself").
-2. **It never holds merge authority headless.** `merge_authority.md` principle 3 and the ladder's
-   L4 row: route A stays a CI job, routes B and C stay a session or the owner. A Fable seat running
-   unattended is still a headless session.
+2. **It never holds merge authority.** `merge_authority.md` principle 3 and the ladder's L4 row:
+   route A stays a CI job, routes B and C stay a session or the owner. A Fable callee is a headless
+   process, so it never merges — and neither does the seat on its behalf without the route's own
+   procedure.
 
-### Why one resumed session, not per-task spawns
+### Why a warm callee, not per-task spawns
 
-At ~$0.51 of cold preamble per invocation, N Fable spawns cost N × $0.51 before work. One resumed
-session pays it once and then reads its own context at $0.25/MTok — the cheapest cached-input rate
-of any model above Sonnet. This is the only layer where "resume, don't respawn" is worth the
-session-persistence complexity; Haiku subagents at $0.0026 warm should stay stateless.
+At ~$0.51 of cold preamble per invocation, N Fable spawns cost N × $0.51 before any work. A resumed
+callee pays it once and then reads its context at $0.25/MTok — the cheapest cached-input rate of any
+model above Sonnet, and measured at ~$0.007 for a ~29K-token context (§2). **Roughly seventy times
+cheaper per question.** This is the only layer where "resume, don't respawn" earns the
+session-persistence complexity; Haiku subagents at $0.0026 warm should stay stateless and are
+cheaper to respawn than to track.
 
-Two Fable-specific API behaviours the seat must handle (both from the Claude API reference, neither
+Two Fable-specific API behaviours the caller must handle (both from the Claude API reference, neither
 currently anywhere in `standards/`):
 
 - **`stop_reason: "refusal"`** — a safety classifier can decline at HTTP 200. A headless seat that
   reads `content` without checking the stop reason will treat a refusal as an empty answer. The CLI
   exposes `--fallback-model <model>` (comma-separated, retries the primary at the start of each
-  user turn) — the Fable seat should run with `--fallback-model opus`.
+  user turn) — every Fable invocation runs with `--fallback-model opus`. This matters more under
+  §2's constraint than it would otherwise: a Sonnet 5 / low seat reading a refusal as an empty
+  report will not notice, and will relay "nothing found" as a finding.
 - **Thinking is always on and its raw chain is never returned**; `budget_tokens` is rejected with a
   400. Depth is controlled *only* by `--effort`. Forced tool choice is also rejected. None of this
   bites the CLI path today, but it constrains any future direct-API caller.
 
 ---
 
-## 3. Model and effort for every task
+## 4. Model and effort for every task
 
 Supersedes nothing until merged; written to slot into `orchestrator_role.md`'s existing
 "Assigning model and effort to each task" table, which stays the first-row-that-matches rule.
+
+**Read this table as picking the callee, never the seat.** Per §2 the seat is Sonnet 5 / `low`
+whatever row matches; a row-0 or row-1 task does not upgrade the seat, it dispatches a callee. The
+estate's existing instruction to "hand it to a one-off Opus 5 / high reviewer instead of upgrading
+itself" (`orchestrator_role.md`) is the same rule, and under this constraint it is the only
+available move rather than the preferred one.
 
 | # | Task shape | Model | Effort | Layer | Headless form |
 |---|---|---|---|---|---|
@@ -249,11 +330,11 @@ where it is documented to work.
 on input than Opus for a long read-heavy review, which is what row 1's `live-reviewer` is. That is
 an argument, not evidence: `live-reviewer` is built, proven, pinned `opus`, and marked interactive-
 only. Changing the model on the estate's irreversibility reviewer is an owner decision that should
-follow a measurement, not precede one — see §6 open decision 2.
+follow a measurement, not precede one — see §7 open decision 2.
 
 ---
 
-## 4. The headless invocation contract
+## 5. The headless invocation contract
 
 One line per layer. Each extends the recommended line already in
 `headless_agent_permissions.md`; the additions are `--restricted`, `--effort`, `--json-schema` and
@@ -287,14 +368,25 @@ claude -p --agent <name> --tools "Bash,Grep,Read" \
 allow-list is then the real boundary, exactly as the standard already says, with the deny-list
 behind it.
 
-**Fable seat:**
+**Fable callee** (driven from the Sonnet 5 / low seat, per §2 — never a session anyone sits in):
 
 ```
-claude --model fable --effort high --fallback-model opus \
-  --session-id <stable uuid>   # then --resume <same> on every later turn
+# open the callee once
+claude -p --model fable --effort high --fallback-model opus \
+  --session-id <stable uuid> \
+  --output-format json --json-schema <abs>/tools/headless/schemas/design-verdict.json \
+  --max-budget-usd <small> "<first question>"
+
+# every question after that: a separate process, same id, warm context
+claude -p --resume <stable uuid> \
+  --output-format json --json-schema <abs>/tools/headless/schemas/design-verdict.json \
+  --max-budget-usd <small> "<next question>"
 ```
 
-Never `-p` per task. Never with a write-capable permission mode while unattended.
+**Always `-p`; never a bare interactive session** — the owner has one seat and it is not this.
+Never `--no-session-persistence` (it disables the resume the whole design depends on). Never a
+write-capable permission mode. The seat calls this through F12's `Ask-Fable` wrapper rather than
+typing it.
 
 Three invariants for every line above:
 
@@ -333,7 +425,7 @@ name exactly which settings load.
 
 ---
 
-## 5. Build plan
+## 6. Build plan
 
 Format matches `docs/PHASE_6_PERSONAL_FINANCE_PLAN.md`: id, task, who / size / model / effort,
 depends on. Sizes per `standards/sessions/task_sizing.md`. **Nothing below is dispatched.**
@@ -347,6 +439,7 @@ depends on. Sizes per `standards/sessions/task_sizing.md`. **Nothing below is di
 | F1 | Pin `effort:` in every non-Haiku agent file; extend `roster_meta.json` with an `effort` field; make `generate_agents_md.py --check` fail on a missing pin and surface an Effort column in `docs/AGENTS.md` | agent / M / Sonnet / medium | F1a, F1b | One PR, `claude-agents/` + `tools/`. Advisors `low`, drafters `medium`, `live-reviewer` `high`. Mechanical: the judgment is already encoded in each file's existing model pin. `agents-roster-check.yml` gates it. |
 | F2 | Add `-Restricted` to `Invoke-ReadOnlyAgent.ps1`, defaulting **on** for agents whose `roster_meta.json` `readonly` is `tools`; keep `readonly.settings.json` as layer 3; document the three-layer ordering in `headless_agent_permissions.md` | agent / M / Sonnet / medium | F1 | Follows `tools/README.md` testing-seam conventions. Must add a regression test proving a `--restricted` run has no Bash tool (the probe in §1a is the test case). |
 | F3 | Capture the CLI's own JSON envelope as the L1 report: wrapper adds `checkedAt` (clock at write time, never typed) + the exact command, and writes `{envelope, checkedAt, command}` to the drop folder | agent / M / Sonnet / medium | F2 | Replaces the hand-rolled shape in `headless_readiness_ladder.md`. `permission_denials`, `total_cost_usd` and `usage` come from the CLI, not from the agent's own prose. |
+| F12 | Seat-side wrappers so the seat never hand-assembles a flag line: one command per layer (`Ask-Fable`, `Invoke-Lane`, `Invoke-Subagent`), each taking 2-3 arguments and emitting the schema-checked envelope | agent / M / Sonnet / medium | F2, F4 | The §2 rule that a `low` seat must not compose ten-flag invocations. Must define the **cold-start path**: what happens when a pinned `--session-id` no longer resolves (expired, rebooted, never created). A seat at `low` will not improvise one, and a silently-cold resume costs ~$0.51 instead of ~$0.007 without failing. |
 | F4 | One `--json-schema` per L1 reporter under `tools/headless/schemas/` | agent / M / Sonnet / low | F3 | Schema per agent, matching that agent's documented output section. Makes the L2 comparator's input machine-checkable instead of prose-parsed. |
 
 ### Group B — schedule it (**this is the climb to L1, not a neutral build step**)
@@ -361,17 +454,17 @@ This plan supplies the tooling for that climb and explicitly does not authorise 
 | ID | Task | Who / size / model / effort | After | Brief |
 |---|---|---|---|---|
 | F5 | One scheduled task firing the whole L1 reporter set in sequence inside one hour, not N tasks | agent / M / Sonnet / medium | F4 | Registration is an **owner click-file** (`skills/owner-click`, `click-file-builder`): typed-YES gate, `-WhatIf`, same-folder `zz-UNDO`. Follows `AEGIS-Register-PmHeartbeat-Watchdog.cmd`'s shape exactly. |
-| F6 | Prefix-stability measurement: 10 consecutive batched runs, assert `cache_read_input_tokens > 0` on runs 2-10; report any invalidator found | agent / S / Haiku / low | F5 | Pure measurement against the envelope. If it fails, the batching saving in §4 is not real and the scheduler design changes before anything else is built on it. |
+| F6 | Prefix-stability measurement: 10 consecutive batched runs, assert `cache_read_input_tokens > 0` on runs 2-10; report any invalidator found | agent / S / Haiku / low | F5 | Pure measurement against the envelope. If it fails, the batching saving in §5 is not real and the scheduler design changes before anything else is built on it. |
 | F7 | PM heartbeat ingest: read unread drop-folder files each tick, write Fleet Status `prs`/`health` with `writtenBy: "<pm session> from <report file>"`, archive the file | agent / M / Sonnet / medium | F3, F5 | Exactly as `headless_readiness_ladder.md` L1 already specifies. `claude -p` cannot hold `ArtifactData` — the PM writes, the reporter files. Unchanged by this plan. |
 | F8 | Wire `total_cost_usd`/`usage` from the drop folder into `tools/cost-monitor` as a headless ledger source | agent / M / Sonnet / medium | F3, PR #159 merged | Blocked on #159. Also carries the §1b finding that the 1h cache-write multiplier measured at 2×, resolving that file's ASSUMED range. |
 
-### Group C — the Fable seat (owner-gated)
+### Group C — the Fable callee (owner-gated)
 
 | ID | Task | Who / size / model / effort | After | Brief |
 |---|---|---|---|---|
-| F9 | Draft `standards/sessions/fable_seat.md`: when the seat is taken, what it may produce, the never-builds and never-merges rules, `--fallback-model`, refusal handling, and the one-resumed-session invocation | agent / M / Sonnet / medium | — | **Route C** (`merge_authority.md`): `standards/sessions/*` is owner-merge. A session drafts it; the owner merges it. The drafter must not also be its reviewer. |
+| F9 | Draft `standards/sessions/fable_callee.md`: when the callee is opened, what it may produce, the never-builds and never-merges rules, `--fallback-model`, refusal handling, the resume contract, and when a stale callee is retired and reopened cold | agent / M / Sonnet / medium | F12 | **Route C** (`merge_authority.md`): `standards/sessions/*` is owner-merge. A session drafts it; the owner merges it. The drafter must not also be its reviewer. |
 | F10 | Correct `orchestrator_role.md`'s "Effort for background workers can't be set per call" to distinguish the `Agent` tool (model only) from `claude -p` (`--effort`), and add the row-0 Fable line to the model/effort table | agent / S / Sonnet / low | F1a | **Route C**, owner-merge. Smallest possible edit; it is a factual correction plus one row, not a rewrite. |
-| F11 | Decision Queue card: authorise the Fable seat, naming its cost envelope from F8's real numbers | PM / XS / — / — | F8, F9 | One card, `decision_queue_standard.md` shape, options + recommendedOption + rationale, never filed resolved. Not filed until its parent (F8) is real — per the standing rule that cards depend on their entry gate. |
+| F11 | Decision Queue card: authorise the Fable callee, naming its cost envelope from F8's real numbers | PM / XS / — / — | F8, F9 | One card, `decision_queue_standard.md` shape, options + recommendedOption + rationale, never filed resolved. Not filed until its parent (F8) is real — per the standing rule that cards depend on their entry gate. |
 
 ### Group D — the rungs above L1 (unchanged by this plan, listed so nothing is assumed done)
 
@@ -385,7 +478,10 @@ session merges anything; nothing above L0 holds a self-scheduling tool; no draft
 
 `F1a + F1b → F1 → F2 → F3 → F4 → F5 → F6`, then L1's own 7-day exit criterion. F1a and F1b run
 first and in parallel; they are the two gate-exempt measurements.
-Parallel: F9 and F10 (docs, no dependency on the tooling); F7 after F3+F5; F8 after #159 merges.
+Parallel: F10 (doc correction, no dependency on the tooling); F12 after F2+F4, and F9 after F12
+because the callee standard should describe a contract that exists; F7 after F3+F5; F8 after #159
+merges. **F12 is on the critical path for anything the seat operates**, even though it is not on
+the L1 path: without it a Sonnet 5 / low seat is hand-assembling the §5 invocations.
 F6 is a **gate, not a step**: if the prefix does not cache across invocations, F5's design is wrong
 and Group B is re-planned before F7 starts.
 
@@ -397,7 +493,7 @@ F1–F4 all touch `tools/headless/` and `claude-agents/`.
 
 ---
 
-## 6. Entry gate
+## 7. Entry gate
 
 **Exempt: F1a and F1b.** Both are read-only measurements that spawn nothing scheduled, write
 nothing, and change no rung; they are dispatchable immediately and exist precisely to settle
@@ -421,9 +517,9 @@ at its first step.
 
 ---
 
-## 7. Risks
+## 8. Risks
 
-- **The batching saving may not be real.** Everything in §4 rests on a byte-identical prefix
+- **The batching saving may not be real.** Everything in §5 rests on a byte-identical prefix
   surviving across separate `claude -p` processes. Measured *within* one machine minutes apart, it
   held (4.3×). Across a scheduled task's environment it is untested. F6 exists to find out before
   anything depends on it, and the failure mode is visible (`cache_read_input_tokens == 0`), not
@@ -438,15 +534,28 @@ at its first step.
   not a verdict"). Mitigation: pin effort in one PR, per §1a's existing model tiers, and treat the
   first week's advisor output as suspect — F1 should name the two or three advisors whose verdicts
   gate anything, and pin those `medium`, not `low`.
+- **The seat is now the estate's weakest verifier, by design.** The ladder's founding constraint is
+  that headless removes the peer who catches a confident error. §2 adds a second removal: the human
+  who remains is running at `low`. Everything that used to be caught by a seat reading carefully now
+  has to be caught by a schema, a wrapper's exit code, or a callee — which is why §2's rules 1-3 are
+  requirements rather than preferences. If those three are not built, this plan makes the estate
+  *less* safe than L0, not more.
+- **A warm callee is a stale callee.** Resume keeps context cheap, but a callee resumed across days
+  carries whatever it concluded earlier, including anything since disproved. The estate's own
+  verification rules ("read `origin/<default>`, never a shared working tree"; "re-read a tool before
+  re-running it") apply to a resumed callee's memory too. F12 should define when a callee is retired
+  and re-opened cold, and the answer is not "never".
 - **Headless removes the peer reviewer.** This is the ladder's own founding constraint and this plan
   does not weaken it. Be precise about what that means, because an earlier draft of this document
   overstated it: Groups A, C and D raise no rung — every one of their tasks lands as a reviewed PR
   while the fleet stays at L0. **Group B is the climb to L1 and is not exempt**, so it is gated on
   the ladder's climbing card rather than on this plan (see Group B's header). No task in any group
   authorises a rung change by itself.
-- **A Fable seat is the most expensive thing in the estate.** ~$0.51 cold per spawn. The one-resumed-
-  session rule is a cost control, not a style preference, and F11's card should carry F8's measured
-  numbers rather than these derived ones.
+- **A cold Fable call is the most expensive routine action in the estate.** ~$0.51 per spawn against
+  ~$0.007 resumed — a ~70× spread that is invisible at the call site, because a cold resume succeeds
+  and just costs more. The resume contract is a cost control, not a style preference; F12 owns
+  making a cold-start loud, and F11's card should carry F8's measured numbers rather than these
+  derived ones.
 - **Fable refusals are HTTP 200.** A headless seat that does not check `stop_reason` reads a refusal
   as an empty answer and may report "nothing found." `--fallback-model opus` covers overload and
   unavailability; the refusal path needs F9 to say explicitly what the seat does.
@@ -456,10 +565,10 @@ at its first step.
 
 ---
 
-## 8. Open decisions (each would be its own Decision Queue card; **none filed**)
+## 9. Open decisions (each would be its own Decision Queue card; **none filed**)
 
-1. **Is the Fable seat authorised at all**, and at what monthly envelope? (F11; recommend deciding
-   after F8 can measure it.)
+1. **Is the Fable callee authorised at all**, and at what monthly envelope? (F11; recommend
+   deciding after F8 can measure it.)
 2. **Does row 1 stay Opus 5?** Fable's cached-input rate is half of Opus's, which makes a long
    read-heavy irreversibility review *cheaper* on Fable than on Opus. Recommend: **no change until
    measured** — run one row-1 review both ways on the same PR and compare findings and cost before
@@ -475,7 +584,7 @@ at its first step.
 
 ---
 
-## 9. Gaps in this document (not done unless documented)
+## 10. Gaps in this document (not done unless documented)
 
 - **Verified**: `claude --help` on 2.1.278; the installed `cli.js` agent-config parser; four probe
   runs (restricted/no-Bash, json-schema, cold cache, warm cache) with their JSON envelopes read;
@@ -485,6 +594,11 @@ at its first step.
   re-checked against that file by a separate read-only pass, as were the pin counts, the flag list
   and the arithmetic. That pass found one error, since corrected: the model-pin count (see the
   correction note in the PR body).
+- **Headless resume carries context and serves it warm**: a `-p --session-id <uuid>` call followed
+  by a `-p --resume <uuid>` call in a **separate process** returned the earlier codeword correctly,
+  with `cache_read_input_tokens` 28,870 against `cache_creation_input_tokens` 136. Measured with
+  Haiku standing in for a Fable callee. **Not** verified: that a pinned session id survives a
+  reboot, how long it survives at all, or what a resume against an expired id does (F12).
 - **`--model fable` exists**: `claude --help` gives `'fable'` as an alias for "the latest model",
   with `'claude-fable-5'` as its full-name example. **Not** verified: which concrete model id the
   alias resolves to today. This document writes `claude-fable-5-1` from the bundled API reference;
