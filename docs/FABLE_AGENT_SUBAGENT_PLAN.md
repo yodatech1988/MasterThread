@@ -38,10 +38,15 @@ accepts `model`, `effort`, `permissionMode`, `maxTurns`, `mcpServers`, `hooks`, 
 | **pinning `effort:`** | **0** |
 
 So the pinning is total on one half of the cost lever and absent on the other: **88 of 88 pin a
-model, 0 of 88 pin an effort**, and every subagent therefore inherits whatever effort its caller
-happens to be running at. A Haiku reporter summoned
-from an `xhigh` seat thinks at `xhigh`. This is the single largest correctable gap in the roster,
-and it is a file edit, not new machinery.
+model, 0 of 88 pin an effort**.
+
+**Inferred, not probed:** that an unpinned subagent therefore inherits its caller's effort — so a
+Haiku reporter summoned from an `xhigh` seat would think at `xhigh`. That follows from the config
+resolution (an absent key has nothing to override the session value with), but no probe in this
+document tests inheritance across a spawn, and it is listed as unverified in §9. **Task F1b adds
+that probe**, and F1 should not land before it reports: if inheritance does not work this way, the
+gap is smaller than it looks. What is certain is the count itself, and that closing it is a file
+edit rather than new machinery.
 
 **F3 — `--restricted` is a stronger boundary than the deny-list we built.**
 `--restricted` "removes the built-in tools that run commands or code (Bash, PowerShell, REPL and
@@ -110,8 +115,10 @@ read the preamble instead of writing it.
 
 **The 1-hour write multiplier is 2×, not 1.25×.** Run 1 reconciles at Haiku $1/MTok input only if
 cache writes bill at $2/MTok (25,469 × 2/1e6 = $0.051, + 234 output × $5/1e6 = $0.0012 ⇒ $0.052 vs
-$0.0531 reported); at 1.25× it would be ~$0.033. `tools/cost-monitor/config.json` carries the
-cache-write multiplier as **ASSUMED**, a 1.25×–2× range, and PR #159 says alerts use the high end.
+$0.0531 reported); at 1.25× it would be ~$0.033. **Per PR #159's description** (the file itself is
+not in this checkout — `tools/cost-monitor/` does not exist here, the PR is open and draft, see
+§1c), `config.json` carries the cache-write multiplier as **ASSUMED** across a 1.25×–2× range, with
+alerts on the high end. That attribution is a read of the PR body, not of the file.
 This measurement says the high end is not a safety margin for headless runs — it is the actual
 rate. That is a finding for PR #159, not a change this plan makes.
 
@@ -124,9 +131,10 @@ rate. That is a finding for PR #159, not a change this plan makes.
 | Opus 5 | 5 | 25 | 0.50 | ~$0.255 | ~$0.0128 |
 | **Fable 5.1** | **10** | **50** | **0.25** | **~$0.509** | **~$0.0064** |
 
-Rates from the bundled Claude API reference, cross-checked against the Fable
-`cache_read_factor_override` (0.025) that `ops-policies` `routing/models.yaml` already carries per
-PR #159. Fable's cache-write multiplier is **not** separately documented and is assumed standard —
+Rates from the bundled Claude API reference. The Fable `cache_read_factor_override` (0.025) is
+**reported by PR #159's description** to be in `ops-policies` `routing/models.yaml`; that file is
+not in this repo and was not read, so this is a second-hand agreement between two documents, not a
+cross-check against the rate table itself. Fable's cache-write multiplier is **not** separately documented and is assumed standard —
 flag it as unverified.
 
 **The Fable row is the important one, in both directions.**
@@ -335,12 +343,20 @@ depends on. Sizes per `standards/sessions/task_sizing.md`. **Nothing below is di
 | ID | Task | Who / size / model / effort | After | Brief |
 |---|---|---|---|---|
 | F1a | Measure whether `--effort` changes Haiku behaviour or is silently dropped | agent / XS / Haiku+Sonnet / low | — | Two identical prompts at `low` and `max` on Haiku; compare `usage.output_tokens_details.thinking_tokens` from the JSON envelope. Report only. Settles row 7 above. |
-| F1 | Pin `effort:` in every non-Haiku agent file; extend `roster_meta.json` with an `effort` field; make `generate_agents_md.py --check` fail on a missing pin and surface an Effort column in `docs/AGENTS.md` | agent / M / Sonnet / medium | F1a | One PR, `claude-agents/` + `tools/`. Advisors `low`, drafters `medium`, `live-reviewer` `high`. Mechanical: the judgment is already encoded in each file's existing model pin. `agents-roster-check.yml` gates it. |
+| F1b | Probe whether an unpinned subagent actually inherits its caller's effort | agent / XS / Haiku / low | — | Spawn the same subagent from a `low` caller and an `xhigh` caller; compare `thinking_tokens` in each envelope. Report only. The §1a inheritance claim is inferred, not measured, and F1's whole value rests on it. |
+| F1 | Pin `effort:` in every non-Haiku agent file; extend `roster_meta.json` with an `effort` field; make `generate_agents_md.py --check` fail on a missing pin and surface an Effort column in `docs/AGENTS.md` | agent / M / Sonnet / medium | F1a, F1b | One PR, `claude-agents/` + `tools/`. Advisors `low`, drafters `medium`, `live-reviewer` `high`. Mechanical: the judgment is already encoded in each file's existing model pin. `agents-roster-check.yml` gates it. |
 | F2 | Add `-Restricted` to `Invoke-ReadOnlyAgent.ps1`, defaulting **on** for agents whose `roster_meta.json` `readonly` is `tools`; keep `readonly.settings.json` as layer 3; document the three-layer ordering in `headless_agent_permissions.md` | agent / M / Sonnet / medium | F1 | Follows `tools/README.md` testing-seam conventions. Must add a regression test proving a `--restricted` run has no Bash tool (the probe in §1a is the test case). |
 | F3 | Capture the CLI's own JSON envelope as the L1 report: wrapper adds `checkedAt` (clock at write time, never typed) + the exact command, and writes `{envelope, checkedAt, command}` to the drop folder | agent / M / Sonnet / medium | F2 | Replaces the hand-rolled shape in `headless_readiness_ladder.md`. `permission_denials`, `total_cost_usd` and `usage` come from the CLI, not from the agent's own prose. |
 | F4 | One `--json-schema` per L1 reporter under `tools/headless/schemas/` | agent / M / Sonnet / low | F3 | Schema per agent, matching that agent's documented output section. Makes the L2 comparator's input machine-checkable instead of prose-parsed. |
 
-### Group B — schedule it (this is what reaches L1)
+### Group B — schedule it (**this is the climb to L1, not a neutral build step**)
+
+Group A and Groups C/D change how a run is invoked and reported without moving the fleet off L0.
+Group B does not: **F5 registers the first-ever unattended scheduled run, which is the definition of
+L1.** So F5 is not dispatchable as ordinary lane work. It requires the ladder's own climbing
+procedure — "one Decision Queue card per rung per repo class, filed by the PM, never self-declared
+by the mechanism being evaluated", carrying the exit criterion's actual measurements literally.
+This plan supplies the tooling for that climb and explicitly does not authorise it.
 
 | ID | Task | Who / size / model / effort | After | Brief |
 |---|---|---|---|---|
@@ -367,22 +383,35 @@ session merges anything; nothing above L0 holds a self-scheduling tool; no draft
 
 ### Critical path
 
-`F1a → F1 → F2 → F3 → F4 → F5 → F6`, then L1's own 7-day exit criterion.
+`F1a + F1b → F1 → F2 → F3 → F4 → F5 → F6`, then L1's own 7-day exit criterion. F1a and F1b run
+first and in parallel; they are the two gate-exempt measurements.
 Parallel: F9 and F10 (docs, no dependency on the tooling); F7 after F3+F5; F8 after #159 merges.
 F6 is a **gate, not a step**: if the prefix does not cache across invocations, F5's design is wrong
 and Group B is re-planned before F7 starts.
 
-Write-lane cap ~6 (`session_plan_standard.md` rule 9); realistically 2–3 at a time here because
+Write-lane cap ~6 (`orchestrator_role.md`, "Cost rule"; note `pm_role.md` and
+`docs/PHASE_6_PERSONAL_FINANCE_PLAN.md` both attribute this to `session_plan_standard.md` rule 9,
+which is actually "Work in a worktree, never the shared checkout" — the pre-existing miscitation is
+not repeated here and is not this plan's to fix); realistically 2–3 at a time here because
 F1–F4 all touch `tools/headless/` and `claude-agents/`.
 
 ---
 
-## 6. Entry gate — do not dispatch any F-task until all true
+## 6. Entry gate
+
+**Exempt: F1a and F1b.** Both are read-only measurements that spawn nothing scheduled, write
+nothing, and change no rung; they are dispatchable immediately and exist precisely to settle
+questions this document could not. An earlier draft made the whole gate conditional on F1a having
+reported while also barring every F-task until the gate passed, which deadlocked the critical path
+at its first step.
+
+**Every other F-task: do not dispatch until all of the following are true.**
 
 1. `headless_readiness_ladder.md` is **owner-merged** (it is currently *proposed*, route C). Until
    then L1 has no authorised existence and F5 would be registering a scheduled task against a
    standard the owner has not approved.
-2. F1a has reported, so row 7's effort question is settled by measurement rather than by this doc.
+2. F1a and F1b have reported, so row 7's effort question and the inheritance claim in §1a are
+   settled by measurement rather than by this document.
 3. The `readonly` classification in `roster_meta.json` is confirmed on `origin/main` — F2 keys its
    default off that field, and the ladder already records it as unconfirmed.
 4. PR #159 (cost-monitor) is merged, or F8 is explicitly deferred. F8 is the only task that can
@@ -410,7 +439,11 @@ F1–F4 all touch `tools/headless/` and `claude-agents/`.
   first week's advisor output as suspect — F1 should name the two or three advisors whose verdicts
   gate anything, and pin those `medium`, not `low`.
 - **Headless removes the peer reviewer.** This is the ladder's own founding constraint and this plan
-  does not weaken it: nothing here raises a rung, and every F-task lands as a reviewed PR at L0.
+  does not weaken it. Be precise about what that means, because an earlier draft of this document
+  overstated it: Groups A, C and D raise no rung — every one of their tasks lands as a reviewed PR
+  while the fleet stays at L0. **Group B is the climb to L1 and is not exempt**, so it is gated on
+  the ladder's climbing card rather than on this plan (see Group B's header). No task in any group
+  authorises a rung change by itself.
 - **A Fable seat is the most expensive thing in the estate.** ~$0.51 cold per spawn. The one-resumed-
   session rule is a cost control, not a style preference, and F11's card should carry F8's measured
   numbers rather than these derived ones.
@@ -448,13 +481,22 @@ F1–F4 all touch `tools/headless/` and `claude-agents/`.
   runs (restricted/no-Bash, json-schema, cold cache, warm cache) with their JSON envelopes read;
   effort/model/maxTurns pin counts across all 88 agent files in this checkout; the contents of
   `tools/headless/`, `claude-agents/roster_meta.json`, `.github/workflows/*`, and the
-  `standards/sessions/` files cited.
+  `standards/sessions/` files cited. Every quotation from a `standards/` file was independently
+  re-checked against that file by a separate read-only pass, as were the pin counts, the flag list
+  and the arithmetic. That pass found one error, since corrected: the model-pin count (see the
+  correction note in the PR body).
+- **`--model fable` exists**: `claude --help` gives `'fable'` as an alias for "the latest model",
+  with `'claude-fable-5'` as its full-name example. **Not** verified: which concrete model id the
+  alias resolves to today. This document writes `claude-fable-5-1` from the bundled API reference;
+  a caller should pin the full id rather than the alias if the distinction matters.
 - **Not verified**: anything on `origin/main` newer than this checkout (HEAD, `origin/main` and
   the branch are all `3ca73d0` as fetched at session start; not re-fetched since); any live host, scheduled task, or the owner's machine; whether
   `--effort` is honoured by Haiku (F1a); whether Fable's *cache-write* multiplier is standard;
   current published prices (the rate table is cached, and `ops-policies` `routing/models.yaml` was
-  not read — it is not in this repo); whether the prefix caches across separate scheduled
-  invocations (F6).
+  not read — it is not in this repo); **`tools/cost-monitor/config.json`, which is likewise not in
+  this checkout** — every statement about its contents is a read of PR #159's description, not of
+  the file; **whether an unpinned subagent inherits its caller's effort** (inferred in §1a, probed
+  by F1b); whether the prefix caches across separate scheduled invocations (F6).
 - **Deliberately absent**: any code, any edit to a standard, any Decision Queue card, any dispatch,
   any date commitment, any dollar figure presented as a bill.
 - The per-invocation cost table is arithmetic from a 25K-token preamble measured on **one** agent
