@@ -117,3 +117,9 @@ Cards are dependent on the entry gate, so per owner rule they are drafted here a
 - Task text comes from a subagent's read of the plan artifact; I did not independently re-read the artifact. The plan's design doc is not in any repo, so task IDs have no in-repo source of truth.
 - No effort/cost estimate in dollars; no dates.
 - This file is the plan document only. It changes no standard or task ID and files no Decision Queue card.
+
+## 8. Relationship to the Phase 6 review page
+An independent review of Phase 6 is queued in Fleet Status `workstreams` as `review-personal-finance-phase-6`, with its page at https://claude.ai/artifact/LJaAic7zGr4vpuk2VJ2hJz. Its trigger is the plan's `done` list containing 6.9 and 6.7 (as recorded 2026-09-21; recheck against the plan, not this file).
+- This document is the **build plan** (scope, order, agent briefs, entry gate). The page is the **review** that runs when the phase closes.
+- If a task, dependency or exit criterion changes, update both in the same piece of work, and add a change-log line to the review page.
+- The review's planned checks (fresh leak suite on new planted numbers, gateway has no payment endpoint, audit log for the first pay run) should be treated as extra acceptance criteria for 6.7, 6.8 and 6.9.
