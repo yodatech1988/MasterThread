@@ -27,9 +27,27 @@ on:
     # `labeled` is how a re-review is requested -- add the claude-review label.
     types: [opened, reopened, ready_for_review, labeled]
 
+# A reusable workflow's permissions can only narrow the caller's, and the run
+# fails at startup (zero jobs) if it asks for more than the caller grants. The
+# called workflow requests these at workflow level (contents: read,
+# pull-requests: write, issues: write, id-token: write) and in its automerge
+# job (contents: write, checks: read, statuses: read) even though automerge
+# stays false here. This repo's default GITHUB_TOKEN permission is read-only.
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  checks: read
+  statuses: read
+
 jobs:
   review:
     uses: yodatech1988/core/.github/workflows/claude-review.yml@main
     with:
       automerge: false
+      # No self-hosted runner is registered for this repo, so core's default
+      # [self-hosted, vps] has nothing to run on. Owner decision 2026-09-21
+      # (decision-ops-repos-review-runner): use GitHub's own runners.
+      runner: '"ubuntu-latest"'
     secrets: inherit
