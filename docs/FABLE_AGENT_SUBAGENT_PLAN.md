@@ -33,12 +33,13 @@ accepts `model`, `effort`, `permissionMode`, `maxTurns`, `mcpServers`, `hooks`, 
 | | count |
 |---|---|
 | agent files in `claude-agents/` + `.claude/agents/` | 88 |
-| pinning `model:` | 86 (37 haiku, 48 sonnet, 1 opus) |
-| pinning `maxTurns:` | 86 |
+| pinning `model:` | **88** (37 haiku, 50 sonnet, 1 opus) |
+| pinning `maxTurns:` | 86 (the 2 in `.claude/agents/` do not) |
 | **pinning `effort:`** | **0** |
 
-So today the estate pins the cheap half of the cost lever and lets the expensive half float: every
-subagent inherits whatever effort its caller happens to be running at. A Haiku reporter summoned
+So the pinning is total on one half of the cost lever and absent on the other: **88 of 88 pin a
+model, 0 of 88 pin an effort**, and every subagent therefore inherits whatever effort its caller
+happens to be running at. A Haiku reporter summoned
 from an `xhigh` seat thinks at `xhigh`. This is the single largest correctable gap in the roster,
 and it is a file edit, not new machinery.
 
