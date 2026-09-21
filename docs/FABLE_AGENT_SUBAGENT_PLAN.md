@@ -239,6 +239,60 @@ Whether a pinned session id survives a machine reboot, and what the seat does wh
 has expired, are not verified here — F12 must define the cold-start path, because a seat at `low`
 will not improvise one.
 
+### Mobile review and approval — mostly already built
+
+**Owner requirement, 2026-09-21:** review and approval must work from a phone, and every task is
+performed by an agent. Checked against the estate rather than designed from scratch, because most of
+this already exists:
+
+| Surface | Mobile today? | Evidence |
+|---|---|---|
+| Decision Queue — resolving a **decision** card | **Yes** | `decision_queue_standard.md` "The approval-device gate", 2026-09-20: `settings/approval-device` is a *list*, so a computer and a phone can both be paired and both act at once. The phone-viewport check no longer blocks approving — it adds one extra tap (three total, 10s arm window) as an accidental-tap guard. |
+| Decision Queue — **action** cards | **Yes** | Same gate. "I did it — check it" writes `claimedAt` and leaves the card open; a session verifies live state and closes it **on evidence, not on the button**. |
+| Fleet Status — reading state | **Yes**, though tuned elsewhere | It is a web page. Its `?wallboard=1` mode is built for a second monitor, not a phone; phone layout is untuned but not blocked. |
+| The seat itself | **Yes** | One Sonnet 5 / low Claude Code session, reachable from a phone. |
+| **Running a click-file** | **No** | `tools/click-files/*.cmd` are Windows double-click scripts. A phone can *approve* that class and cannot *execute* it. |
+
+Two things the owner should know about that gate, stated in its own words: it is **"not real
+security"** — a `localStorage` id matched against a shared-db pairing list, bypassable with DevTools
+on a paired browser — and it is **"a policy nudge … not an access-control mechanism."** It guards
+against a wrong-device tap while the fleet runs headless. It is not a substitute for the
+owner-initiated binding `fleet_structure.md` requires for a hard-to-reverse action.
+
+So the mobile work left is not approval. It is **making what arrives worth approving on a phone**:
+
+1. **The reviewable unit is the card, not the diff.** Nobody reviews a 600-line diff on a phone, and
+   a Sonnet 5 / low seat cannot summarise one safely. An agent reviews the diff; the card carries
+   verdict, findings (each with `file:line` and a one-line ask), and a recommendation. The owner
+   approves the card. This is `decision_queue_standard.md` "Writing a card to be scanned" applied to
+   review output, and it is the same requirement as §2 rule 3 — schema, not prose.
+2. **Only the seat can write the mobile surfaces.** `claude -p` cannot hold `ArtifactData`
+   (`headless_readiness_ladder.md`), so no agent writes a card or a Fleet Status row. Agents file
+   JSON reports; the seat ingests and writes. This is not a limitation to engineer around — it is
+   what keeps a headless agent from filing its own approval.
+3. **The click-file class stays desk-bound** until the approval app exists. Notably **F5's own
+   registration is a click-file**, so the step that reaches L1 cannot be completed from a phone. That
+   is an owner decision, not something this plan designs away (§9 decision 6).
+
+### The operating loop
+
+One tick, with every task performed by an agent and the owner touching only a phone:
+
+1. **Owner opens the seat** (or a scheduled trigger wakes it) and says go.
+2. **Seat reads state** — `round-start`: Fleet Status, the Decision Queue read directly, the report
+   drop folder. No derivation; it is reading.
+3. **Seat ingests unread agent reports** → writes Fleet Status rows and files cards for anything
+   needing a human. The seat is the only writer of these surfaces.
+4. **Seat dispatches by table lookup** (§4), one wrapper call each (F12), never a hand-typed flag
+   line: `Ask-Fable` (resume) for a design call; `Invoke-Lane` (Sonnet) for lane work;
+   `Invoke-Review` (Opus, schema) for a row-1 review; `Invoke-Subagent` (Haiku, batched) for sweeps.
+5. **Agents run headless** and write schema-checked JSON reports. They never write a card, never
+   merge, never self-schedule.
+6. **Owner reads and taps on the phone** — summary on top, links in `points`, three taps to confirm.
+7. Repeat.
+
+The owner's whole interface is: read a card, tap an option. Everything between taps is an agent.
+
 ## 3. The three layers
 
 **Fable is not a new tier.** The estate already has T0 owner → T1 program PM → T2 round
@@ -266,6 +320,28 @@ Per §2, only the first row is a seat. The other two are things that seat invoke
    route A stays a CI job, routes B and C stay a session or the owner. A Fable callee is a headless
    process, so it never merges — and neither does the seat on its behalf without the route's own
    procedure.
+
+### Does it have to be one Fable agent? No — and it must not be
+
+Two separate questions hide in that one. **Is Fable most of the work?** No: row 0 is rare by
+definition, and a design call or a collided three-way merge is not what a round is mostly made of.
+Routing everything through a Fable agent would cost ~5× Sonnet on input and ~5× on output to do
+work Sonnet does correctly, against a standing cost rule that says use the cheapest model that
+clears the bar and don't start high to be safe.
+
+**Should there be exactly one Fable callee rather than several?** Yes, and for two reasons that are
+specific to this tier:
+
+- **Resume economics.** Each distinct `--session-id` has its own cold start (~$0.51) and its own
+  warm context. N Fable callees is N cold starts and N contexts to keep from going stale, to get a
+  tier whose whole job is rare.
+- **Two Fable contexts can disagree.** `fleet_structure.md`'s verification rules open with a real
+  incident: a shared checkout left two sessions reaching opposite conclusions about the same file. A
+  second warm design context is a second memory of what the estate decided, and the estate has no
+  mechanism for reconciling them.
+
+So: **one Fable callee at a time, resumed, retired and reopened cold on a defined trigger (F9) —
+and it is neither the only agent nor most of the agents.** Everything else stays Sonnet and Haiku.
 
 ### Why a warm callee, not per-task spawns
 
@@ -440,6 +516,7 @@ depends on. Sizes per `standards/sessions/task_sizing.md`. **Nothing below is di
 | F2 | Add `-Restricted` to `Invoke-ReadOnlyAgent.ps1`, defaulting **on** for agents whose `roster_meta.json` `readonly` is `tools`; keep `readonly.settings.json` as layer 3; document the three-layer ordering in `headless_agent_permissions.md` | agent / M / Sonnet / medium | F1 | Follows `tools/README.md` testing-seam conventions. Must add a regression test proving a `--restricted` run has no Bash tool (the probe in §1a is the test case). |
 | F3 | Capture the CLI's own JSON envelope as the L1 report: wrapper adds `checkedAt` (clock at write time, never typed) + the exact command, and writes `{envelope, checkedAt, command}` to the drop folder | agent / M / Sonnet / medium | F2 | Replaces the hand-rolled shape in `headless_readiness_ladder.md`. `permission_denials`, `total_cost_usd` and `usage` come from the CLI, not from the agent's own prose. |
 | F12 | Seat-side wrappers so the seat never hand-assembles a flag line: one command per layer (`Ask-Fable`, `Invoke-Lane`, `Invoke-Subagent`), each taking 2-3 arguments and emitting the schema-checked envelope | agent / M / Sonnet / medium | F2, F4 | The §2 rule that a `low` seat must not compose ten-flag invocations. Must define the **cold-start path**: what happens when a pinned `--session-id` no longer resolves (expired, rebooted, never created). A seat at `low` will not improvise one, and a silently-cold resume costs ~$0.51 instead of ~$0.007 without failing. |
+| F13 | A `review-verdict` schema plus a card renderer: an Opus/Fable review returns verdict + findings (`file:line`, severity, one-line ask) + recommendation, and the seat files it as a scannable Decision Queue card rather than relaying prose | agent / M / Sonnet / medium | F4, F12 | The mobile-review requirement: the reviewable unit is the card, not the diff. Follows `decision_queue_standard.md` "Writing a card to be scanned" (summary on top, links in `points`). Must cap findings per card — a card needing a scroll to judge has failed its purpose. |
 | F4 | One `--json-schema` per L1 reporter under `tools/headless/schemas/` | agent / M / Sonnet / low | F3 | Schema per agent, matching that agent's documented output section. Makes the L2 comparator's input machine-checkable instead of prose-parsed. |
 
 ### Group B — schedule it (**this is the climb to L1, not a neutral build step**)
@@ -577,7 +654,13 @@ at its first step.
    F2's default-on behaviour correct, or should it be opt-in per agent?
 4. **Haiku effort**: once F1a reports, does `roster_meta.json` carry `effort: null` for Haiku agents
    (explicitly not applicable) or omit the field? Affects whether `--check` can require it.
-5. **Where the drop folder lives.** The ladder specifies `%APPDATA%\AEGIS\reports\`, which is this
+5. **The click-file class cannot be run from a phone**, and **F5's own registration is a
+   click-file**, so the step that reaches L1 is desk-bound. Options: accept that rung changes are
+   desk-only; build a non-click-file registration path; or wait for the approval app (Phase 6 task
+   2.28, unbuilt) and its passkey (2.30, owner card parked pending hardware keys). Recommend
+   accepting desk-only for rung changes specifically — they are rare, deliberate, and already
+   require an owner card — rather than building a second approval path for them.
+6. **Where the drop folder lives.** The ladder specifies `%APPDATA%\AEGIS\reports\`, which is this
    PC only and puts every L1 report behind `needs-local-keys`-shaped locality. Worth asking whether
    it should be somewhere a second machine can read, given the owner's stated goal ("the sooner we
    get to headless automation, the less I will be creating sessions too").
