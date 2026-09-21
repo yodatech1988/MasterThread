@@ -32,4 +32,8 @@ jobs:
     uses: yodatech1988/core/.github/workflows/claude-review.yml@main
     with:
       automerge: false
+      # No self-hosted runner is registered for this repo, so core's default
+      # [self-hosted, vps] has nothing to run on. Owner decision 2026-09-21
+      # (decision-ops-repos-review-runner): use GitHub's own runners.
+      runner: '"ubuntu-latest"'
     secrets: inherit
