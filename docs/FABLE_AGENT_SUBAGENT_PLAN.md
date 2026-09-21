@@ -182,9 +182,15 @@ it. That draft treated Fable as a **seat** — something a person sits in to des
 this constraint no one sits in a Fable seat, because the owner has exactly one seat and it is
 Sonnet 5 at `low` effort. So:
 
-> **Fable and Opus are never seats. They are headless callees that the Sonnet 5 / low seat invokes
-> and that return a report.** The routing table in §4 picks the *callee's* model and effort. It
-> never picks the seat's, which is fixed.
+> **The Sonnet 5 / low seat never upgrades itself. It dispatches a callee instead.** The routing
+> table in §4 picks the *callee's* model and effort; it never picks this seat's, which is fixed.
+> Opus is only ever a callee. **Fable is the exception**: it is also the owner's continuity seat
+> (§3), a session he works in directly — and the Sonnet seat drives that same session headlessly by
+> its id when it needs an answer. That is one session with two callers, not two sessions.
+
+*"Able to interface … using only one session of sonnet 5 low"* is read here as a **capability
+requirement, not an exclusivity claim**: the estate must be *operable* from that one seat. Nothing
+in it forbids another session existing, so long as no round depends on one.
 
 ### What a Sonnet 5 / low seat can and cannot do
 
@@ -208,10 +214,11 @@ requirements on the system, not advice to the operator:
    click-file (`skills/owner-click`), never decided in the seat. This was already the estate's rule;
    the constraint makes it structural rather than a discipline.
 
-### How the seat reaches a Fable-tier callee — measured
+### How the Sonnet seat reaches the Fable seat — measured
 
-A long-lived callee is driven from the seat by **pinning a session id once and resuming it
-headlessly**, which keeps the context warm across separate processes:
+The Fable seat is reached by **pinning a session id once and resuming it**, which keeps the context
+warm across separate processes — so the owner's interactive turns and the Sonnet seat's headless
+questions land in the same continuous context:
 
 ```
 # once, to open the callee
@@ -231,8 +238,9 @@ That is what makes the constraint affordable. A cold Fable spawn pays ~$0.51 of 
 reads anything (§1b); a resumed Fable call reading ~29K cached tokens pays about **$0.007** of
 input at Fable's $0.25/MTok cache-read rate. **Per design question, resume is roughly seventy times
 cheaper than respawn.** The earlier draft's "one long-lived resumed session" instinct was right; its
-reason was wrong. It is not a seat kept warm for a person — it is a callee kept warm for a
-low-effort seat that cannot afford to re-explain the estate on every question.
+reason was incomplete. It is kept warm for **both** callers: for the owner, because it is where
+continuity lives (§3), and for the Sonnet 5 / low seat, which cannot afford to re-explain the estate
+on every question.
 
 Caveat: `--no-session-persistence` disables resume and must never appear on a callee invocation.
 Whether a pinned session id survives a machine reboot, and what the seat does when a resume target
@@ -306,42 +314,82 @@ Per §2, only the first row is a seat. The other two are things that seat invoke
 | Layer | What it is | Who holds it | Model | Effort | Shape |
 |---|---|---|---|---|---|
 | **Seat** | The owner's single interface to production and development. Routes, dispatches, relays, files cards. Derives nothing. | T1/T2, **the only seat**, owner-operated | `claude-sonnet-5` | **`low`, always** | Interactive. Never changes model or effort to suit a task — it changes the callee instead |
-| **Fable callee** | The *designer*: turns a negotiated ask into a fixed executable workload, settles a design call, resolves a hard three-way merge | invoked by the seat, **one at a time** | `claude-fable-5-1` | `high` (`xhigh` on a failed retry) | **A warm resumed callee**: `--session-id` once, `-p --resume` per question, `--fallback-model opus`, schema-constrained output |
+| **Fable seat** | **Continuity** first — what changed, what we decided, what's next, carried across rounds. Also the *designer*: turns a negotiated ask into a fixed workload, settles a design call, resolves a hard three-way merge | the owner's, **one at a time**; never required for a round to proceed | `claude-fable-5-1` | `high` (`xhigh` on a failed retry) | **Warm and resumed**: `--session-id` once, `--resume` thereafter, `--fork-session` for speculation, `--fallback-model opus`, schema-constrained when the Sonnet seat must act on the answer |
 | **Agent** | The lane worker: one repo, one worktree, one branch, one PR | invoked by the seat | `claude-sonnet-5` (Opus 5 for row 1) | `medium` (`high` for invariant-heavy edits) | `claude -p` per lane, own worktree |
 | **Subagent** | The roster agent: a report or a verdict, no worktree, no PR | invoked by the seat or by a lane | pinned in frontmatter (haiku / sonnet / opus) | **pinned in frontmatter** (task F1) | `claude -p --agent <name> --restricted`, batched |
 
 ### The two jobs Fable must not take
 
-1. **It never builds.** No worktree, no branch, no PR authored by a Fable callee. Its outputs are a
+1. **It never builds.** No worktree, no branch, no PR authored by a Fable seat. Its outputs are a
    dispatch plan, a design verdict, or a resolved merge conflict. Everything that produces lines of
    code or documentation is a Sonnet lane. Cost says so (2× Opus on output); `orchestrator_role.md`
    already says so of the orchestrator generally ("It doesn't do the implementation itself").
 2. **It never holds merge authority.** `merge_authority.md` principle 3 and the ladder's L4 row:
-   route A stays a CI job, routes B and C stay a session or the owner. A Fable callee is a headless
+   route A stays a CI job, routes B and C stay a session or the owner. A Fable seat is a headless
    process, so it never merges — and neither does the seat on its behalf without the route's own
    procedure.
 
+### What the Fable seat is actually for: continuity
+
+**Owner, 2026-09-21: *"I use the fable seat for continuity."*** An earlier draft of this document
+had this wrong in both directions — first as a seat someone sits in to design a round, then
+over-corrected into a callee invoked rarely for row-0 work. Neither is what it is. It is the layer
+that **remembers across rounds**, and it is touched every round, not rarely.
+
+That resolves the apparent conflict with §2. *"Able to interface … using only one session of
+sonnet 5 low"* is a **capability requirement, not an exclusivity claim**: the estate must be
+operable from that one seat. It does not say no other session exists. So:
+
+> **The Fable seat is load-bearing for continuity and must never be load-bearing for operations.**
+> If it is unavailable, the estate runs — degraded in memory, not in capability. Any round that
+> *cannot proceed* without it has violated §2.
+
+It also makes Fable's economics better than the row-0 framing did. A continuity layer reads a large
+accumulated context and emits a little — what changed, what we decided, what's next. That is
+precisely the read-heavy / write-light profile where Fable's $0.25/MTok cache read beats Opus's
+$0.50, and it is the **best-fitting role for Fable anywhere in this estate**. Resume is not an
+optimisation here; it *is* the continuity.
+
+#### The three rules that make a continuity seat safe
+
+1. **Its memory is a claim, not evidence.** This estate has already run this experiment with its
+   existing continuity mechanism and lost: `orchestrator_role.md:277` records that "the
+   restart-backup signoff was carried as resolved across two handoffs before either one was true",
+   and `pm_role.md:266` states flatly that "a handoff repeating 'resolved' is not evidence." A warm
+   Fable seat is the same failure shape with a better memory and no diff for anyone to read.
+   Everything it carries forward is re-verified against live state before it is acted on — the rule
+   the estate already applies to handoff files, applied to a session's context.
+2. **It is a cache over a durable record, never the record itself.** Session ids expire (how long is
+   unverified — F12), `--autocompact` makes a long context lossy without announcing which parts, and
+   a lost session must be rebuildable. So everything the seat knows is also written where a cold
+   rebuild can read it: the repo, Fleet Status, the Decision Queue. If losing the session loses
+   knowledge, the design has already failed.
+3. **Fork for speculation, resume for record.** `--fork-session` on a resume creates a new session id
+   instead of reusing the original. A speculative or exploratory question goes to a fork, so a
+   discarded line of thinking never enters the continuity memory as though it were decided.
+
 ### Does it have to be one Fable agent? No — and it must not be
 
-Two separate questions hide in that one. **Is Fable most of the work?** No: row 0 is rare by
-definition, and a design call or a collided three-way merge is not what a round is mostly made of.
-Routing everything through a Fable agent would cost ~5× Sonnet on input and ~5× on output to do
-work Sonnet does correctly, against a standing cost rule that says use the cheapest model that
-clears the bar and don't start high to be safe.
+**Is Fable most of the work?** No. Continuity is one job, and everything between rounds — lanes,
+reviews, sweeps, drafts — stays Sonnet and Haiku. Routing the work through Fable would cost ~5×
+Sonnet on input and ~5× on output to do what Sonnet does correctly, against a standing cost rule
+that says use the cheapest model that clears the bar and don't start high to be safe.
 
-**Should there be exactly one Fable callee rather than several?** Yes, and for two reasons that are
-specific to this tier:
+**Should there be exactly one Fable seat rather than several?** Yes, and for two reasons that are
+sharper now that its job is memory:
 
 - **Resume economics.** Each distinct `--session-id` has its own cold start (~$0.51) and its own
-  warm context. N Fable callees is N cold starts and N contexts to keep from going stale, to get a
+  warm context. N Fable seats is N cold starts and N contexts to keep from going stale, to get a
   tier whose whole job is rare.
-- **Two Fable contexts can disagree.** `fleet_structure.md`'s verification rules open with a real
-  incident: a shared checkout left two sessions reaching opposite conclusions about the same file. A
-  second warm design context is a second memory of what the estate decided, and the estate has no
-  mechanism for reconciling them.
+- **Two continuity contexts are two histories.** `fleet_structure.md`'s verification rules open with
+  a real incident: a shared checkout left two sessions reaching opposite conclusions about the same
+  file. Two warm seats are two memories of what the estate decided, and the estate has no mechanism
+  for reconciling them — and unlike two reporters disagreeing (which L2 turns into a card), nothing
+  would even surface the disagreement.
 
-So: **one Fable callee at a time, resumed, retired and reopened cold on a defined trigger (F9) —
-and it is neither the only agent nor most of the agents.** Everything else stays Sonnet and Haiku.
+So: **one Fable seat, resumed, forked for speculation, retired and reopened cold on a defined
+trigger (F9) — load-bearing for memory, never for operations.** Everything else stays Sonnet and
+Haiku.
 
 ### Why a warm callee, not per-task spawns
 
@@ -444,7 +492,8 @@ claude -p --agent <name> --tools "Bash,Grep,Read" \
 allow-list is then the real boundary, exactly as the standard already says, with the deny-list
 behind it.
 
-**Fable callee** (driven from the Sonnet 5 / low seat, per §2 — never a session anyone sits in):
+**Fable seat** — the owner's continuity seat (§3). The owner works in it directly; the Sonnet 5 /
+low seat drives the same session headlessly when it needs an answer, via the same id:
 
 ```
 # open the callee once
@@ -459,10 +508,15 @@ claude -p --resume <stable uuid> \
   --max-budget-usd <small> "<next question>"
 ```
 
-**Always `-p`; never a bare interactive session** — the owner has one seat and it is not this.
-Never `--no-session-persistence` (it disables the resume the whole design depends on). Never a
-write-capable permission mode. The seat calls this through F12's `Ask-Fable` wrapper rather than
-typing it.
+**Always the same `--session-id`; never `--no-session-persistence`** (it disables the resume that
+*is* the continuity). Add `--fork-session` for a speculative question so a discarded line of
+thinking never enters the record. Never a write-capable permission mode when the Sonnet seat is
+driving it unattended. The Sonnet seat calls this through F12's `Ask-Fable` wrapper rather than
+typing the flags; the owner working in the seat directly does not need the wrapper.
+
+**Operations must not depend on it** (§3): if this session is gone, the round still runs off the
+durable record. A wrapper that blocks a lane because the continuity seat is unreachable has
+inverted the rule.
 
 Three invariants for every line above:
 
@@ -535,13 +589,13 @@ This plan supplies the tooling for that climb and explicitly does not authorise 
 | F7 | PM heartbeat ingest: read unread drop-folder files each tick, write Fleet Status `prs`/`health` with `writtenBy: "<pm session> from <report file>"`, archive the file | agent / M / Sonnet / medium | F3, F5 | Exactly as `headless_readiness_ladder.md` L1 already specifies. `claude -p` cannot hold `ArtifactData` — the PM writes, the reporter files. Unchanged by this plan. |
 | F8 | Wire `total_cost_usd`/`usage` from the drop folder into `tools/cost-monitor` as a headless ledger source | agent / M / Sonnet / medium | F3, PR #159 merged | Blocked on #159. Also carries the §1b finding that the 1h cache-write multiplier measured at 2×, resolving that file's ASSUMED range. |
 
-### Group C — the Fable callee (owner-gated)
+### Group C — the Fable seat (owner-gated)
 
 | ID | Task | Who / size / model / effort | After | Brief |
 |---|---|---|---|---|
-| F9 | Draft `standards/sessions/fable_callee.md`: when the callee is opened, what it may produce, the never-builds and never-merges rules, `--fallback-model`, refusal handling, the resume contract, and when a stale callee is retired and reopened cold | agent / M / Sonnet / medium | F12 | **Route C** (`merge_authority.md`): `standards/sessions/*` is owner-merge. A session drafts it; the owner merges it. The drafter must not also be its reviewer. |
+| F9 | Draft `standards/sessions/fable_seat.md`: the continuity contract — memory is a claim not evidence, cache over a durable record, fork for speculation; plus what it may produce, never-builds and never-merges, `--fallback-model`, refusal handling, the resume contract, the retirement/cold-reopen trigger, and a position on `--autocompact` | agent / M / Sonnet / medium | F12 | **Route C** (`merge_authority.md`): `standards/sessions/*` is owner-merge. A session drafts it; the owner merges it. The drafter must not also be its reviewer. |
 | F10 | Correct `orchestrator_role.md`'s "Effort for background workers can't be set per call" to distinguish the `Agent` tool (model only) from `claude -p` (`--effort`), and add the row-0 Fable line to the model/effort table | agent / S / Sonnet / low | F1a | **Route C**, owner-merge. Smallest possible edit; it is a factual correction plus one row, not a rewrite. |
-| F11 | Decision Queue card: authorise the Fable callee, naming its cost envelope from F8's real numbers | PM / XS / — / — | F8, F9 | One card, `decision_queue_standard.md` shape, options + recommendedOption + rationale, never filed resolved. Not filed until its parent (F8) is real — per the standing rule that cards depend on their entry gate. |
+| F11 | Decision Queue card: authorise the Fable seat, naming its cost envelope from F8's real numbers | PM / XS / — / — | F8, F9 | One card, `decision_queue_standard.md` shape, options + recommendedOption + rationale, never filed resolved. Not filed until its parent (F8) is real — per the standing rule that cards depend on their entry gate. |
 
 ### Group D — the rungs above L1 (unchanged by this plan, listed so nothing is assumed done)
 
@@ -617,11 +671,19 @@ at its first step.
   has to be caught by a schema, a wrapper's exit code, or a callee — which is why §2's rules 1-3 are
   requirements rather than preferences. If those three are not built, this plan makes the estate
   *less* safe than L0, not more.
-- **A warm callee is a stale callee.** Resume keeps context cheap, but a callee resumed across days
-  carries whatever it concluded earlier, including anything since disproved. The estate's own
-  verification rules ("read `origin/<default>`, never a shared working tree"; "re-read a tool before
-  re-running it") apply to a resumed callee's memory too. F12 should define when a callee is retired
-  and re-opened cold, and the answer is not "never".
+- **A warm continuity seat is a stale continuity seat — and this is now the plan's largest risk,
+  because continuity is the seat's job rather than a side effect.** A seat resumed across days
+  carries whatever it concluded earlier, including anything since disproved, and it carries it
+  fluently. The estate has already lost this exact bet once: `orchestrator_role.md:277`, a
+  restart-backup signoff "carried as resolved across two handoffs before either one was true." A
+  warm seat is that failure with a better memory and no diff for a reviewer to catch it in. The
+  three rules in §3 (memory is a claim; cache over a durable record; fork for speculation) are the
+  mitigation, and F9 must set the retirement trigger — the answer is not "never".
+- **Compaction loses memory silently.** `--autocompact` (auto, or 100k-1M) keeps a long-running seat
+  inside its window, but nothing tells the reader which parts of the history were summarised away.
+  For a seat whose value *is* its history, that is a correctness problem, not a housekeeping one.
+  Unmeasured here; F9 and F12 need a position on it, and rule 2 (durable record) is what makes a
+  wrong answer survivable.
 - **Headless removes the peer reviewer.** This is the ladder's own founding constraint and this plan
   does not weaken it. Be precise about what that means, because an earlier draft of this document
   overstated it: Groups A, C and D raise no rung — every one of their tasks lands as a reviewed PR
@@ -644,7 +706,7 @@ at its first step.
 
 ## 9. Open decisions (each would be its own Decision Queue card; **none filed**)
 
-1. **Is the Fable callee authorised at all**, and at what monthly envelope? (F11; recommend
+1. **Is the Fable seat authorised at all**, and at what monthly envelope? (F11; recommend
    deciding after F8 can measure it.)
 2. **Does row 1 stay Opus 5?** Fable's cached-input rate is half of Opus's, which makes a long
    read-heavy irreversibility review *cheaper* on Fable than on Opus. Recommend: **no change until
@@ -680,7 +742,7 @@ at its first step.
 - **Headless resume carries context and serves it warm**: a `-p --session-id <uuid>` call followed
   by a `-p --resume <uuid>` call in a **separate process** returned the earlier codeword correctly,
   with `cache_read_input_tokens` 28,870 against `cache_creation_input_tokens` 136. Measured with
-  Haiku standing in for a Fable callee. **Not** verified: that a pinned session id survives a
+  Haiku standing in for a Fable seat. **Not** verified: that a pinned session id survives a
   reboot, how long it survives at all, or what a resume against an expired id does (F12).
 - **`--model fable` exists**: `claude --help` gives `'fable'` as an alias for "the latest model",
   with `'claude-fable-5'` as its full-name example. **Not** verified: which concrete model id the
