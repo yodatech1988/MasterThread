@@ -58,6 +58,30 @@ Every PR takes exactly one route. Pick the **first row that matches**.
 `merge:hold` overrides all three and carries a one-line reason in a comment. A PR blocked on a
 security finding is held, not queued (precedent: ops-infra #9).
 
+**Route B without the owner's click: ops platform classes (owner decision card
+`decision-ops-platform-auto-merge-classes-2026-09-21`, answered 2026-09-21).** The seat may merge these
+two kinds of PR itself even where the repo would otherwise send it to route C. Nothing else widens:
+
+- (a) **Docs-only PRs, and unwired library code, in `ops-platform`.** Unwired means not imported or
+  called by anything deployed, with no network or credential handling wired.
+- (b) **CI workflow files (`.github/workflows/*`) in `ops-platform`, `ops-household` and `ops-business`;
+  in `ops-infra` only files under `.github`, never `ansible`, plays or `tools`.**
+
+Each merge requires **all** of: an independent read-only review (`diff-reviewer` or equivalent) that
+says MERGE; a clean-clone test run that matches the claimed baseline where tests exist; every PR check
+green (a `startup_failure` of `pr-review` is not green, and is reported); a verdict comment that states
+the route and lists what was checked; and a merge pinned to the reviewed head SHA
+(`--match-head-commit`, SHA shape asserted as above).
+
+**Never covered:** `ops-policies`; anything in `ops-infra` outside `.github`; credentials or secrets;
+money (QuickBooks, payments); repo security settings or branch protection; deploy workflows, or
+workflows that use secrets, `pull_request_target`, or permissions beyond `contents: read`;
+`standards/sessions/*` and `policies/*` in any repo, including MasterThread; and the approval/egress
+gateway code path once it is wired or deployed. Those stay route C.
+
+**Logging and undo.** Every such merge is logged, and the owner gets one daily digest with a revert
+link per line. Any owner undo pauses that class until the owner resumes it.
+
 Route C is not a fallback for "the seat was unsure". The seat resolves its own uncertainty with a
 reviewer (`diff-reviewer`, or `live-reviewer` for row-1 scope) and escalates to route C only for the
 reasons in the table. Sending routine PRs to the owner is the failure mode that produced a 26-PR
@@ -223,6 +247,7 @@ Every PR moved from route B to route A is one the seat, and the owner, never hav
 | `pr81-q3-standards-permanently-owner-merge` | Owner-merge for `standards/sessions/*` and `policies/*` only; agent definitions may go through the seat. (Narrower than the recommendation.) |
 | `pr81-q4-branch-protection-all-default-branches` | Approved: click-file, MasterThread first, then the other five. |
 | `pr81-q5-gh-federation-session-write-identity` | Yes: the target; its own workstream after branch protection. |
+| `decision-ops-platform-auto-merge-classes-2026-09-21` | Yes for ops-platform docs-only and unwired library PRs, plus CI workflow files in `ops-*` repos: the seat merges them under the conditions in "The three routes". |
 
 A queue answer is an instruction, not authorization for an irreversible action
 (`decision_queue_standard.md`): the merge of this file, and the branch-protection click, remain the
