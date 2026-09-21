@@ -9,7 +9,7 @@ Task IDs 6.1-6.10 are cited in PRs and cards: do not renumber.
 **Live check, 2026-09-21 ~14:40Z (gh REST + origin/main across ops-platform, ops-policies, ops-infra, ops-business, ops-household, MasterThread):**
 - 4.1/4.2/4.8 NOT done. ops-business plan: nightly pull "blocked on 4.1/4.2", invoice drafting "blocked on 4.8"; only a fixtures-only gateway stub exists.
 - 5.4 NOT done. ops-household plan: "blocked on the owner creating the private household Discord server". Merged so far: #1-#6 (plan, 5.1 schema, consent tools, right-to-delete part 1).
-- 2.28 approval app, 2.30 passkey enrollment, 2.31 gate test: no trace in any repo. ops-platform has no approval-app package; ops-platform PR #18 open (routing loader, "not wired"); nothing deployed to the vault. ops-policies holds passkey/egress Rego (policy only, PR #7 merged).
+- 2.28 approval app, 2.30 passkey enrollment, 2.31 gate test: no trace in any repo. ops-platform has no approval-app package; ops-platform PR #18 (routing loader, described as "not wired") MERGED 2026-09-21, as were #16, #17 and #19; nothing deployed to the vault. ops-policies holds passkey/egress Rego (policy only, PR #7 merged).
 - 3.12: no evidence anywhere.
 - vault-prod: "never been ordered" (ops-infra docs/PLAN.md line 21). Only aegis-public-edge and vault-dev are in the inventory. ops-infra PRs #43 (draft) and #44 open.
 - 7.1-7.4: no PRs or task entries found.
@@ -24,11 +24,12 @@ Task IDs 6.1-6.10 are cited in PRs and cards: do not renumber.
 
 **From the plan artifact (its own rescore, not live-verified):**
 - Phase 6 is 0 of 10 done, 0 in progress.
-- Phase order is 0, 1, 2, 3, 7 (Review), 4, 5, 6. Phase 6 runs last (owner decision 2026-09-21).
+- Phase order is 0, 1, 2, 3, 4, 5, 6, then 7 (Review). The owner set the order to Phases 3, 4, 5, 6 and then the review (plan artifact, 2026-09-21). Phase 6 does not wait on the review.
 - Phase 6 waits on 4.8 (categorization writes) and 5.4 (Discord reminders). Transitively it waits on 3.12, 2.28 (approval app, not yet built), 2.30 (owner enrolls hardware key + phone passkey) and 2.31 (gate test). vault-prod is not ordered.
-- Phase 7 (review) does not cover Phase 6: the plan says phases 4-6 do not exist when it runs.
+- Phase 7 (review) now runs after Phase 6, so its scope covers every zone, including finance (7.2 depends on 6.9).
 - Finance zone budget is $0 (task 0.3) until this phase earns one. Spend limits are prepaid only, auto-reload off (0.7, closed 2026-09-21).
 - No `ops-finance` repo exists. Existing: ops-platform, ops-policies, ops-infra, ops-business, ops-household. The plan does not say where Phase 6 code lands.
+- Two older repos exist, checked read-only 2026-09-21 (file tree, README and docs/PLAN.md only): `yodatech1988/personal-finance` (private, last push 2026-09-13) is a small local-first JavaScript vault: age-encrypted receipt/statement ingest and a folder watcher, with tests and CI; its plan leaves QuickBooks filing blocked on a personal QBO company. It has no bank feed, redaction pipeline or pay-run code, so it is at most prior art for encrypted storage, not a home for Phase 6. `yodatech1988/business-finance` (private, last push 2026-09-16) holds HandyMansfield receipt-to-QuickBooks routing: a plan, README, CI and one setup script, with no application code. It is business-side and not relevant to Phase 6.
 - Phase docs pattern seen once: MasterThread `docs/PHASE_0_VERIFICATION_<date>.md`.
 - Not linked to Phase 6 in the plan: QuickBooks (Phase 4 only), Venmo/payments repo, tax records folders.
 
@@ -91,7 +92,7 @@ Write lanes cap at ~6 in parallel, one per repo/worktree; realistically 2 at a t
 No agent exists for "leak-test mutation check" (plant a number, confirm the pipeline catches it) or for bank-feed vendor comparison. Propose two agent definitions, checked before joining the roster: `redaction-leak-tester` (read-only + test runner, synthetic data only) and `feed-vendor-researcher` (read-only, web). Not built yet.
 
 ## 4. Entry gate (do not dispatch 6.x until all true)
-1. Phase 7 review finished and the owner has decided what to automate next (7.4).
+1. Phases 4 and 5 are far enough along for 4.8 and 5.4 (item 2); Phase 6 does not wait on the Phase 7 review.
 2. 4.8 and 5.4 done, verified on main AND running (a tick means code on main, not deployed).
 3. 2.28 approval app exists and 2.30/2.31 passed (passkey path works).
 4. vault-prod ordered and hardened; finance envelope workspace `finance-redacted` defined.
