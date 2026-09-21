@@ -60,7 +60,8 @@ security finding is held, not queued (precedent: ops-infra #9).
 
 **Route B without the owner's click: ops platform classes (owner decision card
 `decision-ops-platform-auto-merge-classes-2026-09-21`, answered 2026-09-21).** The seat may merge these
-two kinds of PR itself even where the repo would otherwise send it to route C. Nothing else widens:
+two kinds of PR itself even where the repo would otherwise send it to route C. Nothing else widens,
+except the separate classes recorded after this list:
 
 - (a) **Docs-only PRs, and unwired library code, in `ops-platform`.** Unwired means not imported or
   called by anything deployed, with no network or credential handling wired.
@@ -73,7 +74,53 @@ green (a `startup_failure` of `pr-review` is not green, and is reported); a verd
 the route and lists what was checked; and a merge pinned to the reviewed head SHA
 (`--match-head-commit`, SHA shape asserted as above).
 
-**Never covered:** `ops-policies`; anything in `ops-infra` outside `.github`; credentials or secrets;
+**Route B class: trivial reviewed ops-infra PR (owner decision card
+`decision-ops-infra-auto-merge-scope-2026-09-21`, answered 2026-09-21T18:19:53Z, option A: "Trivial
+reviewed ops-infra PRs only (one file, about 5 lines, comments, docs or scanner-exception files)").**
+The seat may merge an `ops-infra` PR that meets **every** condition below. This is the only class
+that reaches into `ops-infra` outside `.github`; it is deliberately narrow because ops-infra content
+is applied to the vault by a later run.
+
+- **One file, at most 5 changed lines, counting added plus removed.**
+- **The change is only comments in a non-template file, docs (`*.md`) or scanner-exception files.**
+  Docs: not `CLAUDE.md`, `standards/`, `policies/`, `.claude/agents/` or any file that holds commands
+  to be run (runbooks, click-file docs). Scanner-exception files: `.trivyignore.yaml` only, or a file
+  the owner names on a card; adding or widening an exception (a new finding id, path or wildcard) is
+  route C, while removing an exception or fixing its comment is allowed. Not Ansible tasks, vars,
+  handlers or templates; a change under `ansible/` is route C. Whether a comment-only change inside a
+  rendered template may join this class is an open owner question; until he answers it, it is route C.
+  Any doubt means route C (PR #48 was such a case: a comment line in a role template that tripped a
+  guard).
+- **Not** `tools/*Key.ps1`, not workflow permissions, secrets or `pull_request_target`.
+- **An independent read-only review that says MERGE, recorded as `MERGE-VERDICT v1` (see "What the seat does")
+  on the exact head SHA.**
+- **All checks green.** A `startup_failure` or an absent check does not count as green.
+- **The merger is not the author**, and merges with `gh pr merge --squash --match-head-commit <sha>`
+  on a `<sha>` validated as 40 lowercase hex characters.
+- **Logged and undoable:** every automatic merge in this class is listed in the daily digest with a
+  revert link, and an owner undo pauses the class until the owner resumes it.
+
+**Route B one-line workflow change: separate from the class above (owner decision card
+`decision-review-tier-one-liners-route-b-2026-09-20`, answered 2026-09-20T15:07:04Z, "Yes: allow it
+under those four conditions").** The card concerned a one-line change to a repo's review-depth setting
+in `.github/workflows/pr-review.yml`. The seat may merge such a PR itself when all four hold: (1)
+exactly one changed line, checked by reading the diff; (2) the repo is not owner-only; (3) a reviewer
+passes it; (4) all checks are green. Any owner undo pauses this rule until the owner resumes it.
+The four conditions were recorded on the card; the card's own text did not restate the pinned-SHA
+and verdict-comment requirements, which apply to every route B merge regardless.
+
+**Mechanism.** Today the acting seat (named on the Fleet Status board) performs route B by hand. For unattended operation the owner chose (card
+`decision-headless-merge-mechanism-2026-09-21`, answered 2026-09-21T18:29:58Z, option A: "GitHub
+workflow with fixed rules (fix the startup failure first, one repo at a time, ops-platform before
+ops-infra)") a GitHub workflow: the `automerge` job in core's `claude-review.yml` with deterministic
+gates. **It is not live in any repo yet.** It is to be enabled one repo at a time, `ops-platform`
+before `ops-infra`, and only after the `startup_failure` on the callers is fixed. Until a repo's
+workflow is live, the seat merges that repo's PRs by hand under the conditions above. Enabling
+`allow_auto_merge` or changing branch protection stays the owner's own click.
+
+**Never covered:** `ops-policies`; `ops-infra` is covered **only** by the trivial-PR class above and
+by files under `.github` (CI workflow files, per class (b)), and everything else in `ops-infra`
+stays route C; credentials or secrets;
 money (QuickBooks, payments); repo security settings or branch protection; deploy workflows, or
 workflows that use secrets, `pull_request_target`, or permissions beyond `contents: read`;
 `standards/sessions/*` and `policies/*` in any repo, including MasterThread; and the approval/egress
@@ -248,6 +295,9 @@ Every PR moved from route B to route A is one the seat, and the owner, never hav
 | `pr81-q4-branch-protection-all-default-branches` | Approved: click-file, MasterThread first, then the other five. |
 | `pr81-q5-gh-federation-session-write-identity` | Yes: the target; its own workstream after branch protection. |
 | `decision-ops-platform-auto-merge-classes-2026-09-21` | Yes for ops-platform docs-only and unwired library PRs, plus CI workflow files in `ops-*` repos: the seat merges them under the conditions in "The three routes". |
+| `decision-review-tier-one-liners-route-b-2026-09-20` | Yes: a one-line review-depth change in a non-owner-only repo's `pr-review.yml` may be merged by the seat under four conditions (2026-09-20T15:07:04Z). |
+| `decision-ops-infra-auto-merge-scope-2026-09-21` | Option A: trivial reviewed ops-infra PRs only (2026-09-21T18:19:53Z). |
+| `decision-headless-merge-mechanism-2026-09-21` | Option A: GitHub workflow with fixed rules, one repo at a time, ops-platform before ops-infra, after the startup failure is fixed (2026-09-21T18:29:58Z). Not live yet. |
 
 A queue answer is an instruction, not authorization for an irreversible action
 (`decision_queue_standard.md`): the merge of this file, and the branch-protection click, remain the
