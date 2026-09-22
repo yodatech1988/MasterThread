@@ -52,6 +52,24 @@ Precedence when several apply: 2, then 1, then 3, then 0. Checks apply to the ev
 - Session rows carry a `label` (the `aiTitle`). **The label reaches stdout, the ledger rows and `status.json`.** **Anything that ever copies the ledger or status off this PC must drop
   `label`**; the counts, model and day are content-free, the session id is stored as-is (not hashed), and the title may not be content-free.
 
+## Headless drop-folder reports (F8)
+
+In addition to interactive/subagent transcripts, the tool reads `%APPDATA%\AEGIS\reports\` (override with
+`--reports-dir`) — the read-only drop folder `tools/headless/Invoke-ReadOnlyAgent.ps1` writes a report file
+to (`{envelope, checkedAt, command}`) after each headless run. This stays read-only and additive:
+
+- Only `envelope.total_cost_usd` and `envelope.modelUsage` are used; `command` (which can contain a prompt)
+  is never read into any output.
+- Each `modelUsage` entry's `costBasis` is asserted to be `"list"`; anything else raises a finding (surfaced
+  in the report and counted toward the day's alert/stop precedence) instead of silently trusting a dollar
+  figure that may not be list-price-equivalent.
+- A report's own `costUSD` is trusted as-is (not re-priced against `routing/models.yaml`) — it is already a
+  computed figure from the CLI's own `--output-format json` envelope, not raw token counts.
+- A malformed, wrong-shape, or unreadable report file is reported as a finding, never a crash, and never
+  blocks reading the rest of the folder or the transcript-based totals.
+- An absent reports directory (e.g. this tool run on a machine with no headless activity yet) is not an
+  error.
+
 ## Rates
 
 Read from `ops-policies` `routing/models.yaml` on **`origin/main`** (`git show`, never a working tree), and the
@@ -69,11 +87,15 @@ output quotes the source, commit and the file's `verified_on` date. The tool doe
 ## Honest caveats
 
 - **What-if, not a bill.** No API key is used, and nothing here reads Anthropic's billing.
-- **Cache multipliers are ASSUMED**: read 0.1x, write 1.25x (5 minute) to 2x (1 hour). They live in
-  `config.json` marked ASSUMED and have not been checked against a current price page. Cache reads are most of
-  the dollars (on 2026-09-18, 467M Opus cache-read tokens against 1.3M output), so a tally without cache is
-  wrong by roughly 10x. The report gives a low-high range; **alerts use the high end**, so an uncertain
-  multiplier can only make the monitor louder.
+- **Cache write multipliers are CONFIRMED per-TTL** (F8, 2026-09-22): 1.25x for a 5-minute-TTL cache write,
+  2x for a 1-hour-TTL write, against `docs/FABLE_AGENT_SUBAGENT_PLAN.md` secs 1b/11 and the Anthropic pricing
+  page. When a transcript response reports `usage.cache_creation.{ephemeral_5m_input_tokens,ephemeral_1h_input_tokens}`,
+  each bucket is priced exactly at its own rate. Older transcript shapes (or a headless drop-folder report,
+  which reports only a pre-computed dollar figure) that lack that split still price the untyped cache-write
+  tokens as a low(5m)-high(1h) range, and **alerts use the high end**. The cache **read** ratio (0.1x) is
+  still ASSUMED, not yet checked against a current price page. Cache reads are most of the dollars (on
+  2026-09-18, 467M Opus cache-read tokens against 1.3M output), so a tally without cache is wrong by roughly
+  10x.
 - **This project folder only.** Other Claude project folders (for example the DayZ workspace) and any usage not
   written to a transcript are not included. If Claude prunes old transcripts, a live read cannot see them; the
   ledger is what keeps them.

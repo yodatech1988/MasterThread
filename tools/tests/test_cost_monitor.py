@@ -52,7 +52,7 @@ def config(**thresholds):
           "opus_share_alert_fraction": 0.5, "opus_share_min_day_usd": 1000000,
           "session_output_alert_tokens": 10000000}
     th.update(thresholds)
-    return {"thresholds": th, "cache_multipliers": {"status": "TEST", "read": 0.1, "write_low": 1.25, "write_high": 2.0},
+    return {"thresholds": th, "cache_multipliers": {"status": "TEST", "read": 0.1, "write_5m": 1.25, "write_1h": 2.0},
             "alert_on_api_key": True, "ledger_min_interval_minutes": 0}
 
 
@@ -73,8 +73,9 @@ class Env:
     def __init__(self, cfg=None, rates=RATES_YAML):
         self._tmp = tempfile.TemporaryDirectory()
         root = pathlib.Path(self._tmp.name)
-        self.projects, self.state = root / "projects", root / "state"
+        self.projects, self.state, self.reports = root / "projects", root / "state", root / "reports"
         self.projects.mkdir()
+        self.reports.mkdir()
         self.rates, self.config = root / "models.yaml", root / "config.json"
         self.rates.write_text(rates, encoding="utf-8")
         self.config.write_text(json.dumps(cfg or config()), encoding="utf-8")
@@ -93,13 +94,19 @@ class Env:
     def run(self, *extra, registry=lambda name: False, api_env=None, now=None):
         out, err = io.StringIO(), io.StringIO()
         argv = ["--projects-dir", str(self.projects), "--state-dir", str(self.state), "--rates-file", str(self.rates),
-                "--config", str(self.config)] + list(extra)
+                "--config", str(self.config), "--reports-dir", str(self.reports)] + list(extra)
         env = {"ANTHROPIC_API_KEY": KEY_SENTINEL} if api_env else {}
         with mock.patch.dict(os.environ, env, clear=False):
             if not api_env:
                 os.environ.pop("ANTHROPIC_API_KEY", None)
             code = cm.main(argv, now=now or NOW, out=out, err=err, registry=registry)
         return code, out.getvalue(), err.getvalue()
+
+    def headless_report(self, agent, stamp, envelope, checked_at="2026-09-20T01:00:00Z", suffix=""):
+        path = self.reports / ("%s.%s%s.json" % (agent, stamp, suffix))
+        path.write_text(json.dumps({"envelope": envelope, "checkedAt": checked_at, "command": "claude -p ..."}),
+                        encoding="utf-8")
+        return path
 
     def status(self):
         return json.loads((self.state / "status.json").read_text(encoding="utf-8"))
@@ -203,7 +210,66 @@ class PricingTests(EnvTestCase):
         self.assertIn("2000-01-01", out)
         self.assertIn("FAKE fixture record", out)
         self.assertIn("WHAT-IF", out)
-        self.assertIn("ASSUMED", cm.load_config(str(TOOL.parent / "config.json"))["cache_multipliers"]["status"])
+        self.assertIn("CONFIRMED", cm.load_config(str(TOOL.parent / "config.json"))["cache_multipliers"]["status"])
+
+
+def assistant_ttl(mid, model, out, cw_5m=0, cw_1h=0, day="2026-09-20", inp=0, cr=0, text=TEXT_SENTINEL):
+    """A response whose usage carries the TTL split (usage.cache_creation.ephemeral_5m/1h_input_tokens),
+    the real API shape per docs/FABLE_AGENT_SUBAGENT_PLAN.md sec 11's build-time envelope example."""
+    return json.dumps({"type": "assistant", "timestamp": day + "T01:00:00.000Z",
+                       "message": {"id": mid, "model": model, "content": [{"type": "text", "text": text}],
+                                   "usage": {"input_tokens": inp, "output_tokens": out,
+                                             "cache_read_input_tokens": cr,
+                                             "cache_creation_input_tokens": cw_5m + cw_1h,
+                                             "cache_creation": {"ephemeral_5m_input_tokens": cw_5m,
+                                                                "ephemeral_1h_input_tokens": cw_1h}}}})
+
+
+@requires_yaml
+class TTLCachePricingTests(EnvTestCase):
+    """F8: cache-write pricing is TTL-aware. A response with the real TTL split prices exactly at the
+    confirmed per-TTL rate; a response with only the aggregate (TTL unknown) keeps the original
+    low(5m)-high(1h) range convention, so the range now means 'which TTL was this', not 'what is the
+    rate' -- write_5m=1.25x, write_1h=2.0x are both confirmed rates (config.json), not assumptions."""
+
+    def test_a_1h_ttl_write_is_priced_exactly_not_as_a_range(self):
+        # 1e6 in @ $5 + 5e5 cache-write @ 1h(2.0x) * $5 = 5e6 + 5e6 = $10, low == high.
+        self.env.session(SID1, [assistant_ttl("msg_1", "claude-opus-5", 0, cw_1h=500000, inp=1000000)])
+        self.env.run()
+        m = self.env.status()["by_model"]["claude-opus-5"]
+        self.assertAlmostEqual(m["usd_low"], 10.0)
+        self.assertAlmostEqual(m["usd_high"], 10.0, msg="a confirmed 1h-TTL write has no uncertainty left")
+
+    def test_a_5m_ttl_write_is_priced_exactly_at_the_cheaper_rate(self):
+        # 5e5 cache-write @ 5m(1.25x) * $5 = $3.125, plus $5 input.
+        self.env.session(SID1, [assistant_ttl("msg_1", "claude-opus-5", 0, cw_5m=500000, inp=1000000)])
+        self.env.run()
+        m = self.env.status()["by_model"]["claude-opus-5"]
+        self.assertAlmostEqual(m["usd_low"], 8.125)
+        self.assertAlmostEqual(m["usd_high"], 8.125)
+
+    def test_a_mixed_5m_and_1h_response_prices_each_bucket_at_its_own_rate(self):
+        self.env.session(SID1, [assistant_ttl("msg_1", "claude-opus-5", 0, cw_5m=200000, cw_1h=300000, inp=0)])
+        self.env.run()
+        m = self.env.status()["by_model"]["claude-opus-5"]
+        expected = (200000 * 5 * 1.25 + 300000 * 5 * 2.0) / 1e6
+        self.assertAlmostEqual(m["usd_low"], expected)
+        self.assertAlmostEqual(m["usd_high"], expected)
+
+    def test_aggregate_only_cache_write_with_no_ttl_split_still_ranges(self):
+        # Old transcript shape (no usage.cache_creation object): unknown TTL, same low-high range as before.
+        self.env.session(SID1, [assistant("msg_1", "claude-opus-5", 0, inp=0, cw=500000)])
+        self.env.run()
+        m = self.env.status()["by_model"]["claude-opus-5"]
+        self.assertAlmostEqual(m["usd_low"], 500000 * 5 * 1.25 / 1e6)
+        self.assertAlmostEqual(m["usd_high"], 500000 * 5 * 2.0 / 1e6)
+        self.assertLess(m["usd_low"], m["usd_high"], "unknown TTL is still a genuine range")
+
+    def test_shipped_config_confirms_both_ttl_rates(self):
+        cfg = cm.load_config(str(TOOL.parent / "config.json"))["cache_multipliers"]
+        self.assertEqual(cfg["write_5m"], 1.25)
+        self.assertEqual(cfg["write_1h"], 2.0)
+        self.assertIn("CONFIRMED", cfg["status"])
 
 
 @requires_yaml
@@ -417,7 +483,11 @@ class ThresholdTests(unittest.TestCase):
         self.assertIn("pending owner approval", shipped["thresholds"]["status"])
         self.assertEqual(shipped["thresholds"]["opus_whatif_alert_usd_per_day"], 50)
         self.assertEqual(shipped["thresholds"]["opus_whatif_stop_usd_per_day"], 100)
-        self.assertIn("ASSUMED", shipped["cache_multipliers"]["status"])
+        # F8 (2026-09-22): cache write rates are now CONFIRMED per-TTL (plan secs 1b/11), not an
+        # ASSUMED range -- only the read ratio is still unconfirmed against a price page.
+        self.assertIn("CONFIRMED", shipped["cache_multipliers"]["status"])
+        self.assertEqual(shipped["cache_multipliers"]["write_5m"], 1.25)
+        self.assertEqual(shipped["cache_multipliers"]["write_1h"], 2.0)
 
 
 @requires_yaml
@@ -484,6 +554,126 @@ class CouldNotReadTests(EnvTestCase):
         self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
         self.env.state.write_text("a file, not a directory", encoding="utf-8")
         self.assertEqual(self.env.run()[0], 3)
+
+
+def envelope(total_cost_usd, model_usage, extra=None):
+    """A fixture CLI --output-format json result envelope, the F3 drop-folder report's own field, per
+    docs/FABLE_AGENT_SUBAGENT_PLAN.md sec 11's real build-time example."""
+    e = {"type": "result", "subtype": "success", "is_error": False, "num_turns": 1,
+         "total_cost_usd": total_cost_usd, "permission_denials": [], "usage": {}, "modelUsage": model_usage}
+    e.update(extra or {})
+    return e
+
+
+def model_usage(cost_usd, basis="list", canonical="claude-haiku-4-5", provider="firstParty",
+                in_tok=10, out_tok=272, cr=17722, cw=35331):
+    return {"inputTokens": in_tok, "outputTokens": out_tok, "cacheReadInputTokens": cr,
+            "cacheCreationInputTokens": cw, "costUSD": cost_usd, "canonicalModel": canonical,
+            "provider": provider, "costBasis": basis}
+
+
+@requires_yaml
+class HeadlessDropFolderTests(EnvTestCase):
+    """F8: the drop folder (F3 report files, {envelope, checkedAt, command}) is a second, independent
+    ledger source. Its own total_cost_usd/modelUsage.costUSD is read directly (list-price-equivalent
+    already, per the CLI itself) rather than re-priced against routing/models.yaml."""
+
+    def test_a_headless_report_contributes_its_reported_dollars(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])   # give the day a transcript entry too
+        self.env.headless_report("pr-state-sweep", "20260920-010000",
+                                 envelope(0.0738042, {"claude-haiku-4-5-20251001": model_usage(0.0738042)}),
+                                 checked_at="2026-09-20T01:00:05Z")
+        code, out, _ = self.env.run()
+        st = self.env.status()
+        self.assertAlmostEqual(st["totals"]["headless_usd"], 0.0738042)
+        self.assertEqual(st["totals"]["headless_reports"], 1)
+        self.assertIn("pr-state-sweep", out)
+        self.assertEqual(code, 0)
+
+    def test_two_reports_for_the_agent_the_same_day_both_count(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        self.env.headless_report("gate-execution-auditor", "20260920-010000",
+                                 envelope(0.01, {"claude-haiku-4-5-20251001": model_usage(0.01)}))
+        self.env.headless_report("gate-execution-auditor", "20260920-050000",
+                                 envelope(0.02, {"claude-haiku-4-5-20251001": model_usage(0.02)}),
+                                 checked_at="2026-09-20T05:00:00Z")
+        self.env.run()
+        st = self.env.status()
+        self.assertAlmostEqual(st["totals"]["headless_usd"], 0.03)
+        self.assertEqual(st["totals"]["headless_reports"], 2)
+
+    def test_a_report_outside_the_window_is_excluded(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        self.env.headless_report("pr-state-sweep", "20260910-010000",
+                                 envelope(9.99, {"claude-haiku-4-5-20251001": model_usage(9.99)}),
+                                 checked_at="2026-09-10T01:00:00Z")
+        self.env.run("--days", "7")
+        self.assertAlmostEqual(self.env.status()["totals"]["headless_usd"], 0.0)
+
+    def test_a_non_list_cost_basis_is_a_breach_and_alerts(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        self.env.headless_report("pr-state-sweep", "20260920-010000",
+                                 envelope(0.05, {"claude-haiku-4-5-20251001": model_usage(0.05, basis="subscription")}))
+        code, out, _ = self.env.run()
+        kinds = [b["kind"] for b in self.env.status()["breaches"]]
+        self.assertIn("headless_cost_basis", kinds)
+        self.assertIn("costBasis", out)
+        self.assertEqual(code, 1)
+
+    def test_a_malformed_report_file_is_a_finding_not_a_crash(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        (self.env.reports / "bad.20260920-010000.json").write_text("not json", encoding="utf-8")
+        code, out, _ = self.env.run()
+        kinds = [b["kind"] for b in self.env.status()["breaches"]]
+        self.assertIn("headless_report_unreadable", kinds)
+        self.assertNotIn("Traceback", out)
+
+    def test_a_report_missing_the_envelope_checkedat_shape_is_a_finding(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        (self.env.reports / "bad2.20260920-010000.json").write_text(json.dumps({"foo": "bar"}), encoding="utf-8")
+        self.env.run()
+        kinds = [b["kind"] for b in self.env.status()["breaches"]]
+        self.assertIn("headless_report_shape", kinds)
+
+    def test_an_absent_reports_dir_is_zero_headless_not_an_error(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        import shutil
+        shutil.rmtree(self.env.reports)
+        code, out, _ = self.env.run()
+        self.assertEqual(code, 0)
+        self.assertAlmostEqual(self.env.status()["totals"]["headless_usd"], 0.0)
+
+    def test_headless_only_day_with_no_transcripts_still_evaluates(self):
+        # No transcript session at all -- only a headless report -- must not be refused as "no usage found".
+        self.env.headless_report("pr-state-sweep", "20260920-010000",
+                                 envelope(0.5, {"claude-haiku-4-5-20251001": model_usage(0.5)}))
+        code, out, _ = self.env.run()
+        self.assertNotEqual(code, 3)
+        self.assertAlmostEqual(self.env.status()["totals"]["headless_usd"], 0.5)
+
+    def test_headless_rows_are_written_to_the_ledger(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        self.env.headless_report("pr-state-sweep", "20260920-010000",
+                                 envelope(0.5, {"claude-haiku-4-5-20251001": model_usage(0.5)}))
+        self.env.run()
+        rec = json.loads(self.env.ledger_lines()[0])
+        self.assertEqual(len(rec["headless"]), 1)
+        self.assertEqual(rec["headless"][0]["id"], "pr-state-sweep")
+        self.assertAlmostEqual(rec["headless"][0]["cost_usd"], 0.5)
+
+    def test_message_text_never_reaches_the_headless_path_either(self):
+        # There is none to leak -- the report shape carries no message text -- but the command field
+        # (a full prompt in some invocations, per F3's own doc comment) must not be echoed anywhere.
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        path = self.env.headless_report("pr-state-sweep", "20260920-010000",
+                                        envelope(0.5, {"claude-haiku-4-5-20251001": model_usage(0.5)}))
+        rec = json.loads(path.read_text(encoding="utf-8"))
+        rec["command"] = TEXT_SENTINEL
+        path.write_text(json.dumps(rec), encoding="utf-8")
+        code, out, err = self.env.run()
+        st = (self.env.state / "status.json").read_text(encoding="utf-8")
+        for blob in (out, err, st) + tuple(self.env.ledger_lines()):
+            self.assertNotIn(TEXT_SENTINEL, blob)
 
 
 # ------------------------------------------------------------------ ledger
