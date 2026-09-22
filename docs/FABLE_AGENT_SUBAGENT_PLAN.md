@@ -444,11 +444,22 @@ when an earlier run in the same lane failed; never start high "to be safe"
 (`orchestrator_role.md`, cost rule). Priority (P0–P3) and model/effort stay independent axes
 (`priority_classification.md`).
 
-**Note on row 7 (Haiku + effort).** The Claude API reference states `effort` errors on Haiku 4.5.
-A probe of `claude -p --model haiku --effort low` **exited 0 and produced correct output**, so the
-CLI does not fail — but that does not prove the effort was applied rather than dropped. Until
-measured (task F1a), **do not pin `effort:` on a Haiku agent**; pin it on the Sonnet and Opus ones,
-where it is documented to work.
+**Note on row 7 (Haiku + effort) — F1a has reported; this reverses the earlier advice.** The Claude
+API reference states `effort` errors on Haiku 4.5, so an earlier draft of this document said not to
+pin effort on a Haiku agent. **Measured 2026-09-22 (CLI 2.1.278), that advice was wrong.** Three
+trials per level, `claude -p --model haiku --effort <level>`, thinking tokens:
+
+| `--effort low` | `--effort max` |
+|---|---|
+| 516, 235, 472 | 676, 548, 550 |
+
+Ranges do not overlap; ~1.45× more thinking at `max`. So `--effort` does reach Haiku through the
+CLI. The likely mechanism is that Claude Code translates effort into something Haiku accepts rather
+than passing it through — **that mechanism is a hypothesis, not verified**, and the API-level
+restriction may still bite a direct API caller.
+
+**This settles that effort works on Haiku. It does not settle that *pinning* works on any model** —
+see F1b, which is a separate and so far negative result.
 
 **Row 1 vs row 0 is deliberately left alone.** On the cache-read economics above, Fable is cheaper
 on input than Opus for a long read-heavy review, which is what row 1's `live-reviewer` is. That is
