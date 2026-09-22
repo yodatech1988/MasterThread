@@ -110,6 +110,64 @@ try {
         if ($out -notmatch 'hasSchema=True') { throw "expected hasSchema=True for worktree-sweep against the real schemas dir. Output: $out" }
     }
 
+    Test-Case "regression (PR #197 QA): inner call to Invoke-ReadOnlyAgent.ps1 uses a hashtable splat, so -MaxBudgetUsd binds as a named [double] param, not positionally" {
+        # Stub with the same param shape as the real Invoke-ReadOnlyAgent.ps1 (MaxBudgetUsd is its
+        # only [double] parameter). Under the old List[object] array splat, PowerShell 5.1 binds
+        # every splatted element positionally -- the literal string '-MaxBudgetUsd' itself would
+        # land on this stub's $MaxBudgetUsd and fail with a type-conversion error before the stub
+        # body ever runs, so no capture file would be written and this test would fail. Under the
+        # fixed [ordered]@{} hashtable splat, values bind by name and the stub runs normally.
+        $stubPath = Join-Path $fixtureDir 'stub-invoke-readonly-agent.ps1'
+        @'
+param(
+    [Parameter(Mandatory = $true)][string]$AgentName,
+    [Parameter(Mandatory = $true)][string]$Prompt,
+    [string]$Tools,
+    [string]$AllowedTools,
+    [switch]$Restricted,
+    [double]$MaxBudgetUsd = 1,
+    [int]$TimeoutSec = 300,
+    [string]$SettingsPath,
+    [string]$JsonSchemaPath,
+    [string]$RosterMetaPath,
+    [string]$Model,
+    [switch]$Report,
+    [string]$ReportDir,
+    [string]$ClaudePath,
+    [switch]$DryRun
+)
+$capture = [ordered]@{
+    AgentName        = $AgentName
+    Prompt           = $Prompt
+    MaxBudgetUsd     = $MaxBudgetUsd
+    MaxBudgetUsdType = $MaxBudgetUsd.GetType().Name
+    TimeoutSec       = $TimeoutSec
+    Report           = $Report.IsPresent
+    RosterMetaPath   = $RosterMetaPath
+}
+$capture | ConvertTo-Json | Set-Content -LiteralPath $env:F12_TEST_CAPTURE_PATH -Encoding utf8
+exit 0
+'@ | Set-Content -Path $stubPath -Encoding utf8
+
+        $captureFile = Join-Path $fixtureDir 'capture.json'
+        if (Test-Path $captureFile) { Remove-Item $captureFile -Force }
+        $prevCapturePath = $env:F12_TEST_CAPTURE_PATH
+        $env:F12_TEST_CAPTURE_PATH = $captureFile
+        try {
+            $out = & $scriptPath -AgentName 'fixture-haiku-agent' -Prompt 'hello' -BudgetsPath $budgetsFile -AgentsDir $agentsDir -SchemasDir $schemasDir -InvokeReadOnlyAgentPath $stubPath -RunLive *>&1 | Out-String -Width 4096
+            if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE. Output: $out" }
+            if (-not (Test-Path $captureFile)) { throw "stub never ran / never wrote its capture file (parameter binding likely failed). Output: $out" }
+            $captured = Get-Content -LiteralPath $captureFile -Raw | ConvertFrom-Json
+            if ($captured.AgentName -ne 'fixture-haiku-agent') { throw "expected AgentName='fixture-haiku-agent' to bind by name, got '$($captured.AgentName)'" }
+            if ($captured.Prompt -ne 'hello') { throw "expected Prompt='hello' to bind by name, got '$($captured.Prompt)'" }
+            if ($captured.MaxBudgetUsdType -ne 'Double') { throw "expected MaxBudgetUsd to bind as a Double, got type '$($captured.MaxBudgetUsdType)'" }
+            if ([double]$captured.MaxBudgetUsd -ne 0.25) { throw "expected MaxBudgetUsd=0.25 (haiku tier), got '$($captured.MaxBudgetUsd)'" }
+            if ($captured.Report -ne $true) { throw "expected -Report to bind as a switch, got '$($captured.Report)'" }
+        } finally {
+            $env:F12_TEST_CAPTURE_PATH = $prevCapturePath
+        }
+    }
+
     Test-Case "without -RunLive, no budget is spent and the schema (if any) is only checked offline" {
         $realSchemasDir = Join-Path $repoRoot 'tools\headless\schemas'
         $realBudgets = Join-Path $repoRoot 'tools\headless\budgets.json'

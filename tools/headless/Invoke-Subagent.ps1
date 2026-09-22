@@ -162,21 +162,27 @@ if (-not $ReportDir) {
     $ReportDir = Join-Path $env:APPDATA 'AEGIS\reports'
 }
 
-$innerArgs = [System.Collections.Generic.List[object]]::new()
-$innerArgs.Add('-AgentName'); $innerArgs.Add($AgentName)
-$innerArgs.Add('-Prompt'); $innerArgs.Add($Prompt)
-$innerArgs.Add('-MaxBudgetUsd'); $innerArgs.Add($resolvedBudget)
-$innerArgs.Add('-TimeoutSec'); $innerArgs.Add($TimeoutSec)
-$innerArgs.Add('-Report')
-$innerArgs.Add('-ReportDir'); $innerArgs.Add($ReportDir)
-$innerArgs.Add('-RosterMetaPath'); $innerArgs.Add($RosterMetaPath)
+# Hashtable splat (not an array splat) is required so PowerShell binds each value to its named
+# parameter -- an array splat has no flag names in it at all, so in Windows PowerShell 5.1 every
+# element (including the literal '-MaxBudgetUsd' string) binds positionally instead, landing on
+# Invoke-ReadOnlyAgent.ps1's own first-declared parameter and throwing a type-conversion error.
+# See PR #197 QA comment (2026-09-22) for the isolated repro. Matches Invoke-Lane.ps1's pattern.
+$innerArgs = [ordered]@{
+    AgentName     = $AgentName
+    Prompt        = $Prompt
+    MaxBudgetUsd  = $resolvedBudget
+    TimeoutSec    = $TimeoutSec
+    Report        = $true
+    ReportDir     = $ReportDir
+    RosterMetaPath = $RosterMetaPath
+}
 if ($hasSchema -and $RunLive) {
     # Only threaded to the real claude invocation when the caller opted into spending budget on a
     # live run -- this is the "live acceptance for F4" case. Without -RunLive, this script proves
     # the schema resolves and is well-formed but makes no live-CLI claim (see below).
-    $innerArgs.Add('-JsonSchemaPath'); $innerArgs.Add($schemaPath)
+    $innerArgs['JsonSchemaPath'] = $schemaPath
 }
-if ($ClaudePath) { $innerArgs.Add('-ClaudePath'); $innerArgs.Add($ClaudePath) }
+if ($ClaudePath) { $innerArgs['ClaudePath'] = $ClaudePath }
 
 if (-not $RunLive) {
     Write-Host "Invoke-Subagent: -RunLive not set. Resolved tier=$tier budget=$resolvedBudget hasSchema=$hasSchema; not launching claude (no budget spent). Pass -RunLive to actually run '$AgentName'." -ForegroundColor Yellow
