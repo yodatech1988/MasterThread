@@ -205,6 +205,11 @@ folder. Read-only teams (sweeps, verifiers) are Haiku and budgeted by usage, not
 This is `fleet_structure.md`'s "workers run subagents beneath them" applied to the PM's own
 dispatch, not a new pattern.
 
+**Context limit per lane.** The PM launches each lane with its priority's context limit
+(`cost_steward.md`, "Accuracy cycle" — the priority x model table), and dispatches the next task
+into a fresh session per that same file's "Compact after every major task" rather than continuing
+a lane's session past its finished task.
+
 ### A PM, not a worker — the checks
 
 The PM never runs `gh pr diff`, never reads a card body to verify it, never edits a standard,
