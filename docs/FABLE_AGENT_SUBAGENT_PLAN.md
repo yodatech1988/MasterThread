@@ -78,7 +78,10 @@ effort dominated in both directions on both paths; the agent-level pin moved not
 evidence.** The independent cross-check (issue #211) came back inconclusive rather than confirming
 or refuting the measurement above, and the Fable Project PM cut F1 on 2026-09-22 rather than leave
 it pending on a confirmation that was not going to land. F1 is marked **CUT** in §6, kept for the
-record rather than deleted.
+record rather than deleted. **Authority:** Decision Queue card `fable-cut-f1-after-g2-2026-09-22`
+was filed 17:20Z and withdrawn 18:09Z by the Fable Project PM (yoda-ad) under the owner's ~18:08Z
+chat instruction that launch/cut decisions inside the approved Fable scope are the PM's to make
+autonomously; the G2 cross-check (#211, INCONCLUSIVE, re-run dropped) is the evidence basis.
 
 **The variance is large, and the arms are not separable from each other.** 9,368 against 20,084 on
 identical config is a two-fold spread, so pinned-versus-unpinned at the same session effort cannot
@@ -915,7 +918,7 @@ were unmet. This plan records no authority for any of the three **dispatches**:
 | F-task | PR | Opened | What the dispatch bypassed | Merged |
 |---|---|---|---|---|
 | F10 | #172 | 2026-09-22T00:54Z | Condition 4 (condition 3 not re-verified) | 2026-09-22T02:18:45Z, owner's account |
-| F2 | #174 | 2026-09-22T01:02Z | Condition 4. Also its listed dependency F1, which is CONDEMNED pending confirmation (§1a), so the dependency could never be met as written | 2026-09-22T02:18:32Z, owner's account |
+| F2 | #174 | 2026-09-22T01:02Z | Condition 4. Also its listed dependency F1, which is CUT (§1a), so the dependency could never be met as written | 2026-09-22T02:18:32Z, owner's account |
 | F3 | #176 | 2026-09-22T01:42Z | Condition 4, and its own dependency F2: it was built stacked on the unmerged #174, against the F3 brief's "confirm F2 is merged or stop" | 2026-09-22T02:18:24Z into #174's branch, owner's account; on `origin/main` via #174 |
 
 All three were merged by the owner's own account, and the merges are the owner's own actions.
