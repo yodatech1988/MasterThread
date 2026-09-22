@@ -11,6 +11,12 @@ re-verified, and condition 4 is **pending** the owner's answer on card
 pending its own confirmation card (plan §9). Read this as the procedure the build is aiming at, not
 as instructions that work today. Each step says what it needs.
 
+**Wave-1 tracking (2026-09-22):** F2 (#174) and F3 (#176) are merged to `main` (commit `10786c2`,
+2026-09-22T02:18:32Z — #176 landed via #174's squash), and F10 (#172) is merged to `main`
+(2026-09-22T02:18:45Z). See the plan's §6 status table and issue #185. The #169 follow-up (#175) merged
+to `main` at 2026-09-22T02:32:43Z (`6e8f6ec`). None of the "needs F12" gates below have moved yet — those wrappers (F12) are still
+unbuilt regardless of F2/F3/F10 landing.
+
 ---
 
 ## The three things you touch
