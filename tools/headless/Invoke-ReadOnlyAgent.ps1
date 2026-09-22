@@ -102,13 +102,12 @@
     `stream-json --verbose`, and on completion the wrapper writes ONE report file to -ReportDir:
 
         {"envelope": <the CLI's stdout, verbatim>, "checkedAt": "<UTC clock at write time>",
-         "command": "<the exact invocation>", "exitCode": <the CLI process's exit code>}
+         "command": "<the exact invocation>"}
 
-    Nothing else (plus "testSeam": true, only when -ClaudePath replaced the real CLI). exitCode
-    was added after review of PR #176 so a failed run is visible without inferring it from the
-    envelope; it is the fourth field of the plan's {envelope, checkedAt, command} and comes from
-    the process, not the model. The envelope is embedded as the CLI's own characters, untouched
-    (its trailing newline included, as legal JSON whitespace) -- it is never parsed and re-serialised, so no field can be
+    Exactly those three keys, the shape docs/FABLE_AGENT_SUBAGENT_PLAN.md:617 and the F3 brief
+    name -- nothing added (PR #176 review round 2 removed an extra exitCode and testSeam field).
+    The envelope is embedded as the CLI's own characters, untouched (its trailing newline
+    included, as legal JSON whitespace) -- it is never parsed and re-serialised, so no field can be
     dropped, renamed, reordered or re-formatted on the way to disk. `permission_denials`,
     `total_cost_usd` and `usage` therefore come from the CLI, never from the agent's own prose.
     `checkedAt` is read from [DateTime]::UtcNow immediately before the write (tools/README.md
@@ -119,11 +118,16 @@
     folder, then renamed), so a heartbeat-tick reader never sees a half-written file. A second
     report for the same agent in the same second gets a -2, -3 ... suffix rather than overwriting.
 
-    Fails loudly, never writes a partial file: if the CLI's stdout is empty, is not valid JSON, is
-    not a single JSON object, or lacks the result-envelope keys this report is measured on (type =
-    "result", subtype, is_error, num_turns, total_cost_usd, permission_denials as an array, usage),
-    NO report file is written and the wrapper exits 6. See .NOTES for how a non-zero CLI exit is
-    handled when the envelope itself is complete.
+    `command` is the exact command line that was launched: the resolved executable and every
+    argument. The prompt is not part of it -- it travels on stdin (see -Prompt) -- and it is not
+    stored anywhere in the report, so a prompt built from handoff or card content is not kept
+    indefinitely under %APPDATA%\AEGIS\reports (D6).
+
+    Fails loudly, never writes a partial file: if the CLI exits non-zero, or its stdout is empty,
+    is not valid JSON, is not a single JSON object, or lacks the result-envelope keys this report
+    is measured on (type = "result", subtype, is_error, num_turns, total_cost_usd,
+    permission_denials as an array, usage), NO report file is written and the wrapper exits 6
+    (see .NOTES).
 
     Off by default: a caller that passes neither -Report nor -ReportDir keeps the pre-F3
     `stream-json --verbose` output and no report file is written anywhere.
@@ -141,15 +145,10 @@
     site, not a helper in isolation) against a fake CLI that prints a fixture envelope, an empty
     stdout, malformed JSON, or a non-zero exit -- without spending budget. Enforced, not just
     documented (PR #176 review): refused with exit 2 unless the environment variable
-    AEGIS_TEST_SEAM is set to 1, and any report written through it carries "testSeam": true so a
-    reader can reject it as not real L1 evidence. A real run leaves it unset and the script
-    resolves `claude.cmd` itself (see .NOTES). Exit 2 if the path does not exist.
-
-.PARAMETER RedactPrompt
-    Report mode only. Records the prompt in the report's `command` as its length and SHA-256
-    instead of its text. Reports are kept on this PC indefinitely (owner decision D6), and
-    `envelope.result` still holds the model's own output, so do not put secrets in a prompt either
-    way; this switch keeps the prompt text itself out of the file.
+    AEGIS_TEST_SEAM is set to 1, and in report mode it is also refused (exit 2) unless -ReportDir
+    is passed explicitly and is not the real drop folder (%APPDATA%\AEGIS\reports), so a report
+    produced by a fake CLI can never land where L1 evidence is read. A real run leaves it unset and
+    the script resolves `claude.cmd` itself (see .NOTES). Exit 2 if the path does not exist.
 
 .PARAMETER DryRun
     Test seam (tools/README.md: "Test seam is mandatory"). Resolves -Restricted (explicit or via
@@ -175,7 +174,9 @@
     2 = this wrapper itself failed to resolve or launch `claude` (never reached the subprocess at
     all), or refused an argument that is unsafe on cmd.exe's command line (-AgentName or -Model
     outside their allowed character sets; -SettingsPath/-Tools/-AllowedTools containing a double
-    quote, % or a line break), or refused -ClaudePath without AEGIS_TEST_SEAM=1. 3 = the run timed out and was killed. 4 = -Restricted was not passed explicitly and the
+    quote, % or a line break, or ending in a backslash; -SettingsPath not an existing file), or
+    refused -ClaudePath (no AEGIS_TEST_SEAM=1, or a report aimed at the real drop folder). 3 = the
+    run timed out and its whole process tree was killed. 4 = -Restricted was not passed explicitly and the
     default-on lookup against roster_meta.json could not be completed (file missing, unparsable,
     or the named agent is not listed) -- fails closed rather than assuming unrestricted. 5 = the
     run resolved to NOT restricted (either -Restricted:$false was passed, or the roster_meta.json
@@ -185,20 +186,18 @@
     silent fallthrough.
 
     Report mode (-Report / -ReportDir, plan task F3) adds two codes, and in report mode they are
-    exactly the "no report file was written" signal: 6 = the CLI's stdout was empty, not valid
-    JSON (checked by two parsers, see Test-StrictJson), not a single object, or missing a required
-    result-envelope key, or the assembled report failed the same strict re-check -- nothing
-    written. 7 =
-    the envelope was valid but the report file could not be written (folder not creatable, disk
-    error) -- nothing left behind but the error. Both win over the CLI's own exit code, which is
-    printed in the error message instead. When a COMPLETE envelope comes back with a non-zero CLI
-    exit (e.g. subtype error_max_budget_usd, is_error true), the report IS written -- it is whole
-    evidence of what the run did, including its permission_denials and cost, not a partial file --
-    with that exit code in its exitCode field, and the CLI's own exit code is then propagated as
-    usual. (This reading of the F3 brief's "a nonzero exit must not silently write a
-    partial/empty envelope" is flagged on PR #176 for whoever holds the brief to confirm.) A timeout (3) writes no report; a
-    missing report where one was expected is itself the finding (headless_readiness_ladder.md,
-    "What every headless run must emit").
+    exactly the "no report file was written" signal: 6 = the CLI exited non-zero, or its stdout was
+    empty, not valid JSON (checked by two parsers, see Test-StrictJson), not a single object, or
+    missing a required result-envelope key, or the assembled report failed the same strict
+    re-check -- nothing written. 7 = the envelope was valid but the report file could not be
+    written (folder not creatable, disk error) -- nothing left behind but the error. Both win over
+    the CLI's own exit code, which is printed in the error message instead; the CLI's stdout
+    (including any envelope it did print) is still echoed to the console. A non-zero CLI exit
+    writes no report even when the envelope looks complete (e.g. subtype error_max_budget_usd):
+    the F3 brief says a nonzero exit must not write an envelope and must fail loudly
+    (SCOPE_F3_F4.md section 6), and the plan's report shape has no field to carry the exit code.
+    A timeout (3) writes no report; a missing report where one was expected is itself the finding
+    (headless_readiness_ladder.md, "What every headless run must emit").
 
     2026-09-18 fix, two defects found the same night this script's first real headless run was
     attempted (PM_INBOX github-43-20260918T0403Z-l1pilot-build-and-crosslinks.md):
@@ -232,8 +231,8 @@
     plus checkedAt and the exact command to the drop folder as the L1 report, replacing the
     hand-rolled {agent, checkedAt, command, exitCode, permissionDenials, findings[]} shape that
     headless_readiness_ladder.md still describes (that standard is route C; updating its text is a
-    separate owner-merged change, tracked on PR #176 -- nothing, F7's heartbeat ingest included,
-    should be built against the ladder's old shape). The per-agent `findings[]` contract is F4's --json-schema work,
+    separate owner-merged change, tracked in GitHub issue #184 -- nothing, F7's heartbeat ingest
+    included, should be built against the ladder's old shape). The per-agent `findings[]` contract is F4's --json-schema work,
     not this script's.
 #>
 [CmdletBinding()]
@@ -252,7 +251,6 @@ param(
     [switch]$Report,
     [string]$ReportDir,
     [string]$ClaudePath,
-    [switch]$RedactPrompt,
     [switch]$DryRun
 )
 
@@ -292,12 +290,20 @@ foreach ($quotedName in @('SettingsPath', 'Tools', 'AllowedTools')) {
     if ($quotedValue -and $quotedValue -match '["%\r\n]') {
         Exit-UnsafeArg $quotedName 'the value contains a double quote, %, or a line break, which cmd.exe would interpret even inside quotes'
     }
+    # PR #176 review round 2: these values are wrapped as "value" (ConvertTo-QuotedArg). A value
+    # ending in a backslash becomes "...\" and the CLI's argv parser reads that trailing \" as an
+    # escaped quote, so the value swallows every argument after it (--restricted, --tools,
+    # --permission-mode dontAsk, --permission-prompts none). Refused rather than escaped.
+    if ($quotedValue -and $quotedValue.EndsWith('\')) {
+        Exit-UnsafeArg $quotedName 'the value ends in a backslash, which would escape its closing quote and swallow the arguments after it'
+    }
 }
 
 # -ClaudePath is a test seam, and a report written through it is not evidence of a real CLI run.
 # Tool-level guard rather than an instruction: it is refused unless the process opts in with
-# AEGIS_TEST_SEAM=1, and a report written through it is marked "testSeam": true (see below) so a
-# reader can reject it even if the variable was set somewhere it should not have been.
+# AEGIS_TEST_SEAM=1, and in report mode it may only write to an explicit -ReportDir that is not the
+# real drop folder (see below), so even a leftover AEGIS_TEST_SEAM=1 cannot put a fake CLI's output
+# where L1 evidence is read.
 if ($ClaudePath -and $env:AEGIS_TEST_SEAM -ne '1') {
     Write-Host "Invoke-ReadOnlyAgent: -ClaudePath is a test seam and is refused unless the environment variable AEGIS_TEST_SEAM is set to 1. A real run resolves claude.cmd itself. Nothing was launched." -ForegroundColor Red
     exit 2
@@ -316,13 +322,27 @@ if ($reportMode -and -not $ReportDir) {
     $ReportDir = Join-Path $env:APPDATA 'AEGIS\reports'
 }
 
-if (-not (Test-Path $SettingsPath)) {
+# PR #176 review round 2: a fake CLI's output must never be written where real L1 evidence is read.
+# The report shape is exactly {envelope, checkedAt, command} (plan:617), so there is no field to mark
+# a test-seam report; instead the seam may only write to a folder the caller names explicitly, and
+# never to the real drop folder.
+if ($ClaudePath -and $reportMode) {
+    $realDrop = $null
+    if ($env:APPDATA) { $realDrop = [System.IO.Path]::GetFullPath((Join-Path $env:APPDATA 'AEGIS\reports')).TrimEnd('\') }
+    $targetDrop = [System.IO.Path]::GetFullPath($ReportDir).TrimEnd('\')
+    if (-not $PSBoundParameters.ContainsKey('ReportDir') -or ($realDrop -and $targetDrop -ieq $realDrop)) {
+        Write-Host "Invoke-ReadOnlyAgent: -ClaudePath (test seam) in report mode needs an explicit -ReportDir that is not the real drop folder ($realDrop). Nothing was launched." -ForegroundColor Red
+        exit 2
+    }
+}
+
+if (-not (Test-Path -LiteralPath $SettingsPath -PathType Leaf)) {
     # NOTE: Write-Error is itself a terminating error under $ErrorActionPreference = 'Stop' and
     # would skip the explicit `exit 2` below, falling through to PowerShell's own default exit 1
     # for an unhandled error -- verified empirically 2026-09-18. Write-Host + explicit exit
     # guarantees the documented code regardless of preference, same convention the estate's other
     # click-files use for a controlled, known-cause exit.
-    Write-Host "Invoke-ReadOnlyAgent: settings file not found at $SettingsPath" -ForegroundColor Red
+    Write-Host "Invoke-ReadOnlyAgent: settings file not found (or not a file) at $SettingsPath" -ForegroundColor Red
     exit 2
 }
 
@@ -518,12 +538,16 @@ try {
 try {
     if (-not $proc.WaitForExit($TimeoutSec * 1000)) {
         Write-Warning "Invoke-ReadOnlyAgent: '$AgentName' exceeded ${TimeoutSec}s, killing it. This is itself a finding worth reporting -- see headless_agent_permissions.md Verification section for why a run should not hang under --permission-prompts none."
-        try { $proc.Kill() } catch {}
+        # PR #176 review round 2: $proc is the cmd.exe running claude.cmd. Killing only it left the
+        # node CLI (and anything it started) running after this wrapper reported exit 3. Kill the
+        # whole tree; fall back to the single process if taskkill did not end it.
+        & (Join-Path $env:SystemRoot 'System32\taskkill.exe') /T /F /PID $proc.Id 2>&1 | Write-Verbose
+        if (-not $proc.WaitForExit(5000)) { try { $proc.Kill() } catch {} }
         Write-Host "Invoke-ReadOnlyAgent: timeout after ${TimeoutSec}s running agent '$AgentName'" -ForegroundColor Red
         Get-Content $stdoutFile -ErrorAction SilentlyContinue
         Get-Content $stderrFile -ErrorAction SilentlyContinue | Write-Verbose
         if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
-    Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
+        Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
         exit 3
     }
 } catch {
@@ -555,21 +579,12 @@ if (-not $reportMode) {
     exit $claudeExitCode
 }
 
-# --- F3: write {envelope, checkedAt, command, exitCode} to the drop folder ----------------------
-# The exact invocation, as launched. The prompt always goes on stdin, so it is not in $claudeArgs and
-# is recorded explicitly rather than lost -- or, with -RedactPrompt, replaced by its length and
-# SHA-256 so a report can still be matched to a known prompt without storing its text (reports are
-# kept indefinitely under %APPDATA%\AEGIS\reports; see README.md "What a report contains").
+# --- F3: write {envelope, checkedAt, command} to the drop folder --------------------------------
+# The exact command line, as launched: the executable and every argument. The prompt is not part of
+# the command line (it goes on stdin) and is deliberately not stored in the report: reports are kept
+# indefinitely under %APPDATA%\AEGIS\reports (D6), and prompts are often built from handoff or card
+# content (PR #176 review round 2).
 $command = "$claudeExe $($claudeArgs -join ' ')"
-if ($RedactPrompt) {
-    $sha = [System.Security.Cryptography.SHA256]::Create()
-    try {
-        $hash = -join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Prompt)) | ForEach-Object { $_.ToString('x2') })
-    } finally { $sha.Dispose() }
-    $command += " (prompt on stdin: <redacted, $($Prompt.Length) chars, sha256 $hash>)"
-} else {
-    $command += " (prompt on stdin: $(ConvertTo-QuotedArg $Prompt))"
-}
 
 # Read the CLI's stdout as the exact UTF-8 text it wrote (no BOM added, no line splitting). The
 # report embeds these characters untouched -- including the CLI's trailing newline, which is legal
@@ -607,6 +622,12 @@ function Test-StrictJson([string]$Text) {
     return $true
 }
 
+# F3 brief (SCOPE_F3_F4.md section 6): a nonzero exit must not write an envelope; it fails loudly.
+# Checked first, so a complete-looking envelope from a failed run (e.g. error_max_budget_usd) is not
+# written either. The CLI's stdout was already echoed above, so nothing is hidden from the caller.
+if ($claudeExitCode -ne 0) {
+    Exit-NoReport 6 'the CLI exited non-zero; a failed run does not produce an L1 report'
+}
 if (-not $trimmedEnvelope) {
     Exit-NoReport 6 'the CLI wrote nothing to stdout (no envelope)'
 }
@@ -658,15 +679,10 @@ try {
 
     # The envelope goes in as the CLI's own text -- never parsed-and-re-serialised -- so the report
     # carries exactly the fields, order and number formatting the CLI emitted. Only the
-    # wrapper-owned values are JSON-encoded here. exitCode is the CLI process's own exit code
-    # (PR #176 review): without it a reader could only infer a failed run from is_error/subtype.
-    # testSeam appears only when -ClaudePath replaced the real CLI, so such a report can be rejected.
+    # wrapper-owned values are JSON-encoded here. Exactly {envelope, checkedAt, command} (plan:617).
     $reportText = '{"envelope":' + $rawStdout +
         ',"checkedAt":' + (ConvertTo-Json -InputObject $checkedAt -Compress) +
-        ',"command":' + (ConvertTo-Json -InputObject $command -Compress) +
-        ',"exitCode":' + ([int]$claudeExitCode).ToString([System.Globalization.CultureInfo]::InvariantCulture)
-    if ($ClaudePath) { $reportText += ',"testSeam":true' }
-    $reportText += '}'
+        ',"command":' + (ConvertTo-Json -InputObject $command -Compress) + '}'
 
     # Belt and braces for the "never a malformed file" promise: re-check the assembled report with
     # the same strict test before anything touches the drop folder.
