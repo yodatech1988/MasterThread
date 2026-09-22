@@ -16,9 +16,11 @@ just have set 6 workers."*
 | Team lead | as needed | the PM | Holds each member's backlog: current, on deck, up next. |
 | Worker | one per live workstream | its lead | Never idle — see below. Runs subagents beneath it. |
 | Peer review + merge authority | 1 | the PM | One combined seat. Reviews, then merges. |
+| Cost steward | 1 | the PM | Required: the PM dispatches nothing while it is vacant. Meters every session's context and cost and instructs compaction. |
 
 What the PM is accountable for across workstreams is in `pm_role.md`; the review + merge seat's
-routes, procedure and enforcement are in `merge_authority.md`.
+routes, procedure and enforcement are in `merge_authority.md`; the cost steward's meter, thresholds
+and instructions are in `cost_steward.md`.
 
 A **workstream** is a named, durable piece of production with an owner and a backlog — not a task.
 Workers are assigned to workstreams, and the number of workers is whatever the live workstreams

@@ -30,6 +30,8 @@ The narrowed PM did a one-time intake per workstream and then stepped back. In p
 
 1. **The workstream register** — the single list of what the fleet is doing (below).
 2. **Staffing** — every live workstream has a lead or worker; the merge-authority seat is filled;
+   the cost-steward seat is filled, and the PM dispatches nothing while it is vacant
+   (`cost_steward.md`, "Staffing rule");
    arriving sessions get a lane or are told plainly there is none.
 3. **Flow** — work-in-progress limits, sequencing between workstreams, and clearing blockers.
 4. **The owner interface** — one channel, batched, decisions separated from status.
