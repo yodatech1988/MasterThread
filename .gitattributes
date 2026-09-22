@@ -1,1 +1,8 @@
 tools/tests/fixtures/headless/review-verdict/golden-body.txt text eol=lf
+
+# vps-finish-gates fixtures
+tools/click-files/AEGIS-VPS-Finish.ps1 text eol=lf
+tools/click-files/AEGIS-VPS-Finish.cmd text eol=lf
+tools/click-files/zz-UNDO-AEGIS-VPS-Finish.ps1 text eol=lf
+tools/click-files/zz-UNDO-AEGIS-VPS-Finish.cmd text eol=lf
+tools/tests/test-vps-finish-gates.ps1 text eol=lf
