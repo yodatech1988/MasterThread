@@ -1,0 +1,160 @@
+{
+  "title": "worktree-sweep report",
+  "description": "L1 reporter output schema for `worktree-sweep` (docs/FABLE_AGENT_SUBAGENT_PLAN.md task F4). Mirrors the Output section of claude-agents/worktree-sweep.md. Constrains envelope.result via claude -p --json-schema; it does not describe the F3 report wrapper.",
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "const": "worktree-sweep"
+    },
+    "repo": {
+      "type": "string",
+      "description": "Repo path or name swept."
+    },
+    "worktrees": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gitStatus": {
+            "type": "string",
+            "enum": [
+              "clean",
+              "dirty"
+            ]
+          },
+          "dirtyFiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Files from git status --porcelain; empty when clean."
+          },
+          "prs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "OPEN",
+                    "CLOSED",
+                    "MERGED"
+                  ]
+                }
+              },
+              "required": [
+                "number",
+                "state"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Every PR matching the branch; more than one is listed, never guessed."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "safe to remove",
+              "not safe",
+              "needs a human look"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "branch",
+          "gitStatus",
+          "dirtyFiles",
+          "prs",
+          "verdict"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "worktreesRemovedByThisAgent": {
+      "type": "integer",
+      "const": 0,
+      "description": "Always 0: the definition's closing line, \"No worktrees were removed by this agent\", as a checkable value."
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "safe-to-remove",
+              "dirty",
+              "pr-open",
+              "no-pr",
+              "multiple-prs"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "description": "What the finding is about: repo, PR, worktree path, file:line, workstream."
+          },
+          "detail": {
+            "type": "string",
+            "description": "One line, stating the evidence (the command or API read) the finding rests on."
+          }
+        },
+        "required": [
+          "kind",
+          "subject",
+          "detail"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Uniform finding list (plan F4 / ladder findings[]): one entry per flagged item, drawn from the tables in this same object. Empty array = nothing flagged, which is only a clean result if couldNotCheck is also empty."
+    },
+    "couldNotCheck": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why it could not be checked (gh error, rate limit, unreadable file, no network)."
+          }
+        },
+        "required": [
+          "subject",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Everything this run could not reach. An unqueried item is listed here, never reported as clean."
+    }
+  },
+  "required": [
+    "agent",
+    "repo",
+    "worktrees",
+    "worktreesRemovedByThisAgent",
+    "findings",
+    "couldNotCheck"
+  ],
+  "additionalProperties": false
+}

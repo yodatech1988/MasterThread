@@ -1,0 +1,131 @@
+{
+  "title": "plan-status-check report",
+  "description": "L1 reporter output schema for `plan-status-check` (docs/FABLE_AGENT_SUBAGENT_PLAN.md task F4). Mirrors the Output section of claude-agents/plan-status-check.md. Constrains envelope.result via claude -p --json-schema; it does not describe the F3 report wrapper.",
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "const": "plan-status-check"
+    },
+    "repo": {
+      "type": "string",
+      "description": "owner/repo"
+    },
+    "originRef": {
+      "type": "string",
+      "description": "The exact origin ref read, e.g. origin/main:docs/PLAN.md, so the report is falsifiable."
+    },
+    "disagreements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string"
+          },
+          "planSays": {
+            "type": "string"
+          },
+          "ghSays": {
+            "type": "string"
+          },
+          "prNumber": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "prUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sessionId",
+          "planSays",
+          "ghSays",
+          "prNumber",
+          "prUrl"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Only the disagreeing rows."
+    },
+    "noDisagreementsFound": {
+      "type": "boolean",
+      "description": "True only when every Status row was checked and none disagreed."
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "status-disagreement",
+              "pr-not-found",
+              "title-mismatch"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "description": "What the finding is about: repo, PR, worktree path, file:line, workstream."
+          },
+          "detail": {
+            "type": "string",
+            "description": "One line, stating the evidence (the command or API read) the finding rests on."
+          }
+        },
+        "required": [
+          "kind",
+          "subject",
+          "detail"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Uniform finding list (plan F4 / ladder findings[]): one entry per flagged item, drawn from the tables in this same object. Empty array = nothing flagged, which is only a clean result if couldNotCheck is also empty."
+    },
+    "couldNotCheck": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why it could not be checked (gh error, rate limit, unreadable file, no network)."
+          }
+        },
+        "required": [
+          "subject",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Everything this run could not reach. An unqueried item is listed here, never reported as clean."
+    }
+  },
+  "required": [
+    "agent",
+    "repo",
+    "originRef",
+    "disagreements",
+    "noDisagreementsFound",
+    "findings",
+    "couldNotCheck"
+  ],
+  "additionalProperties": false
+}

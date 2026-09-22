@@ -139,6 +139,13 @@ instead of inheriting the conclusion.
   content outside review, regardless of whether the content itself was accurate
   (`docs/LESSONS.md` "Shared checkout... seen twice").
 
+## Compact after every major task
+
+A lane card reaching Done, a PR opened or merged, or anything sized M or larger per
+`task_sizing.md` is a major task: record what the next task needs (Fleet Status row, PR body,
+handoff note), then compact if context is over about 100K tokens, before starting anything else.
+See `cost_steward.md`, "Compact after every major task."
+
 ## Pause order
 
 If the orchestrator sends "PAUSE" (usage limit):

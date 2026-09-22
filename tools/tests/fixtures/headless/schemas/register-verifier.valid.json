@@ -1,0 +1,33 @@
+{
+  "agent": "register-verifier",
+  "disagreements": [
+    {
+      "workstream": "fable-f4",
+      "rowState": "building",
+      "rowBlocker": null,
+      "liveState": "MERGED",
+      "liveMergeStateStatus": null,
+      "checkedVia": "gh pr view 200 --json state"
+    }
+  ],
+  "emptyNextOnStaffedRow": [],
+  "staleVerified": [],
+  "dispatchableAndIdle": {
+    "count": null,
+    "idleCrossCheckSkipped": true,
+    "workstreams": []
+  },
+  "findings": [
+    {
+      "kind": "disagreement",
+      "subject": "fable-f4",
+      "detail": "row says building, gh says MERGED"
+    }
+  ],
+  "couldNotCheck": [],
+  "lessons": {
+    "assumptionFalse": "none",
+    "ruleCandidate": "none",
+    "whereItBelongs": "not yet promoted"
+  }
+}

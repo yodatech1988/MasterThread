@@ -1,0 +1,87 @@
+# Mechanical block for dependent PRs. Owner order 2026-09-22: "These need better blocking
+# mechanisms, or to be built as stacks so I cannot merge something unless the one beneath it is
+# done." (#175 merged before #169; #176 and #186 merged into side branches.)
+#
+# The rule is in standards/sessions/merge_authority.md, "Dependent PRs: the depends-on check".
+# The logic is tools/check_depends_on.py (tests: tools/tests/test_check_depends_on.py).
+#
+#   depends-on  (pull_request) FAILS when the PR targets anything but the default branch, or any
+#               `Depends-on: #N` / `Depends-on: owner/repo#N` line in its body names a PR that is
+#               not merged into its repository's default branch. Passes otherwise.
+#   recheck     (schedule / workflow_dispatch) re-runs a failed `depends-on` run once all of that
+#               PR's dependencies have landed, so the PR turns green without anyone editing it.
+#               Editing the PR body, or "Re-run jobs" on the check, also re-evaluates at once.
+#
+# This check only BLOCKS a merge once the owner marks `depends-on` as a required status check on
+# main's branch protection (an owner-only repo-settings step; see the PR that added this file).
+# Until then it is a red X, not a gate.
+#
+# RUNNER: ubuntu-latest, same reason as agents-roster-check.yml (no self-hosted runner is
+# registered for MasterThread). The repo is public, so GitHub-hosted minutes are not billed, and
+# the job is seconds long, standard library only, so it is safe to require: it has been seen to
+# run on GitHub's runners, unlike a self-hosted-only check (merge_authority.md, Enforcement, phase 2).
+#
+# Actions are pinned by major tag, matching this repo's existing workflows.
+name: depends-on
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Re-check one PR number (blank = every open PR with Depends-on lines)"
+        required: false
+
+permissions: {}
+
+concurrency:
+  group: depends-on-${{ github.event.pull_request.number || github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  depends-on:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/check_depends_on.py
+          sparse-checkout-cone-mode: false
+      # The script reads the PR body fresh from the API (not the event payload), so a re-run
+      # sees the current body and the current state of every dependency.
+      - name: Check Depends-on lines
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/check_depends_on.py check --repo "${{ github.repository }}" --pr "${{ github.event.pull_request.number }}"
+
+  recheck:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      # Needed only to re-run a failed depends-on run; this job never merges or edits a PR.
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/check_depends_on.py
+          sparse-checkout-cone-mode: false
+      - name: Re-run checks whose dependencies have landed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_INPUT: ${{ github.event.inputs.pr }}
+        run: |
+          if [ -n "$PR_INPUT" ]; then
+            python3 tools/check_depends_on.py recheck --repo "${{ github.repository }}" --pr "$PR_INPUT"
+          else
+            python3 tools/check_depends_on.py recheck --repo "${{ github.repository }}"
+          fi

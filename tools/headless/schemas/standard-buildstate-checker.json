@@ -1,0 +1,215 @@
+{
+  "title": "standard-buildstate-checker report",
+  "description": "L1 reporter output schema for `standard-buildstate-checker` (docs/FABLE_AGENT_SUBAGENT_PLAN.md task F4). Mirrors the Output section of claude-agents/standard-buildstate-checker.md. Constrains envelope.result via claude -p --json-schema; it does not describe the F3 report wrapper.",
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "const": "standard-buildstate-checker"
+    },
+    "repo": {
+      "type": "string"
+    },
+    "ref": {
+      "type": "string",
+      "description": "origin/<default> actually read."
+    },
+    "buildStateRule": {
+      "type": "string",
+      "description": "pm_role.md's build-state sentence, quoted live from this run's read."
+    },
+    "namedButAbsent": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer"
+          },
+          "sentence": {
+            "type": "string"
+          },
+          "mechanism": {
+            "type": "string"
+          },
+          "checkedAgainst": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Subject repo(s) the path was checked against (procedure step 3)."
+          },
+          "checkedVia": {
+            "type": "string",
+            "description": "The command run."
+          },
+          "result": {
+            "type": "string",
+            "const": "NOT FOUND"
+          }
+        },
+        "required": [
+          "file",
+          "line",
+          "sentence",
+          "mechanism",
+          "checkedAgainst",
+          "checkedVia",
+          "result"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "presentNoMarker": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer"
+          },
+          "sentence": {
+            "type": "string"
+          },
+          "mechanism": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "line",
+          "sentence",
+          "mechanism"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "presentAndMarkedCount": {
+      "type": "integer"
+    },
+    "notCheckable": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer"
+          },
+          "sentence": {
+            "type": "string"
+          },
+          "collection": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "line",
+          "sentence",
+          "collection"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Fleet Status / Decision Queue collections: this agent has no ArtifactData tool."
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "named-but-absent",
+              "no-build-state-marker",
+              "not-checkable"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "description": "What the finding is about: repo, PR, worktree path, file:line, workstream."
+          },
+          "detail": {
+            "type": "string",
+            "description": "One line, stating the evidence (the command or API read) the finding rests on."
+          }
+        },
+        "required": [
+          "kind",
+          "subject",
+          "detail"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Uniform finding list (plan F4 / ladder findings[]): one entry per flagged item, drawn from the tables in this same object. Empty array = nothing flagged, which is only a clean result if couldNotCheck is also empty."
+    },
+    "couldNotCheck": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why it could not be checked (gh error, rate limit, unreadable file, no network)."
+          }
+        },
+        "required": [
+          "subject",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Everything this run could not reach. An unqueried item is listed here, never reported as clean."
+    },
+    "lessons": {
+      "type": "object",
+      "description": "The agent definition's mandatory Lessons block.",
+      "properties": {
+        "assumptionFalse": {
+          "type": "string",
+          "description": "What turned out not to hold, or \"none\"."
+        },
+        "ruleCandidate": {
+          "type": "string",
+          "description": "The generalizable rule, or \"none\"."
+        },
+        "whereItBelongs": {
+          "type": "string",
+          "description": "The standard/skill it should be promoted to, or \"not yet promoted\"."
+        }
+      },
+      "required": [
+        "assumptionFalse",
+        "ruleCandidate",
+        "whereItBelongs"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "agent",
+    "repo",
+    "ref",
+    "buildStateRule",
+    "namedButAbsent",
+    "presentNoMarker",
+    "presentAndMarkedCount",
+    "notCheckable",
+    "findings",
+    "couldNotCheck",
+    "lessons"
+  ],
+  "additionalProperties": false
+}

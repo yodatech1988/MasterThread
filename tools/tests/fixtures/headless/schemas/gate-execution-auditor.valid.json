@@ -1,0 +1,37 @@
+{
+  "agent": "gate-execution-auditor",
+  "mode": "gate-execution",
+  "gateExecution": {
+    "repos": [
+      {
+        "repo": "yodatech1988/MasterThread",
+        "gates": [
+          {
+            "gate": "agents-roster-check",
+            "lastRunAge": "4h",
+            "conclusion": "success",
+            "signatureFound": "yes",
+            "verdict": "UNENFORCED",
+            "evidence": "verified"
+          }
+        ]
+      }
+    ],
+    "counts": {
+      "falseGreen": 0,
+      "invisible": 0,
+      "unrunnable": 0,
+      "unenforced": 1,
+      "healthy": 0
+    }
+  },
+  "mergeRoute": null,
+  "findings": [
+    {
+      "kind": "unenforced",
+      "subject": "yodatech1988/MasterThread agents-roster-check",
+      "detail": "ran (signature in log) but not in required_status_checks.contexts"
+    }
+  ],
+  "couldNotCheck": []
+}

@@ -1,0 +1,226 @@
+{
+  "title": "register-verifier report",
+  "description": "L1 reporter output schema for `register-verifier` (docs/FABLE_AGENT_SUBAGENT_PLAN.md task F4). Mirrors the Output section of claude-agents/register-verifier.md. Constrains envelope.result via claude -p --json-schema; it does not describe the F3 report wrapper.",
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "const": "register-verifier"
+    },
+    "disagreements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "workstream": {
+            "type": "string"
+          },
+          "rowState": {
+            "type": "string"
+          },
+          "rowBlocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "liveState": {
+            "type": "string"
+          },
+          "liveMergeStateStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checkedVia": {
+            "type": "string",
+            "description": "The gh/git command this pass ran."
+          }
+        },
+        "required": [
+          "workstream",
+          "rowState",
+          "rowBlocker",
+          "liveState",
+          "liveMergeStateStatus",
+          "checkedVia"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "emptyNextOnStaffedRow": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "workstream": {
+            "type": "string"
+          },
+          "lead": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workstream",
+          "lead"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "staleVerified": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "workstream": {
+            "type": "string"
+          },
+          "verified": {
+            "type": "string"
+          },
+          "newestPrEvent": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workstream",
+          "verified",
+          "newestPrEvent",
+          "repo"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "dispatchableAndIdle": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "idleCrossCheckSkipped": {
+          "type": "boolean",
+          "description": "True when no sessions export was supplied; count is then null."
+        },
+        "workstreams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "count",
+        "idleCrossCheckSkipped",
+        "workstreams"
+      ],
+      "additionalProperties": false
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "disagreement",
+              "empty-next-on-staffed-row",
+              "stale-verified",
+              "dispatchable-and-idle"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "description": "What the finding is about: repo, PR, worktree path, file:line, workstream."
+          },
+          "detail": {
+            "type": "string",
+            "description": "One line, stating the evidence (the command or API read) the finding rests on."
+          }
+        },
+        "required": [
+          "kind",
+          "subject",
+          "detail"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Uniform finding list (plan F4 / ladder findings[]): one entry per flagged item, drawn from the tables in this same object. Empty array = nothing flagged, which is only a clean result if couldNotCheck is also empty."
+    },
+    "couldNotCheck": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why it could not be checked (gh error, rate limit, unreadable file, no network)."
+          }
+        },
+        "required": [
+          "subject",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Everything this run could not reach. An unqueried item is listed here, never reported as clean."
+    },
+    "lessons": {
+      "type": "object",
+      "description": "The agent definition's mandatory Lessons block.",
+      "properties": {
+        "assumptionFalse": {
+          "type": "string",
+          "description": "What turned out not to hold, or \"none\"."
+        },
+        "ruleCandidate": {
+          "type": "string",
+          "description": "The generalizable rule, or \"none\"."
+        },
+        "whereItBelongs": {
+          "type": "string",
+          "description": "The standard/skill it should be promoted to, or \"not yet promoted\"."
+        }
+      },
+      "required": [
+        "assumptionFalse",
+        "ruleCandidate",
+        "whereItBelongs"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "agent",
+    "disagreements",
+    "emptyNextOnStaffedRow",
+    "staleVerified",
+    "dispatchableAndIdle",
+    "findings",
+    "couldNotCheck",
+    "lessons"
+  ],
+  "additionalProperties": false
+}
