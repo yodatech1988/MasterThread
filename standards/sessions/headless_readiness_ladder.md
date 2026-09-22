@@ -1,9 +1,13 @@
 # Headless readiness ladder
 
-**Status:** proposed 2026-09-18, drafted from `docs/PM_PHASE_ADVISORY_2026-09-18.md` §6 (github-9d,
-owner-started advisor). Not yet an owner-approved standard — it takes effect per `merge_authority.md`
-route C (`standards/sessions/*`) when the owner merges it. Owner's goal, 2026-09-17, direct: *"the
-sooner we get to headless automation, the less I will be creating sessions too."*
+**Status: IN FORCE as of 2026-09-22, by owner decision.** Drafted 2026-09-18 from
+`docs/PM_PHASE_ADVISORY_2026-09-18.md` §6 (github-9d, owner-started advisor) and carried as
+*proposed* until now; approved per `merge_authority.md` route C (`standards/sessions/*`). Owner's
+goal, 2026-09-17, direct: *"the sooner we get to headless automation, the less I will be creating
+sessions too."*
+
+Being in force changes what this document **authorises**, not what is **built**. The fleet is still
+at L0; every rung's guard, exit criterion and "Never" binds from today.
 
 **Current rung: L0**, fleet-wide. L1's tools exist (PR #108 `tools/pm-heartbeat/`, PR #109
 `tools/README.md` testing-seam conventions, `tools/headless/readonly.settings.json` and
@@ -166,12 +170,12 @@ letting a later reader mistake intent for fact:
 | `tools/headless/Invoke-ReadOnlyAgent.ps1` | **Built**, confirmed present on `origin/main`. Not yet run from a Windows scheduled task anywhere. |
 | `tools/pm-heartbeat/Write-PmHeartbeat.ps1` / `Watch-PmHeartbeat.ps1` | **Built** (PR #108, merged). Registration click-file `GitHub\AEGIS-Register-PmHeartbeat-Watchdog.cmd` **built 2026-09-18** (`-WhatIf` + generated-wrapper call-site test on a throwaway dir); task **not registered** — owner card `action-register-pm-heartbeat-watchdog-2026-09-18`. |
 | `tools/README.md` testing-seam conventions | **Built** (PR #109, merged, this worktree's ancestry). |
-| Per-agent `--allowedTools` overlay (L1 guard layer 1) | **Not built.** `headless_agent_permissions.md` tracks it as a follow-up, dependent on `claude-agents/roster_meta.json`'s `readonly:` classification, itself unconfirmed on `origin/main`. |
+| Per-agent `--allowedTools` overlay (L1 guard layer 1) | **Not built**, but its blocker is gone: `claude-agents/roster_meta.json` with its `readonly:` classification **is on `origin/main`** (confirmed 2026-09-22). Also superseded in part — `claude --restricted` removes Bash/PowerShell/REPL from the tool surface outright and ignores user/project/local settings, so for any agent needing no shell it is a stronger primary boundary than an allow-list over a deny-list. Probed 2026-09-22 (CLI 2.1.278): a restricted run reports no Bash tool exists rather than denying the call. |
 | L1 scheduled task (any reporter running unattended on a schedule) | **Not built.** The only scheduled-task click-file is the watchdog's (above), which verifies the PM and runs no reporter. |
-| Reports drop folder + PM ingest step (`%APPDATA%\AEGIS\reports\`, heartbeat-tick ingestion into Fleet Status) | **Not built.** No such folder convention or ingest code exists yet; this document specifies it for the first time. |
-| L2 comparator (deterministic agree/disagree writer) | **Not built.** Its inputs (`register-verifier`, `standard-buildstate-checker`) are in PR #110, not yet on `main`. |
+| Reports drop folder + PM ingest step (`%APPDATA%\AEGIS\reports\`, heartbeat-tick ingestion into Fleet Status) | **Not built** — no folder convention or ingest code exists. But less remains to build than this document assumed: `claude -p --output-format json` already returns `permission_denials[]`, `total_cost_usd`, `usage{…}`, `num_turns` and `is_error` per run, and `--json-schema` constrains the result to a caller-supplied shape (both probed 2026-09-22, CLI 2.1.278). The wrapper needs to add `checkedAt` and the exact command and persist the envelope; the `findings[]` contract can be schema-enforced rather than trusted to the agent's prose. **L1's exit criterion is measured on `permission_denials`, which is machine-readable today.** |
+| L2 comparator (deterministic agree/disagree writer) | **Not built.** Its inputs `register-verifier` and `standard-buildstate-checker` **are now on `origin/main`** (PR #110 merged 2026-09-18T01:58Z); the comparator itself is still unwritten. |
 | `ops-platform/packages/project-manager` (`pm-agent`) | **Not built**, re-confirmed 2026-09-18 by reading `origin/main:packages/project-manager/bin/start.js` directly: it throws unconditionally, naming the missing GitHub/Discord/ledger dependencies. `reasoner.js` is wired but not invoked by `start.js`. No register/merge-audit/Fleet-Status code exists for this package. |
-| L3 drafter agent (`denial-card-drafter`) and the §8 reporters/advisor | **In PR #110** (open, `agent-automation-gatekeeper` 4× PASS), not yet on `main`; never yet run headless. |
+| L3 drafter agent (`denial-card-drafter`) and the §8 reporters/advisor | **On `origin/main`** — PR #110 merged 2026-09-18T01:58Z (`agent-automation-gatekeeper` 4× PASS). Still **never run headless**, which is what L3 requires evidence of. |
 | L4 gate (UNENFORCED=0 wired into automerge) | **Not built** as a precondition. `gate-execution-auditor` exists; nothing in `claude-review.yml` is confirmed to read its output first. |
 
 Related: `headless_agent_permissions.md`, `pm_role.md`, `orchestrator_role.md`, `fleet_structure.md`,
