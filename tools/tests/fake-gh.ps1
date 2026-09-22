@@ -33,19 +33,12 @@
            renderer bug that calls it anyway is visible in the log rather than swallowed).
 
     api repos/<repo>/issues/<n>/comments
-        -> the (assumed) duplicate-check listing. 'duplicate' mode returns one existing comment
-           whose body carries the REVIEW-VERDICT marker for the GOOD head above; every other mode
-           returns [].
-           ASSUMPTION -- FLAGGED, do not treat as settled: DESIGN_f13-review-verdict_2026-09-22.md
-           section 3 describes -Force's effect ("an existing comment carrying the same marker+head
-           -> exit 6") but never names the exact `gh` call the duplicate check makes -- unlike the
-           head check (`pr view --json headRefOid`) and the read-back (`gh api
-           repos/<repo>/issues/comments/<id>`), both spelled out explicitly. This fake assumes the
-           renderer lists issue comments via `gh api repos/<repo>/issues/<n>/comments` (PR comments
-           are issue comments in the GitHub REST API, and this is symmetric with the read-back
-           call). If the build lane's renderer uses a different verb (e.g. `gh pr view --json
-           comments`), point this dispatch table and TC-F13-016 (T12) at that verb instead; the log
-           format and FAKE_GH_MODE table stay the same. See TEST_CASES_f13.md T12 for the same note.
+        -> the duplicate-check listing. 'duplicate' mode returns one existing comment whose body
+           carries the REVIEW-VERDICT marker for the GOOD head above; every other mode returns [].
+           CONFIRMED (merge seat, 2026-09-22, against real `gh` 2.100.0, read-only): both
+           `gh api repos/<repo>/issues/<n>/comments` (this fake's duplicate-check verb) and
+           `gh api repos/<repo>/issues/comments/<id>` (the read-back verb below) are the correct
+           GitHub REST forms; no longer an open assumption.
 
     api repos/<repo>/issues/comments/<id>
         -> the read-back call. 'readback-404' mode exits 1 with a 404-shaped message on stderr;

@@ -114,8 +114,18 @@ function Get-LogLines([string]$LogPath) {
 # that one line to a fixed placeholder before comparing, so the assertion is "every line is
 # byte-identical except the one line that names the source file, which the design's own template
 # requires to differ by source" rather than a literal whole-file byte compare.
+# MERGE-SEAT FIX (2026-09-22): also normalize CRLF -> LF here. A fresh default clone (system
+# core.autocrlf=true, this repo's own .gitattributes now pinning golden-body.txt to `eol=lf`
+# notwithstanding for clones made before that attribute existed, and more generally any clone
+# without this repo's local core.autocrlf=false override) checks golden-body.txt out with CRLF
+# line endings, while the renderer's Write-Output/`$lines -join "`n"` path always joins with bare
+# LF -- so the raw byte-for-byte compare failed only outside this worktree's repo-local
+# autocrlf=false (confirmed: rLen=2136 vs gLen=2156, first diff at char 92, 0d0a vs 0a). Normalizing
+# both sides' line endings before comparing makes the assertion line-ending-agnostic, matching what
+# it actually intends to check (body content), not incidental checkout-time EOL translation.
 function Get-NormalizedBody([string]$Text) {
-    return ($Text -replace '1 more in the report: `[^`]*`', '1 more in the report: `<source-path>`')
+    $normalized = $Text -replace "`r`n", "`n"
+    return ($normalized -replace '1 more in the report: `[^`]*`', '1 more in the report: `<source-path>`')
 }
 
 $testVerdictPath = Join-Path $fxDir 'test-verdict.json'
