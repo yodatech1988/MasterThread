@@ -8,9 +8,11 @@ to be read on a phone.
 gate in the plan's §7 blocks every build task except the two measurements. Read this as the
 procedure the build is aiming at, not as instructions that work today. Each step says what it needs.
 
-**Wave-1 tracking (2026-09-22):** F2, F3, F10 and the #169 follow-up have open PRs (#174, #176,
-#172, #175 — see the plan's §6 status table and issue #185). None are merged yet, so none of the
-"needs F12"/"needs F2" gates below have moved. This note will be corrected once any of them lands.
+**Wave-1 tracking (2026-09-22):** F2 (#174) and F3 (#176) are merged to `main` (commit `10786c2`,
+2026-09-22T02:18:32Z — #176 landed via #174's squash), and F10 (#172) is merged to `main`
+(2026-09-22T02:18:45Z). See the plan's §6 status table and issue #185. The #169 follow-up (#175) is
+still open. None of the "needs F12" gates below have moved yet — those wrappers (F12) are still
+unbuilt regardless of F2/F3/F10 landing.
 
 ---
 
