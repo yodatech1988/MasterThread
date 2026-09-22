@@ -441,3 +441,16 @@ the classifier reads configuration"). Only `~/.claude/settings.json`, managed se
 `autoMode` change for the seat would have to go in user or managed settings, and that change is the
 owner's call. The `permissions.ask` rule used here isn't an `autoMode` key, but it lives at user
 scope for the same reason: one file covers every session.
+
+**Verdict read-back and command-chaining safeguards (Incident 2).** yodatech1988/MasterThread#182
+incident 2 (Quality Audit seat yoda-30, 2026-09-22) found that the merge seat reported posting a
+`MERGE-VERDICT` comment on #173, but the comment never posted because the `gh pr comment` call
+failed inside a chained shell block (`&&`), unnoticed by the seat. The seat then merged without a
+visible verdict record. Outcome was correct (fix verified on origin/main), but the process failed.
+Remediation: (1) Run each `gh` command on its own in a separate shell call — never chain `gh` calls
+with `&&`, `||`, `;`, or similar, because a silently failed call inside a chain goes unnoticed.
+(2) After posting a `MERGE-VERDICT` comment, read it back via `gh api repos/<owner>/<repo>/issues/comments/<id>`
+and confirm it exists before merging — never report a verdict as posted without that read-back.
+(3) If a verdict read-back later discovers a missing verdict, record it afterwards as a labeled
+`POST-MERGE RECORD` (comment or a new entry in `MERGE-RECORDS.md`, per merge_authority.md), dated
+when it's written, never backdated. This preserves the audit trail and triggers a re-review.
