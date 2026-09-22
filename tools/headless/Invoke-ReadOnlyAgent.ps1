@@ -95,6 +95,17 @@
 .PARAMETER SettingsPath
     Override the settings file. Default is readonly.settings.json next to this script.
 
+.PARAMETER JsonSchemaPath
+    Added for plan task F12 (docs/FABLE_AGENT_SUBAGENT_PLAN.md section 5): passed through as
+    `--json-schema <path>` when supplied, so the CLI's own structured-output validation constrains
+    the agent's answer to one of the tools/headless/schemas/*.json files built in F4. Optional --
+    a caller that never passes it gets byte-identical behaviour to before this parameter existed.
+    Must be an existing file; same cmd.exe-safety checks as -SettingsPath apply (refused with exit
+    2, nothing launched, if the value contains a double quote, %, !, a line break, or ends in a
+    backslash). This parameter only threads the flag through -- it does not itself validate the
+    agent's returned JSON against the schema; see tools/headless/Invoke-Subagent.ps1 and
+    JsonSchemaLite.ps1 for that (F12's own wrapper, layered on top of this script).
+
 .PARAMETER Report
     Added for plan task F3 (docs/FABLE_AGENT_SUBAGENT_PLAN.md:617). Turns on L1 report mode: the
     run uses `--output-format json` (the CLI's single result envelope -- subtype, is_error,
@@ -256,6 +267,7 @@ param(
     [int]$TimeoutSec = 300,
     # Defaults resolved in the body, not here: see the $PSScriptRoot note just below param().
     [string]$SettingsPath,
+    [string]$JsonSchemaPath,
     [string]$RosterMetaPath,
     [string]$Model,
     [switch]$Report,
@@ -299,7 +311,7 @@ if ($AgentName -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]*\z') {
 if ($Model -and $Model -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._\[\]-]*\z') {
     Exit-UnsafeArg 'Model' "'$Model' must match ^[A-Za-z0-9][A-Za-z0-9._\[\]-]*$ (it is passed to cmd.exe unquoted and must not start with '-')"
 }
-foreach ($quotedName in @('SettingsPath', 'Tools', 'AllowedTools')) {
+foreach ($quotedName in @('SettingsPath', 'JsonSchemaPath', 'Tools', 'AllowedTools')) {
     $quotedValue = Get-Variable -Name $quotedName -ValueOnly
     # '!' added in PR #176 review round 2 (safety): with cmd.exe delayed expansion switched on
     # (Command Processor\DelayedExpansion=1 in HKCU or HKLM), cmd.exe expands !VAR! even inside quotes.
@@ -368,6 +380,13 @@ if (-not (Test-Path -LiteralPath $SettingsPath -PathType Leaf)) {
     # guarantees the documented code regardless of preference, same convention the estate's other
     # click-files use for a controlled, known-cause exit.
     Write-Host "Invoke-ReadOnlyAgent: settings file not found (or not a file) at $SettingsPath" -ForegroundColor Red
+    exit 2
+}
+
+# F12: -JsonSchemaPath must exist too, checked before anything is launched, same convention as
+# -SettingsPath above.
+if ($JsonSchemaPath -and -not (Test-Path -LiteralPath $JsonSchemaPath -PathType Leaf)) {
+    Write-Host "Invoke-ReadOnlyAgent: -JsonSchemaPath file not found (or not a file) at $JsonSchemaPath" -ForegroundColor Red
     exit 2
 }
 
@@ -457,6 +476,13 @@ $claudeArgs += @(
     '--strict-mcp-config',
     '--max-budget-usd', [string]$MaxBudgetUsd
 )
+
+# F12: --json-schema, threaded through unchanged when supplied. Omitted entirely when not passed,
+# so a caller that never sets -JsonSchemaPath gets the exact same $claudeArgs as before this
+# parameter existed.
+if ($JsonSchemaPath) {
+    $claudeArgs += @('--json-schema', (ConvertTo-QuotedArg $JsonSchemaPath))
+}
 
 if ($reportMode) {
     # F3: `--output-format json` WITHOUT --verbose returns exactly one JSON object -- the result

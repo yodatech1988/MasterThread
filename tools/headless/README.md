@@ -9,10 +9,54 @@ references:
   `--settings <abs path to this file>`.
 - `Invoke-ReadOnlyAgent.ps1` — a thin PowerShell wrapper that builds the recommended headless
   invocation line (this settings file + `--restricted` or a `--tools` allow-list + `dontAsk` +
-  `--permission-prompts none` + a budget ceiling + a hard timeout).
+  `--permission-prompts none` + a budget ceiling + a hard timeout). Plan task F12 added an
+  additive `-JsonSchemaPath` passthrough (`--json-schema <path>`); a caller that never passes it
+  gets byte-identical behaviour to before that parameter existed.
+- `schemas/*.json` — plan task F4: one `--json-schema` per L1 reporter agent, so a run's answer is
+  machine-checkable, not prose-parsed. `JsonSchemaLite.ps1` is the subset validator shared between
+  the offline test suite and the live wrappers below.
+- `budgets.json` — plan task F12: concrete per-line `--max-budget-usd` figures, derived from F3's
+  measured envelopes with a stated margin. A line with no entry here, and no explicit override,
+  is refused rather than run with a guessed budget.
 
-Neither file decides what a given agent is allowed to do — that's the caller's `--tools`/
-`-Tools` argument, scoped per agent per the standard's Bash-usage table.
+Neither `readonly.settings.json` nor `Invoke-ReadOnlyAgent.ps1` decides what a given agent is
+allowed to do — that's the caller's `--tools`/`-Tools` argument, scoped per agent per the
+standard's Bash-usage table.
+
+## Seat-side wrappers (plan task F12)
+
+One command per layer, so a caller (in particular a `low`-effort seat) never hand-assembles a
+`claude -p` flag line (docs/FABLE_AGENT_SUBAGENT_PLAN.md section 2/section 5). All three enforce
+their boundary flags and a concrete budget before launch, and all three reuse
+`Invoke-ReadOnlyAgent.ps1`'s own process management (timeout-and-kill, stdin prompt, cmd.exe
+argument safety) rather than reimplementing it.
+
+- **`Invoke-Subagent.ps1`** — the L1/subagent layer (plan section 5 rows 5-7). Resolves the
+  per-agent budget from `budgets.json` by the agent's own model frontmatter, and (with `-RunLive`)
+  runs a real `claude -p --json-schema` call and validates the returned envelope against the
+  agent's F4 schema with `JsonSchemaLite.ps1` — the live acceptance for F4 that PR #190 explicitly
+  deferred to F12. Without `-RunLive`, no budget is spent and only the schema's own well-formedness
+  is checked (same guarantee `test-headless-schemas.ps1` already gives offline).
+- **`Invoke-Lane.ps1`** — a dispatched multi-turn worker session. `claude -p` has no native
+  turn-count flag, so `maxTurns` is enforced here as this wrapper's own bookkeeping: a state file
+  keyed by `-SessionId` counts turns, and a call once `-MaxTurns` is reached is refused (exit 9)
+  before anything launches (owner decision E7: "maxTurns and budget enforcement fold into F12").
+  This is this repo's own accounting, not a CLI-enforced limit — see the script's own `.NOTES` for
+  what that does and does not cover.
+- **`Ask-Fable.ps1`** — the Fable continuity seat (plan section 5, "Fable seat"). Enforces
+  `--restricted --tools "Read,Grep,Glob"`, the settings/`dontAsk`/`--strict-mcp-config` baseline, a
+  concrete cold-vs-resumed budget, and the wall-clock timeout on every call; refuses to run when
+  the working directory is/contains/is inside `%APPDATA%\AEGIS`, holds a `*.clixml` file, or has a
+  reparse point (junction or symlink) anywhere beneath it; and reports the CLI's own refusal as
+  `stopReason: refusal` rather than retrying on another model. Its own header comment states
+  plainly which of its rules are enforced on the actual `claude` command line today and which are
+  still only this wrapper's bookkeeping (session-id/resume/fallback-model/fork-session are not
+  yet threaded through `Invoke-ReadOnlyAgent.ps1`, which was built around a one-shot named-agent
+  invocation) — not hidden as done when it is not.
+
+Tests: `tools/tests/test-invoke-subagent.ps1`, `test-invoke-lane.ps1`, `test-ask-fable.ps1`,
+`test-invoke-readonly-agent-jsonschema.ps1`. All static/offline by default; `-RunLive` on
+`test-invoke-subagent.ps1` spends real budget for the F4 live-acceptance case.
 
 ## L1 report mode (`-Report`, plan task F3)
 
