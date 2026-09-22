@@ -1,19 +1,23 @@
-# Fable seat — the continuity contract (F9 draft)
+# Fable seat — the continuity contract
 
-**Status: DRAFT, not a standard.** This file is a working draft for plan task F9
-(`docs/FABLE_AGENT_SUBAGENT_PLAN.md`, PR #169), produced by the `fable/f9` lane
-(round `wave3-F12-F9`). Its content is intended to become
-`standards/sessions/fable_seat.md`. It is **deliberately not placed at that path in
-this PR** — this lane's dispatch keeps it out of `standards/sessions/*`, which is
-owner-merge (Route C, `merge_authority.md`): the plan itself says "a session drafts
-it; the owner merges it," and relocating this file into the real standards path is
-that merge step, done by a session authorized to touch that path. Do not treat this
-file as in force. Do not cite it as a standard until it is relocated and merged.
+**Status: relocated from `docs/drafts/fable_seat_draft.md` (F9, PR #195) into this
+standards path.** This is the merge step the F9 draft named as still owed: "a
+session drafts it; the owner merges it," done here by a session authorized to
+touch `standards/sessions/*` (Route C, `merge_authority.md`). Per owner decision
+Q4/E10 (issue #187, comment 5770413629, 2026-09-22), this draft's review was held
+until F12 was approved; F12 (`tools/headless/Ask-Fable.ps1`, `Invoke-Lane.ps1`,
+`budgets.json`) merged via PR #197, so that hold is cleared. This file remains not
+yet owner-merged at this path until this PR itself merges — do not treat it as in
+force before then.
 
-Per owner decision Q4/E10 (issue #187, comment 5770413629, 2026-09-22): F9 is
-drafted in parallel with F12, and review of this draft is **held until F12 is
-approved**, since several sections below depend on F12's not-yet-built wrapper
-interface (marked `TODO(F12)`).
+All five `TODO(F12)` markers below are resolved against the merged wrappers and
+`tools/headless/budgets.json`, with the source flag/value quoted at each point.
+One of them (§7/§9) resolves to a real, current limitation rather than to built
+behavior: per issues #198 and #205, `Ask-Fable.ps1` does not thread
+`--session-id`/`--resume`/`--fallback-model`/`--fork-session` onto the actual
+`claude` CLI call — those flags exist only in this wrapper's own bookkeeping and
+reporting today. **Until #198/#205 land, the Fable seat is single-turn per
+invocation**; do not describe continuity/resume as a built, working feature.
 
 ---
 
@@ -107,11 +111,30 @@ position this draft takes, pending real measurement:
 - If a measurement later shows autocompact preserves everything the durable
   record does not already capture, this position should be revisited — it is a
   default, not a permanent prohibition.
-- `TODO(F12)`: F12's regression checks are the natural place to add a probe for
-  what autocompact actually does to a Fable resume; this draft does not have that
-  evidence yet.
+- **`TODO(F12)` resolved: still unmeasured.** F12 landed (PR #197) without adding
+  an autocompact probe — `Ask-Fable.ps1` and `Invoke-Lane.ps1` (as merged) carry
+  no `--autocompact` flag or regression check for it at all (confirmed by reading
+  both scripts' full parameter lists and bodies; neither mentions `autocompact`).
+  This position therefore stands unchanged and unverified pending a future
+  measurement; it is not blocked on anything else in F12.
 
 ## 7. The resume contract
+
+**Current real limit (per #198/#205, checked against the merged `Ask-Fable.ps1`):
+this is the seat's intended, eventual contract, not what today's wrapper actually
+does.** `Ask-Fable.ps1`'s own in-file NOTE (the comment block above its
+`Invoke-ReadOnlyAgent.ps1` call) states plainly: "`Invoke-ReadOnlyAgent.ps1` does
+not currently expose `--fallback-model`, `--session-id`, `--resume`, or
+`--fork-session` as parameters... those... are CONVENTION ONLY, NOT YET ENFORCED
+ON THE CLAUDE COMMAND LINE." The wrapper tracks cold-vs-resumed state in its own
+local state file (`%APPDATA%\AEGIS\fable\<SessionId>.json`) and reports
+`coldStart` to its caller, but every actual `claude` invocation it launches is a
+fresh, unresumed conversation regardless of that bookkeeping. **Until #198/#205
+land and are confirmed live, treat every Fable seat call as single-turn: do not
+drive it with a reused session id expecting real continuity**, per issue #205's
+stated launch constraint (owner-accepted 2026-09-22, non-blocking for launch
+since the seat is "continuity-only and never load-bearing for operations,"
+#169 §3). The rest of this section describes the target contract below.
 
 - **Always the same `--session-id`; never `--no-session-persistence`** (it
   disables the resume that *is* the continuity).
@@ -129,7 +152,7 @@ position this draft takes, pending real measurement:
     --strict-mcp-config --disable-slash-commands \
     --session-id <stable uuid> \
     --output-format json --json-schema <abs>/tools/headless/schemas/<schema>.json \
-    --max-budget-usd <cap, TODO(F12)> "<first question>"
+    --max-budget-usd 1.00 "<first question>"
 
   # every question after that: a separate process, same id, warm context, same boundary flags
   claude -p --resume <stable uuid> \
@@ -138,11 +161,18 @@ position this draft takes, pending real measurement:
     --permission-mode dontAsk --permission-prompts none \
     --strict-mcp-config --disable-slash-commands \
     --output-format json --json-schema <abs>/tools/headless/schemas/<schema>.json \
-    --max-budget-usd <cap, TODO(F12)> "<next question>"
+    --max-budget-usd 0.20 "<next question>"
   ```
 
-  (Lines reproduced from plan §5; the concrete `<schema>` and `<cap>` values are
-  F12's to set — see §9.)
+  (Lines reproduced from plan §5. The `<cap>` values are resolved: `1.00` USD
+  cold, `0.20` USD resumed — `tools/headless/budgets.json`'s `fableSeat` table,
+  `"coldUsd": 1.00` / `"resumedUsd": 0.20`, merged via PR #197. The `<schema>`
+  value is still open: no `tools/headless/schemas/*.json` file exists for the
+  Fable seat's own question/answer shape as of this PR — the existing schemas
+  under that directory are all for other L1 reporters (`gate-execution-auditor`,
+  `plan-status-check`, `pr-state-sweep`, `register-verifier`,
+  `standard-buildstate-checker`, `worktree-sweep`); none is Fable-shaped. That
+  remains open work, not F12's to have set.)
 
 - **The wrapper enforces these flags; it does not merely default them.** F12's
   `Ask-Fable` must refuse to run if any boundary flag is missing, not silently
@@ -194,39 +224,82 @@ The plan is explicit that mitigating this is required and "the answer is not
   so a later reader can tell the seat's context is fresh rather than assuming
   continuity that was actually reset.
 
-## 9. `TODO(F12)` — points this draft cannot settle
+## 9. `TODO(F12)` resolutions
 
-F12 (`Seat-side wrappers so the seat never hand-assembles a flag line`) is the
-plan task that owns the `Ask-Fable` / `Invoke-Lane` / `Invoke-Subagent` wrapper
-this standard describes the seat operating under. **As of this draft, F12 has no
-open PR, issue, or branch** (checked via `gh pr list`, `gh issue list`, and
-`git ls-remote` against `origin` on 2026-09-22). The following are therefore left
-explicit gaps rather than guessed:
+F12 merged via PR #197 (`tools/headless/Ask-Fable.ps1`, `Invoke-Lane.ps1`,
+`Invoke-Subagent.ps1`, `budgets.json`). The five points the F9 draft left open are
+resolved here from the merged wrappers and `budgets.json` only, each with the
+flag or value it was taken from:
 
-1. **The concrete per-call `--max-budget-usd` figure.** The plan requires F12 to
-   set this from F3's measured envelopes; "a line with no concrete cap does not
-   run." This draft cannot supply a number.
-2. **The wrapper's exact enforcement behavior on a missing boundary flag** —
-   refuse to launch vs. exit non-zero after launch, and what that failure looks
-   like to the Sonnet seat calling it.
-3. **The hard timeout-and-kill value** for the Fable seat / lane lines. F12 must
-   carry the same kind of outside-the-process wall-clock kill that
-   `tools/headless/Invoke-ReadOnlyAgent.ps1` already has via `-TimeoutSec`
-   (default 300s for subagents), but no default has been set for this layer yet.
-4. **The cold-start path in full detail** — what exactly happens, mechanically,
-   when a pinned `--session-id` no longer resolves. §8 above states the seat-side
-   policy (report it, don't swallow it, cold-reopen from the durable record); the
-   wrapper-side mechanics (what `Ask-Fable` returns, what exit code, what the
-   caller does next) are F12's to define.
-5. **`Ask-Fable`'s and `Invoke-Lane`'s exact argument shapes** (2-3 arguments
-   each, per the plan's F12 row). This draft cites the plan's provisional raw CLI
-   lines (§7) rather than a wrapper call signature, because that signature does
-   not exist yet.
-6. **`maxTurns` and budget enforcement** generally fold into F12 per owner
-   decision E7 (issue #187, comment 5770413629) — whether that becomes its own
-   F-task is tracked on Decision Queue card
-   `fable-maxturns-budget-enforcement-2026-09-22`, not resolved here.
+1. **Concrete per-call `--max-budget-usd`.** `tools/headless/budgets.json`,
+   `fableSeat` table: `"coldUsd": 1.00` (first call on a new/expired
+   `--session-id`), `"resumedUsd": 0.20` (every call after). `Ask-Fable.ps1`'s
+   `Get-ResolvedFableBudget` function reads these two keys and exits 4, refusing
+   to launch, if either is missing or the file cannot be parsed — it never
+   guesses a default. (`Invoke-Lane.ps1`'s own per-call cap, for comparison, is
+   the `lane` table: `"sonnet": 1.50`, `"opus": 4.00`, `"default": 1.50`.)
+2. **Enforcement behavior on a missing boundary flag: refuses to launch, not a
+   post-launch exit.** `Ask-Fable.ps1` validates `-SessionId` as a UUID and exits
+   11 before anything runs if it isn't; runs `Test-UnsafeFableWorkingDirectory`
+   and exits 10 before anything runs if the working directory is unsafe;
+   resolves the budget and exits 4 before anything runs if no concrete figure is
+   available. Its own `.NOTES` block documents this as "Exit codes: 0 = ran
+   (including a reported refusal...) ... 4 = no concrete budget resolvable ...
+   10 = unsafe working directory, refused before launch ... 11 = -SessionId is
+   not a UUID." `Invoke-Lane.ps1` follows the same shape: exit 2 (bad session
+   id), exit 5 (`-Tools` required without `-AgentName` — "there is no safe
+   default tool set for a lane"), exit 4 (no budget), exit 9 (`-MaxTurns`
+   already reached for that `-SessionId`, "refused before launch, turn counter
+   NOT incremented").
+3. **Hard timeout-and-kill value: 300 seconds, both wrappers.** `Ask-Fable.ps1`:
+   `[int]$TimeoutSec = 300` (parameter default). `Invoke-Lane.ps1`: same,
+   `[int]$TimeoutSec = 300`, its `.PARAMETER TimeoutSec` doc reading "Hard
+   wall-clock timeout per call. Default 300, same as Invoke-ReadOnlyAgent.ps1."
+   Both shell out to `Invoke-ReadOnlyAgent.ps1` for the actual process-management
+   kill rather than reimplementing it.
+4. **Cold-start path, mechanically.** `Ask-Fable.ps1` keeps a per-`SessionId`
+   state file at `%APPDATA%\AEGIS\fable\<SessionId>.json`. `$isColdStart = (-not
+   $knownOpen) -or [bool]$Fork` — true when no state file exists yet, or the call
+   is `-Fork`. A cold call resolves the `coldUsd` budget tier and, on success,
+   writes the state file so the *next* call for that `-SessionId` is treated as
+   resumed. **But** — per §7's caveat and issues #198/#205 — this is the
+   wrapper's own bookkeeping only; it does not change what actually reaches the
+   `claude` CLI, which never receives `--session-id`/`--resume` at all today, so
+   every call, cold-tracked or not, is a real fresh conversation. A failed
+   resolve (a `-SessionId` the wrapper doesn't recognize) is therefore not
+   currently distinguishable from an ordinary cold call in the wrapper's own
+   terms — there is no separate "resume failed, reopening cold" code path,
+   because there is no real resume to fail. This is the concrete shape of the
+   single-turn limit stated in §7.
+5. **`Ask-Fable`'s and `Invoke-Lane`'s exact argument shapes.** `Ask-Fable.ps1`:
+   `-SessionId` (required, UUID), `-Question` (required), `-WorkingDirectory`
+   (default current directory), `-Fork` (switch), `-MaxBudgetUsd` (optional
+   override), `-TimeoutSec` (default 300), `-FallbackModel` (default `'opus'`),
+   plus test seams `-StateDir`/`-BudgetsPath`/`-InvokeReadOnlyAgentPath`/
+   `-ClaudePath` and `-DryRun`. `Invoke-Lane.ps1`: `-SessionId` (required, UUID),
+   `-Prompt` (required), `-MaxTurns` (required — "there is no safe default. a
+   lane with no stated cap is exactly what E7 exists to stop"), `-AgentName`
+   (optional named agent), `-Tools` (required if `-AgentName` omitted), `-Model`,
+   `-MaxBudgetUsd`, `-TimeoutSec` (default 300), plus the same class of test
+   seams and `-DryRun`.
+6. **`maxTurns`/budget enforcement folded into F12, as decided (E7).**
+   `Invoke-Lane.ps1` enforces `-MaxTurns` externally, in its own per-`SessionId`
+   turn-count state file under `-StateDir` (default `%APPDATA%\AEGIS\lanes`),
+   since (its own `.DESCRIPTION`) "`claude -p` has no native per-process
+   turn-count flag (confirmed against `claude --help` on the installed 2.1.278
+   build)." It documents its own limitation plainly: "this counter is this
+   wrapper's own bookkeeping, not a CLI-enforced limit... It closes the 'nothing
+   enforces maxTurns' gap for every caller that goes through this script; it is
+   not a boundary against a caller that does not." Decision Queue card
+   `fable-maxturns-budget-enforcement-2026-09-22` tracked whether this became its
+   own F-task; per E7 it did not — it is delivered as part of F12, as above.
 
-This draft should be revisited once F12 lands, both to fill in the above and
-because — per owner decision Q4/E10 — this draft's review is held until F12 is
-approved.
+**What remains a real, disclosed gap after F12 (not a TODO owed to this
+standard, but stated so this file doesn't imply otherwise):** `--session-id`,
+`--resume`, `--fallback-model`, and `--fork-session` are not passed to the actual
+`claude` CLI invocation by either wrapper (§7). Tracked in issues #198 and #205.
+Per #205's stated constraint, no caller — PM, a lane, or the Fable seat itself —
+should drive `Ask-Fable.ps1` (or the Fable seat) with a reused session id
+expecting continuity until this lands and is confirmed live. This standard's
+continuity model (§1-§3, §8) describes the seat's intended role and design;
+today's actual operating mode is single-turn per invocation.
