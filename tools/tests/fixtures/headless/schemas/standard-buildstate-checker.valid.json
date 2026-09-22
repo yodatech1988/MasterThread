@@ -1,0 +1,42 @@
+{
+  "agent": "standard-buildstate-checker",
+  "repo": "yodatech1988/MasterThread",
+  "ref": "origin/main",
+  "buildStateRule": "any standard that names a mechanism carries its build state",
+  "namedButAbsent": [
+    {
+      "file": "standards/sessions/example.md",
+      "line": 12,
+      "sentence": "The `tools/example.ps1` script runs nightly.",
+      "mechanism": "tools/example.ps1",
+      "checkedAgainst": [
+        "MasterThread"
+      ],
+      "checkedVia": "git ls-tree -r --name-only origin/main",
+      "result": "NOT FOUND"
+    }
+  ],
+  "presentNoMarker": [],
+  "presentAndMarkedCount": 4,
+  "notCheckable": [
+    {
+      "file": "standards/sessions/pm_role.md",
+      "line": 80,
+      "sentence": "the `workstreams` collection",
+      "collection": "workstreams"
+    }
+  ],
+  "findings": [
+    {
+      "kind": "named-but-absent",
+      "subject": "standards/sessions/example.md:12",
+      "detail": "tools/example.ps1 not in ls-tree of origin/main"
+    }
+  ],
+  "couldNotCheck": [],
+  "lessons": {
+    "assumptionFalse": "none",
+    "ruleCandidate": "none",
+    "whereItBelongs": "not yet promoted"
+  }
+}

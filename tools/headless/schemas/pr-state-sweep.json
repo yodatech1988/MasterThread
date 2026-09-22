@@ -1,0 +1,200 @@
+{
+  "title": "pr-state-sweep report",
+  "description": "L1 reporter output schema for `pr-state-sweep` (docs/FABLE_AGENT_SUBAGENT_PLAN.md task F4). Mirrors the Output section of claude-agents/pr-state-sweep.md. Constrains envelope.result via claude -p --json-schema; it does not describe the F3 report wrapper.",
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "const": "pr-state-sweep"
+    },
+    "repos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": "string",
+            "description": "owner/repo"
+          },
+          "prs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "number": {
+                  "type": "integer"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "branch": {
+                  "type": "string",
+                  "description": "headRefName"
+                },
+                "checkState": {
+                  "type": "string",
+                  "enum": [
+                    "pass",
+                    "fail",
+                    "pending",
+                    "missing"
+                  ],
+                  "description": "Say pass only when the check demonstrably ran; a green rollup that may be a no-op is reported with a possible-no-op-check finding."
+                },
+                "age": {
+                  "type": "string",
+                  "description": "Age by createdAt, e.g. \"3h\" or \"2d\"."
+                },
+                "stuck": {
+                  "type": "boolean"
+                },
+                "stuckReason": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "number",
+                "title",
+                "branch",
+                "checkState",
+                "age",
+                "stuck",
+                "stuckReason"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "repo",
+          "prs"
+        ],
+        "additionalProperties": false
+      },
+      "description": "One table per repo."
+    },
+    "flags": {
+      "type": "object",
+      "description": "The definition's final Flags section.",
+      "properties": {
+        "rule4Violations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "repo": {
+                "type": "string"
+              },
+              "prNumbers": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              }
+            },
+            "required": [
+              "repo",
+              "prNumbers"
+            ],
+            "additionalProperties": false
+          },
+          "description": "More than one open agent/ PR in the same repo (session_plan_standard.md rule 4)."
+        },
+        "noCiRun": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "repo": {
+                "type": "string"
+              },
+              "number": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "repo",
+              "number"
+            ],
+            "additionalProperties": false
+          },
+          "description": "PRs with no CI run at all for the head branch."
+        }
+      },
+      "required": [
+        "rule4Violations",
+        "noCiRun"
+      ],
+      "additionalProperties": false
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "stuck",
+              "check-failed",
+              "no-ci-run",
+              "rule-4-violation",
+              "possible-no-op-check"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "description": "What the finding is about: repo, PR, worktree path, file:line, workstream."
+          },
+          "detail": {
+            "type": "string",
+            "description": "One line, stating the evidence (the command or API read) the finding rests on."
+          }
+        },
+        "required": [
+          "kind",
+          "subject",
+          "detail"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Uniform finding list (plan F4 / ladder findings[]): one entry per flagged item, drawn from the tables in this same object. Empty array = nothing flagged, which is only a clean result if couldNotCheck is also empty."
+    },
+    "couldNotCheck": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why it could not be checked (gh error, rate limit, unreadable file, no network)."
+          }
+        },
+        "required": [
+          "subject",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Everything this run could not reach. An unqueried item is listed here, never reported as clean."
+    }
+  },
+  "required": [
+    "agent",
+    "repos",
+    "flags",
+    "findings",
+    "couldNotCheck"
+  ],
+  "additionalProperties": false
+}

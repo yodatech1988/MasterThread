@@ -1,0 +1,28 @@
+{
+  "agent": "worktree-sweep",
+  "repo": "C:\\Users\\yoda_\\GitHub\\MasterThread",
+  "worktrees": [
+    {
+      "path": "C:\\Users\\yoda_\\GitHub\\_wt-example",
+      "branch": "agent/MasterThread/example",
+      "gitStatus": "clean",
+      "dirtyFiles": [],
+      "prs": [
+        {
+          "number": 100,
+          "state": "MERGED"
+        }
+      ],
+      "verdict": "safe to remove"
+    }
+  ],
+  "worktreesRemovedByThisAgent": 0,
+  "findings": [
+    {
+      "kind": "safe-to-remove",
+      "subject": "C:\\Users\\yoda_\\GitHub\\_wt-example",
+      "detail": "clean status; gh pr list --head -> #100 MERGED"
+    }
+  ],
+  "couldNotCheck": []
+}
