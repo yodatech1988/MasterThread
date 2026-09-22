@@ -48,6 +48,19 @@
     Skip the local JsonSchemaLite re-check of the returned envelope even when a schema exists for
     this agent. The CLI's own --json-schema constraint (when -RunLive is set) is unaffected.
 
+.PARAMETER Model
+    Optional passthrough to Invoke-ReadOnlyAgent.ps1's own -Model (--model). Default: whatever the
+    CLI defaults to (currently claude-haiku-4-5-20251001 for this repo's agents, none of which
+    carry an explicit --model). Relevant to the structured-output note below: per the platform
+    docs, Haiku 4.5 structured outputs (the payload landing in envelope.structured_output) are
+    Bedrock-only, not available on the standard API -- an agent whose schema check keeps hitting
+    exit 9 (see -UseLegacyResultField and .NOTES) may need -Model sonnet or another
+    structured-output-capable model, not a schema or prompt fix.
+
+.PARAMETER UseLegacyResultField
+    Opt-in fallback: schema-check envelope.result (the model's own prose) instead of
+    envelope.structured_output. Default off. See .NOTES for why this is off by default and exit 9.
+
 .PARAMETER BudgetsPath
     Test seam. Default tools/headless/budgets.json next to this script.
 
@@ -71,9 +84,15 @@
     classifies this agent as NOT restricted (readonly != "tools") and no 'tools:' frontmatter
     value could be resolved for it in claude-agents/<name>.md -- fails closed rather than passing
     no --tools to Invoke-ReadOnlyAgent.ps1 (same meaning as that script's own exit 5). 8 = a schema
-    exists for this agent and the returned envelope's result did not validate against it
-    (schema-checked envelope failure). Any other non-zero code is Invoke-ReadOnlyAgent.ps1's own
-    exit code, propagated as-is (see that script's own .NOTES for what each one means).
+    exists for this agent and the returned envelope's schema-checked payload did not validate
+    against it (schema-checked envelope failure). 9 = a schema exists for this agent (and -RunLive
+    was set) but the returned envelope has no envelope.structured_output at all to check --
+    distinct from 8 (a payload WAS returned and failed validation): this means the CLI never gave
+    us a validated answer to check in the first place, commonly because the model/API tier does
+    not support structured outputs (see -Model / -UseLegacyResultField above), not a
+    schema-conformance problem with the agent's own output. Any other non-zero code is
+    Invoke-ReadOnlyAgent.ps1's own exit code, propagated as-is (see that script's own .NOTES for
+    what each one means).
 #>
 [CmdletBinding()]
 param(
@@ -84,6 +103,8 @@ param(
     [string]$ReportDir,
     [switch]$SkipSchemaCheck,
     [switch]$RunLive,
+    [string]$Model,
+    [switch]$UseLegacyResultField,
     [string]$BudgetsPath,
     [string]$AgentsDir,
     [string]$RosterMetaPath,
@@ -243,6 +264,7 @@ if ($hasSchema -and $RunLive) {
     $innerArgs['JsonSchemaPath'] = $schemaPath
 }
 if ($ClaudePath) { $innerArgs['ClaudePath'] = $ClaudePath }
+if ($Model) { $innerArgs['Model'] = $Model }
 
 if (-not $RunLive) {
     Write-Host "Invoke-Subagent: -RunLive not set. Resolved tier=$tier budget=$resolvedBudget hasSchema=$hasSchema; not launching claude (no budget spent). Pass -RunLive to actually run '$AgentName'." -ForegroundColor Yellow
@@ -279,20 +301,46 @@ if ($hasSchema -and -not $SkipSchemaCheck) {
     $schema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
     # Found by dry-tracing this path end to end (PR #197, fable/f12): Invoke-ReadOnlyAgent.ps1's
     # report is {envelope, checkedAt, command} with envelope as a NESTED OBJECT (it already parsed
-    # the CLI's JSON stdout before writing the report) -- not a JSON string. Re-running
-    # ConvertFrom-Json on an already-parsed PSCustomObject throws ("Invalid JSON primitive"), so this
-    # never reached a real schema check on any live run. .result IS still a JSON string within that
-    # object (the CLI's own structured-output text), and is parsed as such below.
-    $resultText = $reportJson.envelope.result
-    if (-not $resultText) {
-        Write-Host "Invoke-Subagent: report envelope has no 'result' field to schema-check ($($reportFile.FullName))." -ForegroundColor Red
-        exit 8
-    }
-    try {
-        $resultParsed = $resultText | ConvertFrom-Json -ErrorAction Stop
-    } catch {
-        Write-Host "Invoke-Subagent: envelope.result is not valid JSON, so it cannot be schema-checked: $($_.Exception.Message)" -ForegroundColor Red
-        exit 8
+    # the CLI's JSON stdout before writing the report) -- not a JSON string.
+    #
+    # 2026-09-23 fix (issue #212 follow-up): per code.claude.com/docs/en/headless.md "Get
+    # structured output", `--output-format json` + `--json-schema` puts the SCHEMA-VALIDATED
+    # payload in envelope.structured_output, not envelope.result -- envelope.result stays the
+    # model's own prose even on a fully successful, schema-conforming run. The Agent SDK
+    # troubleshooting page is explicit that a "success" subtype with no structured_output must be
+    # treated as a failure, not a pass. Verified live 2026-09-22/23 against three real
+    # pr-state-sweep runs (drop-folder reports 145241, 172129, 173309): all three passed
+    # --json-schema on the command line, ran claude-haiku-4-5-20251001 with no --model override,
+    # and all three envelopes have subtype "success" and no structured_output key at all --
+    # consistent with the platform docs' note that Haiku 4.5 structured outputs are Bedrock-only,
+    # not available on the standard API this wrapper uses. The block below now reads
+    # envelope.structured_output by default; -UseLegacyResultField is an explicit opt-in fallback
+    # to the old (wrong-for-this-purpose) envelope.result read, kept only for a caller that knows
+    # it is on a code path where structured_output is genuinely never populated (e.g. no schema
+    # was actually requested) and still wants some check performed. Exit 8's meaning (schema
+    # exists, returned payload did not validate) is unchanged; missing structured_output is a
+    # DIFFERENT failure -- exit 9 -- since "the model's answer failed validation" and "the CLI
+    # never gave us a validated answer to check" are not the same finding and should not share a
+    # code.
+    if ($UseLegacyResultField) {
+        $resultText = $reportJson.envelope.result
+        if (-not $resultText) {
+            Write-Host "Invoke-Subagent: report envelope has no 'result' field to schema-check ($($reportFile.FullName))." -ForegroundColor Red
+            exit 8
+        }
+        try {
+            $resultParsed = $resultText | ConvertFrom-Json -ErrorAction Stop
+        } catch {
+            Write-Host "Invoke-Subagent: envelope.result is not valid JSON, so it cannot be schema-checked: $($_.Exception.Message)" -ForegroundColor Red
+            exit 8
+        }
+    } else {
+        $structuredOutput = $reportJson.envelope.structured_output
+        if ($null -eq $structuredOutput) {
+            Write-Host "Invoke-Subagent: SCHEMA-VALIDATED OUTPUT MISSING for '$AgentName' -- a schema was passed (--json-schema) but the CLI envelope has no 'structured_output' field (subtype='$($reportJson.envelope.subtype)'). Per the Agent SDK docs, a 'success' subtype with no structured_output must be treated as a failure, not a pass -- this is commonly a model/API-tier limitation (e.g. Haiku on the standard API), not a schema-conformance problem. Report: $($reportFile.FullName)." -ForegroundColor Red
+            exit 9
+        }
+        $resultParsed = $structuredOutput
     }
     $errs = Test-JsonSchemaLite -Value $resultParsed -Schema $schema
     if ($errs.Count -gt 0) {

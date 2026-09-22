@@ -37,6 +37,18 @@ argument safety) rather than reimplementing it.
   agent's F4 schema with `JsonSchemaLite.ps1` — the live acceptance for F4 that PR #190 explicitly
   deferred to F12. Without `-RunLive`, no budget is spent and only the schema's own well-formedness
   is checked (same guarantee `test-headless-schemas.ps1` already gives offline).
+
+  **2026-09-23 (issue #212 follow-up):** the schema check reads `envelope.structured_output`, not
+  `envelope.result` — per code.claude.com/docs/en/headless.md, `--output-format json` +
+  `--json-schema` puts the validated payload in `structured_output`; `envelope.result` stays the
+  model's own prose even on success. A `subtype: "success"` envelope with no `structured_output`
+  is a failure (Agent SDK troubleshooting docs), reported as **exit 9** (distinct from exit 8,
+  "a payload was returned and failed validation"). Verified live against three real
+  `pr-state-sweep` drop-folder reports, all Haiku, no `--model` override, all `subtype: "success"`
+  with no `structured_output` key — consistent with the platform docs saying Haiku 4.5 structured
+  outputs are Bedrock-only. Use `-Model sonnet` (or another structured-output-capable model) for an
+  agent that needs a real live schema pass; `-UseLegacyResultField` is an explicit, off-by-default
+  opt-in back to the old `envelope.result` read for a caller that knows it wants that instead.
 - **`Invoke-Lane.ps1`** — a dispatched multi-turn worker session. `claude -p` has no native
   turn-count flag, so `maxTurns` is enforced here as this wrapper's own bookkeeping: a state file
   keyed by `-SessionId` counts turns, and a call once `-MaxTurns` is reached is refused (exit 9)
