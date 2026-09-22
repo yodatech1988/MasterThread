@@ -210,40 +210,29 @@ $innerArgs = [ordered]@{
     Tools        = 'Read,Grep,Glob' # ignored under -Restricted per Invoke-ReadOnlyAgent.ps1's own contract; kept here as documentation of the enforced surface
     Model        = 'fable'
     RosterMetaPath = (Join-Path $PSScriptRoot '..\..\claude-agents\roster_meta.json')
+    SessionId    = $SessionId # gh198: cold call opens/uses this id via --session-id; a resumed call (below) instead sends -Resume
 }
-if ($FallbackModel) { $innerArgs['Model'] = 'fable' } # --model is always fable; --fallback-model is a separate flag Invoke-ReadOnlyAgent.ps1 does not currently expose, so this wrapper documents the gap rather than silently dropping the requirement -- see NOTE below.
+if (-not $isColdStart) { $innerArgs['Resume'] = $true } # gh198: a known-open, non-forked session resumes via --resume <id> instead of opening a new --session-id one
+if ($FallbackModel) { $innerArgs['FallbackModel'] = $FallbackModel } # gh198: '' (the documented opt-out) omits --fallback-model entirely, same as before this change
+if ($Fork) { $innerArgs['ForkSession'] = $true } # gh198: -Fork now reaches the real command line as --fork-session, not only this wrapper's own bookkeeping
 if ($ClaudePath) { $innerArgs['ClaudePath'] = $ClaudePath }
 
 Write-Host "Ask-Fable: session '$SessionId' coldStart=$isColdStart fork=$($Fork.IsPresent) budget=$resolvedBudget"
 
-# NOTE (disclosed, not hidden): Invoke-ReadOnlyAgent.ps1 does not currently expose --fallback-model,
-# --session-id, --resume, or --fork-session as parameters -- those are session-identity flags this
-# script's own contract requires on every call and Invoke-ReadOnlyAgent.ps1 was built (F2/F3) around
-# a single named agent, one-shot invocation shape. Extending that script with the Fable-specific
-# session-resume flags was judged, for this PR, to be a larger and riskier change to an
-# already-shipped, tested file than F12's scope calls for; instead this wrapper documents exactly
-# which of its own enforced rules are wrapper-enforced today (see table below) and which still
-# require a follow-up to Invoke-ReadOnlyAgent.ps1 (or a Fable-specific invocation path) before the
-# session-id/resume/fallback-model/fork-session flags are carried on the actual `claude` command
-# line rather than only in this script's own bookkeeping and reporting.
-#
-# ENFORCED BY THIS WRAPPER TODAY (refuses to run, or exits non-zero, if not satisfiable):
-#   - --restricted, --tools "Read,Grep,Glob" (via -Restricted/-Tools, though Tools is inert under
-#     -Restricted, same as Invoke-ReadOnlyAgent.ps1's own documented behaviour)
-#   - --settings readonly.settings.json, --permission-mode dontAsk, --permission-prompts none,
-#     --strict-mcp-config (all always applied by Invoke-ReadOnlyAgent.ps1)
-#   - a concrete --max-budget-usd (cold vs resumed, resolved above, exit 4 if unresolvable)
-#   - the wall-clock timeout-and-kill (Invoke-ReadOnlyAgent.ps1's own -TimeoutSec)
-#   - the working-directory refusal (AEGIS dir / *.clixml / reparse point), exit 10
-#   - refusal-as-stop reporting (never retried on another model) -- see below
-# CONVENTION ONLY, NOT YET ENFORCED ON THE CLAUDE COMMAND LINE BY THIS WRAPPER (tracked as a
-# follow-up, not hidden as done):
-#   - --session-id / --resume (this script tracks cold-vs-resumed in its OWN state file and reports
-#     it to the caller, but does not yet pass --session-id/--resume to `claude` itself, since
-#     Invoke-ReadOnlyAgent.ps1 has no such parameters today)
-#   - --fallback-model, --fork-session, --disable-slash-commands
-#   - the model name 'fable' passed via -Model is forwarded as --model fable, which Invoke-ReadOnlyAgent.ps1
-#     does support today, unlike the four flags above
+# gh198 (F12 follow-up, issue #198/#205): the four session-identity flags -- --session-id, --resume,
+# --fallback-model, --fork-session -- now reach the real `claude` command line via
+# Invoke-ReadOnlyAgent.ps1's own -SessionId/-Resume/-FallbackModel/-ForkSession parameters (added in
+# this change). Previously this wrapper only tracked cold-vs-resumed in its OWN state file and
+# reported it to the caller, without ever passing the corresponding flag to `claude` itself, since
+# Invoke-ReadOnlyAgent.ps1 had no such parameters. That gap is closed here. --disable-slash-commands
+# remains out of scope for this change (tracked separately; see standards/sessions/fable_seat.md
+# §7/§9, whose text still needs a matching update -- tracked in a trailing GitHub issue linked from
+# this PR, not fixed by editing that standard in this PR). standards/sessions/fable_seat.md §9's
+# "single-turn per invocation until #198/#205 land" caller guidance is UNCHANGED by this PR: this
+# wrapper still opens exactly one turn per call, same as before -- what changed is that the
+# session-identity flags now actually reach the CLI, not that multi-turn continuity is now safe for
+# a caller to rely on. That determination (lifting the single-turn guidance) is the standards-text
+# follow-up, not this code change.
 $innerArgs.Remove('RosterMetaPath') | Out-Null # the fable-seat placeholder agent name is never in roster_meta.json; avoid the -Restricted default-on lookup entirely by passing -Restricted explicitly (already set above)
 
 & $InvokeReadOnlyAgentPath @innerArgs
