@@ -43,10 +43,45 @@ model, 0 of 88 pin an effort**.
 **Inferred, not probed:** that an unpinned subagent therefore inherits its caller's effort — so a
 Haiku reporter summoned from an `xhigh` seat would think at `xhigh`. That follows from the config
 resolution (an absent key has nothing to override the session value with), but no probe in this
-document tests inheritance across a spawn, and it is listed as unverified in §10. **Task F1b adds
-that probe**, and F1 should not land before it reports: if inheritance does not work this way, the
-gap is smaller than it looks. What is certain is the count itself, and that closing it is a file
-edit rather than new machinery.
+document tested inheritance across a spawn. **Task F1b has now run that probe, and the answer is
+worse than "inheritance works": the pin itself does nothing observable.** What remains certain is
+the count itself, and that closing it would be a file edit rather than new machinery — but see
+below for why closing it is not worth doing.
+
+**F1b — measured 2026-09-22, CLI 2.1.278. Two paths tested, both negative.** The question was the
+one F1 rests on: does an agent-level `effort:` pin move
+`usage.output_tokens_details.thinking_tokens` at all?
+
+Path 1 — `--agent`/`--agents` (an agent selected for a whole session), thinking tokens:
+
+| session `--effort` | agent pin | thinking |
+|---|---|---|
+| low | `effort: max` | 0, 0 |
+| low | none | 0, 0 |
+| max | `effort: low` | 11,611, 20,084 |
+| max | none | 9,368, 16,680 |
+
+Path 2 — a real frontmatter file in `.claude/agents/*.md`, spawned via the Task tool from a parent
+at `--effort low`, aggregate thinking tokens:
+
+- subagent pinned `effort: max`: 13, then 0
+- subagent unpinned: 0
+
+For scale, a session genuinely running at `max` produced 9,000–20,000 thinking tokens. **Session
+effort dominated in both directions on both paths; the agent-level pin moved nothing observable.**
+
+**Consequence, stated plainly: F1 — pinning `effort:` across 88 agent files — buys nothing on this
+evidence, and is condemned.** The owner approved cutting it *if* an independent cross-check
+confirms. **That cross-check was still running when this was written**, so F1 is marked
+**CONDEMNED — pending independent confirmation** in §6 rather than deleted, and this is recorded as
+a negative measurement awaiting confirmation, not as a disproved claim.
+
+**The variance is large, and the arms are not separable from each other.** 9,368 against 20,084 on
+identical config is a two-fold spread, so pinned-versus-unpinned at the same session effort cannot
+be told apart from noise at this sample size. The finding therefore rests on the **direction**
+tests, not on that comparison: a `max` pin under a `low` session produced literally zero thinking,
+and a `low` pin under a `max` session produced 11k–20k. Both directions say the session setting
+wins and the pin is inert.
 
 **F3 — `--restricted` is a stronger boundary than the deny-list we built.**
 `--restricted` "removes the built-in tools that run commands or code (Bash, PowerShell, REPL and
@@ -459,7 +494,7 @@ than passing it through — **that mechanism is a hypothesis, not verified**, an
 restriction may still bite a direct API caller.
 
 **This settles that effort works on Haiku. It does not settle that *pinning* works on any model** —
-see F1b, which is a separate and so far negative result.
+see F1b in §1a, which is a separate question and has reported **negative**.
 
 **Row 1 vs row 0 is deliberately left alone.** On the cache-read economics above, Fable is cheaper
 on input than Opus for a long read-heavy review, which is what row 1's `live-reviewer` is. That is
@@ -576,8 +611,8 @@ depends on. Sizes per `standards/sessions/task_sizing.md`. **Nothing below is di
 | ID | Task | Who / size / model / effort | After | Brief |
 |---|---|---|---|---|
 | F1a | Measure whether `--effort` changes Haiku behaviour or is silently dropped | agent / XS / Haiku+Sonnet / low | — | Two identical prompts at `low` and `max` on Haiku; compare `usage.output_tokens_details.thinking_tokens` from the JSON envelope. Report only. Settles row 7 above. |
-| F1b | Probe whether an unpinned subagent actually inherits its caller's effort | agent / XS / Haiku / low | — | Spawn the same subagent from a `low` caller and an `xhigh` caller; compare `thinking_tokens` in each envelope. Report only. The §1a inheritance claim is inferred, not measured, and F1's whole value rests on it. |
-| F1 | Pin `effort:` in every non-Haiku agent file; extend `roster_meta.json` with an `effort` field; make `generate_agents_md.py --check` fail on a missing pin and surface an Effort column in `docs/AGENTS.md` | agent / M / Sonnet / medium | F1a, F1b | One PR, `claude-agents/` + `tools/`. Advisors `low`, drafters `medium`, `live-reviewer` `high`. Mechanical: the judgment is already encoded in each file's existing model pin. `agents-roster-check.yml` gates it. |
+| F1b | Probe whether an unpinned subagent actually inherits its caller's effort | agent / XS / Haiku / low | — | **REPORTED 2026-09-22 (CLI 2.1.278) — negative on both paths; the measurement is recorded in §1a.** `--agent`/`--agents` and a real `.claude/agents/*.md` frontmatter file spawned via the Task tool were both tested: session effort dominated in both directions, and the agent-level pin moved nothing observable. |
+| F1 | **CONDEMNED — pending independent confirmation.** F1b (§1a) found no observable effect from an agent-level `effort:` pin, so this task buys nothing on current evidence. The owner approved cutting it *if* an independent cross-check confirms, and that cross-check was still running when this was written: do not dispatch it, and do not delete it until the confirmation lands. Original scope, kept for the record — pin `effort:` in every non-Haiku agent file; extend `roster_meta.json` with an `effort` field; make `generate_agents_md.py --check` fail on a missing pin and surface an Effort column in `docs/AGENTS.md` | agent / M / Sonnet / medium | F1a, F1b | One PR, `claude-agents/` + `tools/`. Advisors `low`, drafters `medium`, `live-reviewer` `high`. Mechanical: the judgment is already encoded in each file's existing model pin. `agents-roster-check.yml` gates it. |
 | F2 | Add `-Restricted` to `Invoke-ReadOnlyAgent.ps1`, defaulting **on** for agents whose `roster_meta.json` `readonly` is `tools`; keep `readonly.settings.json` as layer 3; document the three-layer ordering in `headless_agent_permissions.md` | agent / M / Sonnet / medium | F1 | Follows `tools/README.md` testing-seam conventions. Must add a regression test proving a `--restricted` run has no Bash tool (the probe in §1a is the test case). |
 | F3 | Capture the CLI's own JSON envelope as the L1 report: wrapper adds `checkedAt` (clock at write time, never typed) + the exact command, and writes `{envelope, checkedAt, command}` to the drop folder | agent / M / Sonnet / medium | F2 | Replaces the hand-rolled shape in `headless_readiness_ladder.md`. `permission_denials`, `total_cost_usd` and `usage` come from the CLI, not from the agent's own prose. |
 | F12 | Seat-side wrappers so the seat never hand-assembles a flag line: one command per layer (`Ask-Fable`, `Invoke-Lane`, `Invoke-Subagent`), each taking 2-3 arguments and emitting the schema-checked envelope | agent / M / Sonnet / medium | F2, F4 | The §2 rule that a `low` seat must not compose ten-flag invocations. Must define the **cold-start path**: what happens when a pinned `--session-id` no longer resolves (expired, rebooted, never created). A seat at `low` will not improvise one, and a silently-cold resume costs ~$0.51 instead of ~$0.007 without failing. |
@@ -638,8 +673,9 @@ F1–F4 all touch `tools/headless/` and `claude-agents/`.
 ## 7. Entry gate
 
 **Exempt: F1a and F1b.** Both are read-only measurements that spawn nothing scheduled, write
-nothing, and change no rung; they are dispatchable immediately and exist precisely to settle
-questions this document could not. An earlier draft made the whole gate conditional on F1a having
+nothing, and change no rung; they were dispatchable immediately and existed precisely to settle
+questions this document could not. **Both have now reported (2026-09-22):** F1a in §4's row-7 note,
+F1b in §1a. An earlier draft made the whole gate conditional on F1a having
 reported while also barring every F-task until the gate passed, which deadlocked the critical path
 at its first step.
 
@@ -648,8 +684,11 @@ at its first step.
 1. `headless_readiness_ladder.md` is **owner-merged** (it is currently *proposed*, route C). Until
    then L1 has no authorised existence and F5 would be registering a scheduled task against a
    standard the owner has not approved.
-2. F1a and F1b have reported, so row 7's effort question and the inheritance claim in §1a are
-   settled by measurement rather than by this document.
+2. **Satisfied 2026-09-22 — F1a and F1b have both reported**, so row 7's effort question and the
+   pin/inheritance claim in §1a are now settled by measurement rather than by this document. F1a
+   was positive (effort reaches Haiku); F1b was negative on both paths, which does not unblock F1
+   but condemns it, pending the independent cross-check named in §1a. This condition no longer
+   gates the other F-tasks; F1 itself must not be dispatched while it is condemned.
 3. The `readonly` classification in `roster_meta.json` is confirmed on `origin/main` — F2 keys its
    default off that field, and the ladder already records it as unconfirmed.
 4. PR #159 (cost-monitor) is merged, or F8 is explicitly deferred. F8 is the only task that can
