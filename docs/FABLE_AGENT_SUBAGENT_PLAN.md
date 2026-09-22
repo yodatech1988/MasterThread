@@ -75,10 +75,13 @@ For scale, a session genuinely running at `max` produced 9,000–20,000 thinking
 effort dominated in both directions on both paths; the agent-level pin moved nothing observable.**
 
 **Consequence, stated plainly: F1 — pinning `effort:` across 88 agent files — buys nothing on this
-evidence, and is condemned.** The owner approved cutting it *if* an independent cross-check
-confirms. **That cross-check was still running when this was written**, so F1 is marked
-**CONDEMNED — pending independent confirmation** in §6 rather than deleted, and this is recorded as
-a negative measurement awaiting confirmation, not as a disproved claim.
+evidence.** The independent cross-check (issue #211) came back inconclusive rather than confirming
+or refuting the measurement above, and the Fable Project PM cut F1 on 2026-09-22 rather than leave
+it pending on a confirmation that was not going to land. F1 is marked **CUT** in §6, kept for the
+record rather than deleted. **Authority:** Decision Queue card `fable-cut-f1-after-g2-2026-09-22`
+was filed 17:20Z and withdrawn 18:09Z by the Fable Project PM (yoda-ad) under the owner's ~18:08Z
+chat instruction that launch/cut decisions inside the approved Fable scope are the PM's to make
+autonomously; the G2 cross-check (#211, INCONCLUSIVE, re-run dropped) is the evidence basis.
 
 **The variance is large, and the arms are not separable from each other.** 9,368 against 20,084 on
 identical config is a two-fold spread, so pinned-versus-unpinned at the same session effort cannot
@@ -791,7 +794,7 @@ open (F12's resume threading, F9's file location).
 |---|---|---|---|---|
 | F1a | Measure whether `--effort` changes Haiku behaviour or is silently dropped | agent / XS / Haiku+Sonnet / low | — | Two identical prompts at `low` and `max` on Haiku; compare `usage.output_tokens_details.thinking_tokens` from the JSON envelope. Report only. Settles row 7 above. |
 | F1b | Probe whether an unpinned subagent actually inherits its caller's effort | agent / XS / Haiku / low | — | **REPORTED 2026-09-22 (CLI 2.1.278) — negative on both paths; the measurement is recorded in §1a.** `--agent`/`--agents` and a real `.claude/agents/*.md` frontmatter file spawned via the Task tool were both tested: session effort dominated in both directions, and the agent-level pin moved nothing observable. |
-| F1 | **CONDEMNED — pending independent confirmation.** F1b (§1a) found no observable effect from an agent-level `effort:` pin, so this task buys nothing on current evidence. The owner approved cutting it *if* an independent cross-check confirms, and that cross-check was still running when this was written: do not dispatch it, and do not delete it until the confirmation lands. Original scope, kept for the record — pin `effort:` in every non-Haiku agent file; extend `roster_meta.json` with an `effort` field; make `generate_agents_md.py --check` fail on a missing pin and surface an Effort column in `docs/AGENTS.md` | agent / M / Sonnet / medium | F1a, F1b | One PR, `claude-agents/` + `tools/`. Advisors `low`, drafters `medium`, `live-reviewer` `high`. Mechanical: the judgment is already encoded in each file's existing model pin. `agents-roster-check.yml` gates it. |
+| F1 | **CUT 2026-09-22 (PM decision after G2/F1b, #211 inconclusive).** The independent cross-check (issue #211) came back inconclusive — Haiku thinking tokens ranged 125-454 across low/high/max effort, no measurable effect of a pinned agent-level `effort:` attributable to the pin. The Fable Project PM, per the owner's delegation of Fable-scope launch/cut decisions, cut F1 rather than leave it pending on a confirmation that cannot land. Not dispatched; not built. Original scope, kept for the record — pin `effort:` in every non-Haiku agent file; extend `roster_meta.json` with an `effort` field; make `generate_agents_md.py --check` fail on a missing pin and surface an Effort column in `docs/AGENTS.md` | agent / M / Sonnet / medium | F1a, F1b | CUT — no PR. Advisors `low`, drafters `medium`, `live-reviewer` `high`. Mechanical: the judgment is already encoded in each file's existing model pin. `agents-roster-check.yml` gates it. |
 | F2 | Add `-Restricted` to `Invoke-ReadOnlyAgent.ps1`, defaulting **on** for agents whose `roster_meta.json` `readonly` is `tools`; keep `readonly.settings.json` as layer 3; document the three-layer ordering in `headless_agent_permissions.md` | agent / M / Sonnet / medium | F1 | Follows `tools/README.md` testing-seam conventions. Must add a regression test proving a `--restricted` run has no Bash tool (the probe in §1a is the test case). **Merged as PR #174** by the owner's account, 2026-09-22T02:18:32Z (squash `10786c2` on `origin/main`). It implements D3: default-on keyed off `readonly: "tools"`, failing closed on an unresolvable roster lookup. Routed as C because it touched `standards/sessions/headless_agent_permissions.md`, so it needed the owner's own merge click even though the `.ps1` + test would otherwise have qualified for route B. The squash also carries F3: #176 had been retargeted onto #174's branch and was merged into it 8 seconds earlier. Dispatched while the §7 gate was closed (see §7, "Dispatched while this gate was closed"). **Known break, not yet fixed:** the owner-approved `AEGIS-L1Pilot` task copies this wrapper out of the repo and calls it with `-Tools` and no `-Restricted`, so the copy's default roster lookup (`<copy dir>\..\..\claude-agents\roster_meta.json`) finds no file and exits 4 once the pilot refreshes from `origin/main`. |
 | F3 | Capture the CLI's own JSON envelope as the L1 report: wrapper adds `checkedAt` (clock at write time, never typed) + the exact command, and writes `{envelope, checkedAt, command}` to the drop folder | agent / M / Sonnet / medium | F2 | Replaces the hand-rolled shape in `headless_readiness_ladder.md`. `permission_denials`, `total_cost_usd` and `usage` come from the CLI, not from the agent's own prose. **Built as PR #176** (final head `343f26f`). The owner merged it into #174's branch (`agent/MasterThread/fable-f2`) at 2026-09-22T02:18:24Z as `8dab62c`, so it reached `origin/main` inside #174's squash `10786c2`; no separate F3-to-main PR is needed. Dispatched while the §7 gate was closed and before F2 merged (see §7). The ladder's text described the old report shape until issue #184's fix PR **#209** (route C, "ladder: L1 report shape is F3's {envelope, checkedAt, command} (closes #184)") **MERGED to main** 2026-09-22T17:54:09Z (commit `9ebd4f8`), closing #184. |
 | F12 | Seat-side wrappers so the seat never hand-assembles a flag line: one command per layer (`Ask-Fable`, `Invoke-Lane`, `Invoke-Subagent`), each taking 2-3 arguments and emitting the schema-checked envelope | agent / M / Sonnet / medium | F2, F4 | **Merged as PR #197** (`ec5e0c7`, 2026-09-22T14:59:24Z). **Not fully DONE**: `Ask-Fable` does not thread `--session-id`/`--resume`/`--fallback-model`/`--fork-session` to the real `claude` call, so the seat is single-turn per invocation today, not the resumed-Fable contract §2/§3 describe — tracked by #198 (open); #205, a duplicate of #198, is now CLOSED. Below is the original brief this PR was scoped against. The §2 rule that a `low` seat must not compose ten-flag invocations. Must define the **cold-start path**: what happens when a pinned `--session-id` no longer resolves (expired, rebooted, never created). A seat at `low` will not improvise one, and a silently-cold resume costs ~$0.51 instead of ~$0.007 without failing. Must also, per §5: **enforce** the boundary flags on every call, refusing to run if one is missing; carry a wall-clock timeout-and-kill like `Invoke-ReadOnlyAgent.ps1`'s; set a concrete `--max-budget-usd` per line; return a Fable `stop_reason: "refusal"` to the seat as a refusal, never retried on another model; refuse to run when the working directory is, contains, or is inside `%APPDATA%\AEGIS`, holds a `*.clixml` or other key file, or has a reparse point (junction or symlink) beneath it (§5, "Fable seat"); and include the regression checks listed in §5 (tool surface, egress, outside-the-working-directory reads, deny-list backstop), plus a junction/symlink escape probe: a junction inside the working directory pointing outside it must be refused by the wrapper before launch, and a read through it must be denied if one is ever reached. The brief must also say, rule by rule, **which rules the wrapper enforces and which stay convention**: the boundary flags, the working-directory check, the timeout-and-kill, the concrete budget and the refusal-as-stop are enforced by the wrapper (it refuses to run or exits non-zero); what a Fable answer may *recommend* is convention, checked only by the seat re-verifying against live state. |
@@ -877,9 +880,9 @@ at its first step.
    has an authorised existence to register a scheduled run against, subject to the conditions below.
 2. **Satisfied 2026-09-22 — F1a and F1b have both reported**, so row 7's effort question and the
    pin/inheritance claim in §1a are now settled by measurement rather than by this document. F1a
-   was positive (effort reaches Haiku); F1b was negative on both paths, which does not unblock F1
-   but condemns it, pending the independent cross-check named in §1a. This condition no longer
-   gates the other F-tasks; F1 itself must not be dispatched while it is condemned.
+   was positive (effort reaches Haiku); F1b was negative on both paths. The independent cross-check
+   named in §1a (issue #211) came back inconclusive, and F1 was CUT 2026-09-22 as a result. This
+   condition no longer gates the other F-tasks; F1 itself will not be dispatched.
 3. The `readonly` classification in `roster_meta.json` is confirmed on `origin/main` — F2 keys its
    default off that field, and the ladder already records it as unconfirmed.
 4. PR #159 (cost-monitor) is merged, or F8 is explicitly deferred. — **Satisfied 2026-09-22 by
@@ -915,15 +918,15 @@ were unmet. This plan records no authority for any of the three **dispatches**:
 | F-task | PR | Opened | What the dispatch bypassed | Merged |
 |---|---|---|---|---|
 | F10 | #172 | 2026-09-22T00:54Z | Condition 4 (condition 3 not re-verified) | 2026-09-22T02:18:45Z, owner's account |
-| F2 | #174 | 2026-09-22T01:02Z | Condition 4. Also its listed dependency F1, which is CONDEMNED pending confirmation (§1a), so the dependency could never be met as written | 2026-09-22T02:18:32Z, owner's account |
+| F2 | #174 | 2026-09-22T01:02Z | Condition 4. Also its listed dependency F1, which is CUT (§1a), so the dependency could never be met as written | 2026-09-22T02:18:32Z, owner's account |
 | F3 | #176 | 2026-09-22T01:42Z | Condition 4, and its own dependency F2: it was built stacked on the unmerged #174, against the F3 brief's "confirm F2 is merged or stop" | 2026-09-22T02:18:24Z into #174's branch, owner's account; on `origin/main` via #174 |
 
 All three were merged by the owner's own account, and the merges are the owner's own actions.
 This plan records them as facts. It does not treat them as retroactive approval of dispatching
 past a closed gate, and it does not treat them as opening the gate for any other F-task. The gate
-above still governs every undispatched F-task. F2's dependency column should read "none (F1
-condemned)" once the owner confirms F1's condemnation. Until then it is left as written, so the
-dependency is not quietly dropped.
+above still governs every undispatched F-task. F1 is CUT (2026-09-22, PM decision after G2/F1b,
+#211 inconclusive; see F1's row). F2's dependency on F1 is released: F2 is already merged (#174)
+and needed nothing further from F1.
 
 ---
 
@@ -1183,9 +1186,9 @@ Fable-seat call. No gap.
 
 `--max-budget-usd` is on every invocation line in §5. `maxTurns` is *measured* (86 of 88 agent files
 pin it, per §1a) but this plan never turns that into a forward-looking rule for new or edited agent
-files. Drafted rider for §6 (independent of F1's condemned `effort:` scope):
+files. Drafted rider for §6 (independent of F1's cut `effort:` scope):
 
-> **Independent of F1's condemned `effort:` pin, every new or edited agent file must pin
+> **Independent of F1's cut `effort:` pin, every new or edited agent file must pin
 > `maxTurns`, and every §5 invocation line must carry `--max-budget-usd`.** These are not part of
 > what F1b measured null on — F1b tested `effort`, not `maxTurns` or budget caps — and nothing in
 > this document's findings bears on whether a turn/budget ceiling is effective.
