@@ -86,6 +86,17 @@
       "Bash(gh api * --method=patch *)",
       "Bash(gh api * --method=delete *)",
 
+      "Bash(gh api * -f *)",
+      "Bash(gh api * -f*)",
+      "Bash(gh api * -F *)",
+      "Bash(gh api * -F*)",
+      "Bash(gh api * --field *)",
+      "Bash(gh api * --field=*)",
+      "Bash(gh api * --raw-field *)",
+      "Bash(gh api * --raw-field=*)",
+      "Bash(gh api * --input *)",
+      "Bash(gh api * --input=*)",
+
       "Bash(rm *)",
       "Bash(rmdir *)",
       "Bash(del *)",

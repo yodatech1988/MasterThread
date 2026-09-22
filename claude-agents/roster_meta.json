@@ -84,7 +84,7 @@
   "workshop-mod-inventory": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
   "pm-agent": {"role": "A", "headless": "yes", "readonly": "tools", "dormant": false},
   "blocked-work-sweep": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
-  "gate-execution-auditor": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false, "allowedTools": ["Bash(gh run view:*)", "Bash(gh pr view:*)", "Bash(gh pr list:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(gh api repos/yodatech1988/:*)", "Bash(sed:*)"]},
+  "gate-execution-auditor": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false, "allowedTools": ["Bash(gh run view:*)", "Bash(gh pr view:*)", "Bash(gh pr list:*)", "Bash(git show:*)", "Bash(git rev-parse:*)", "Bash(git merge-base:*)", "Bash(gh api repos/yodatech1988/:*)"]},
   "owner-instruction-verifier": {"role": "A", "headless": "yes", "readonly": "instruction", "dormant": false},
   "register-verifier": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false, "allowedTools": ["Bash(gh pr view:*)", "Bash(gh pr list:*)", "Bash(git ls-remote:*)", "Bash(gh api repos/yodatech1988/:*)"]},
   "denial-card-drafter": {"role": "D", "headless": "yes", "readonly": "tools", "dormant": false, "group": "other"},
