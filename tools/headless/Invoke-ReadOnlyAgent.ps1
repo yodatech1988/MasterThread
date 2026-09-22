@@ -18,7 +18,9 @@
     The subagent to run, e.g. "worktree-sweep".
 
 .PARAMETER Prompt
-    The prompt to send.
+    The prompt to send. Always passed to the CLI on stdin, never on the command line: claude.cmd
+    runs through cmd.exe, where no quoting keeps a prompt containing a double quote from being run
+    as shell syntax (PR #176 review).
 
 .PARAMETER Tools
     Comma-separated tool allow-list passed as --tools, e.g. "Read,Grep,Bash". Required when the
@@ -100,10 +102,13 @@
     `stream-json --verbose`, and on completion the wrapper writes ONE report file to -ReportDir:
 
         {"envelope": <the CLI's stdout, verbatim>, "checkedAt": "<UTC clock at write time>",
-         "command": "<the exact invocation>"}
+         "command": "<the exact invocation>", "exitCode": <the CLI process's exit code>}
 
-    Nothing else. The envelope is embedded as the CLI's own bytes (only the trailing line
-    terminator/whitespace trimmed) -- it is never parsed and re-serialised, so no field can be
+    Nothing else (plus "testSeam": true, only when -ClaudePath replaced the real CLI). exitCode
+    was added after review of PR #176 so a failed run is visible without inferring it from the
+    envelope; it is the fourth field of the plan's {envelope, checkedAt, command} and comes from
+    the process, not the model. The envelope is embedded as the CLI's own characters, untouched
+    (its trailing newline included, as legal JSON whitespace) -- it is never parsed and re-serialised, so no field can be
     dropped, renamed, reordered or re-formatted on the way to disk. `permission_denials`,
     `total_cost_usd` and `usage` therefore come from the CLI, never from the agent's own prose.
     `checkedAt` is read from [DateTime]::UtcNow immediately before the write (tools/README.md
@@ -134,9 +139,17 @@
     Test seam (tools/README.md: "Test seam is mandatory"). Path to the executable to launch in
     place of the resolved `claude.cmd`. Lets a test drive the real report-writing path (the call
     site, not a helper in isolation) against a fake CLI that prints a fixture envelope, an empty
-    stdout, malformed JSON, or a non-zero exit -- without spending budget. Not for production use:
-    a real run leaves it unset and the script resolves `claude.cmd` itself (see .NOTES). Exit 2
-    if the path does not exist.
+    stdout, malformed JSON, or a non-zero exit -- without spending budget. Enforced, not just
+    documented (PR #176 review): refused with exit 2 unless the environment variable
+    AEGIS_TEST_SEAM is set to 1, and any report written through it carries "testSeam": true so a
+    reader can reject it as not real L1 evidence. A real run leaves it unset and the script
+    resolves `claude.cmd` itself (see .NOTES). Exit 2 if the path does not exist.
+
+.PARAMETER RedactPrompt
+    Report mode only. Records the prompt in the report's `command` as its length and SHA-256
+    instead of its text. Reports are kept on this PC indefinitely (owner decision D6), and
+    `envelope.result` still holds the model's own output, so do not put secrets in a prompt either
+    way; this switch keeps the prompt text itself out of the file.
 
 .PARAMETER DryRun
     Test seam (tools/README.md: "Test seam is mandatory"). Resolves -Restricted (explicit or via
@@ -160,7 +173,9 @@
     Exit codes (fixed 2026-09-18, extended 2026-09-22 for F2): 0 = the `claude` process ran and
     exited 0. Any other integer = the `claude` process's own real exit code, propagated as-is.
     2 = this wrapper itself failed to resolve or launch `claude` (never reached the subprocess at
-    all). 3 = the run timed out and was killed. 4 = -Restricted was not passed explicitly and the
+    all), or refused an argument that is unsafe on cmd.exe's command line (-AgentName or -Model
+    outside their allowed character sets; -SettingsPath/-Tools/-AllowedTools containing a double
+    quote, % or a line break), or refused -ClaudePath without AEGIS_TEST_SEAM=1. 3 = the run timed out and was killed. 4 = -Restricted was not passed explicitly and the
     default-on lookup against roster_meta.json could not be completed (file missing, unparsable,
     or the named agent is not listed) -- fails closed rather than assuming unrestricted. 5 = the
     run resolved to NOT restricted (either -Restricted:$false was passed, or the roster_meta.json
@@ -171,13 +186,17 @@
 
     Report mode (-Report / -ReportDir, plan task F3) adds two codes, and in report mode they are
     exactly the "no report file was written" signal: 6 = the CLI's stdout was empty, not valid
-    JSON, not a single object, or missing a required result-envelope key -- nothing written. 7 =
+    JSON (checked by two parsers, see Test-StrictJson), not a single object, or missing a required
+    result-envelope key, or the assembled report failed the same strict re-check -- nothing
+    written. 7 =
     the envelope was valid but the report file could not be written (folder not creatable, disk
     error) -- nothing left behind but the error. Both win over the CLI's own exit code, which is
     printed in the error message instead. When a COMPLETE envelope comes back with a non-zero CLI
     exit (e.g. subtype error_max_budget_usd, is_error true), the report IS written -- it is whole
     evidence of what the run did, including its permission_denials and cost, not a partial file --
-    and the CLI's own exit code is then propagated as usual. A timeout (3) writes no report; a
+    with that exit code in its exitCode field, and the CLI's own exit code is then propagated as
+    usual. (This reading of the F3 brief's "a nonzero exit must not silently write a
+    partial/empty envelope" is flagged on PR #176 for whoever holds the brief to confirm.) A timeout (3) writes no report; a
     missing report where one was expected is itself the finding (headless_readiness_ladder.md,
     "What every headless run must emit").
 
@@ -213,7 +232,8 @@
     plus checkedAt and the exact command to the drop folder as the L1 report, replacing the
     hand-rolled {agent, checkedAt, command, exitCode, permissionDenials, findings[]} shape that
     headless_readiness_ladder.md still describes (that standard is route C; updating its text is a
-    separate owner-merged change). The per-agent `findings[]` contract is F4's --json-schema work,
+    separate owner-merged change, tracked on PR #176 -- nothing, F7's heartbeat ingest included,
+    should be built against the ladder's old shape). The per-agent `findings[]` contract is F4's --json-schema work,
     not this script's.
 #>
 [CmdletBinding()]
@@ -232,6 +252,7 @@ param(
     [switch]$Report,
     [string]$ReportDir,
     [string]$ClaudePath,
+    [switch]$RedactPrompt,
     [switch]$DryRun
 )
 
@@ -248,6 +269,39 @@ $ErrorActionPreference = 'Stop'
 # that passes these parameters, and for every caller that relied on the defaults via `&`.
 if (-not $SettingsPath) { $SettingsPath = Join-Path $PSScriptRoot 'readonly.settings.json' }
 if (-not $RosterMetaPath) { $RosterMetaPath = Join-Path $PSScriptRoot '..\..\claude-agents\roster_meta.json' }
+
+# --- cmd.exe command-line safety (PR #176 review, 2026-09-21) ----------------------------------
+# The wrapper launches claude.cmd, so Start-Process hands the whole argument string to cmd.exe.
+# cmd.exe does not honour backslash escapes: a double quote inside a value ends the quoted region,
+# after which & | < > ^ run as shell syntax, and %VAR% is expanded even inside quotes. Anything that
+# reaches that command line therefore has to be either a closed character set or free of the
+# characters cmd.exe still interprets inside quotes. The prompt never goes on the command line at
+# all (it is always passed on stdin, below). Every failure here exits 2 before anything is launched.
+function Exit-UnsafeArg([string]$Name, [string]$Why) {
+    Write-Host "Invoke-ReadOnlyAgent: refusing -$Name -- $Why. Nothing was launched." -ForegroundColor Red
+    exit 2
+}
+if ($AgentName -cnotmatch '^[A-Za-z0-9._-]+\z') {
+    Exit-UnsafeArg 'AgentName' "'$AgentName' must match ^[A-Za-z0-9._-]+$ (it is passed to cmd.exe unquoted)"
+}
+if ($Model -and $Model -cnotmatch '^[A-Za-z0-9._\[\]-]+\z') {
+    Exit-UnsafeArg 'Model' "'$Model' must match ^[A-Za-z0-9._\[\]-]+$ (it is passed to cmd.exe unquoted)"
+}
+foreach ($quotedName in @('SettingsPath', 'Tools', 'AllowedTools')) {
+    $quotedValue = Get-Variable -Name $quotedName -ValueOnly
+    if ($quotedValue -and $quotedValue -match '["%\r\n]') {
+        Exit-UnsafeArg $quotedName 'the value contains a double quote, %, or a line break, which cmd.exe would interpret even inside quotes'
+    }
+}
+
+# -ClaudePath is a test seam, and a report written through it is not evidence of a real CLI run.
+# Tool-level guard rather than an instruction: it is refused unless the process opts in with
+# AEGIS_TEST_SEAM=1, and a report written through it is marked "testSeam": true (see below) so a
+# reader can reject it even if the variable was set somewhere it should not have been.
+if ($ClaudePath -and $env:AEGIS_TEST_SEAM -ne '1') {
+    Write-Host "Invoke-ReadOnlyAgent: -ClaudePath is a test seam and is refused unless the environment variable AEGIS_TEST_SEAM is set to 1. A real run resolves claude.cmd itself. Nothing was launched." -ForegroundColor Red
+    exit 2
+}
 
 # --- F3: report mode -------------------------------------------------------------------------
 # On when -Report is passed, or when -ReportDir is passed explicitly (a caller naming a drop folder
@@ -331,7 +385,6 @@ $claudeArgs = @(
 # --restricted. The two are never combined here -- see -Restricted's own doc comment above for why
 # (a --tools grant alongside --restricted would silently reopen the "tool present but denied" gap
 # --restricted exists to close by removing the tool from the surface entirely).
-$usingAllowedToolsFlag = $false
 if ($effectiveRestricted) {
     if ($Tools -or $AllowedTools) {
         Write-Warning "Invoke-ReadOnlyAgent: '$AgentName' is running -Restricted; the -Tools/-AllowedTools value(s) supplied are ignored under --restricted (plan's invocation shape uses --restricted instead of --tools, never alongside -- see this script's -Restricted parameter help)."
@@ -350,7 +403,6 @@ if ($effectiveRestricted) {
     # behaviour change when unused.
     if ($AllowedTools) {
         $claudeArgs += @('--allowedTools', (ConvertTo-QuotedArg $AllowedTools))
-        $usingAllowedToolsFlag = $true
     }
 }
 
@@ -392,29 +444,28 @@ if ($Model) {
 # instead of as a positional argument. Otherwise (including a -Restricted run, which never adds
 # --allowedTools) behaviour is unchanged from before this parameter existed -- the positional
 # prompt stays exactly as it was.
+#
+# 2026-09-21 (PR #176 review, HIGH): the prompt now ALWAYS goes on stdin, never on the command line.
+# Before this, a prompt that did not use --allowedTools was appended as a positional argument --
+# first unquoted (split on spaces, so a prompt containing '--version' printed only the CLI version),
+# then quoted with ConvertTo-QuotedArg. Quoting cannot make it safe: claude.cmd runs through cmd.exe,
+# which ignores the \" escape, so a prompt such as `hello " & echo INJECTED & rem "` ran `echo
+# INJECTED` as a shell command as this user, outside every Claude permission layer (reproduced by the
+# reviewer and by this file's regression test). Prompts are often built from file, handoff or card
+# content, so that was a real bypass of the read-only baseline. stdin carries the text as data only.
+# Behaviour change for non-report callers: the prompt is no longer in the child's argv.
 $promptFile = $null
-if ($usingAllowedToolsFlag) {
-    $promptFile = [System.IO.Path]::GetTempFileName()
-    [System.IO.File]::WriteAllText($promptFile, $Prompt, [System.Text.UTF8Encoding]::new($false))
-} else {
-    # 2026-09-21 fix, found by F3's live check: the positional prompt was appended UNQUOTED, so
-    # Start-Process's bare space-join (see ConvertTo-QuotedArg above) split any multi-word prompt
-    # into separate argv tokens. Reproduced live through this wrapper: the prompt "Use the Bash tool
-    # to run exactly this command: git --version . Then report its output." made the CLI print only
-    # "2.1.278 (Claude Code)" -- the stray '--version' token was read as the CLI's own flag, the
-    # same defect the 2026-09-18 note above describes, which had been fixed for -Tools/-AllowedTools
-    # and the stdin path but not for this one. Quoted the same way as every other spaced value.
-    $claudeArgs += (ConvertTo-QuotedArg $Prompt)
-}
 
 if ($DryRun) {
     # Test seam (tools/README.md: "Test seam is mandatory"). Never resolves or launches `claude`.
     Write-Host "DRYRUN AgentName=$AgentName Restricted=$effectiveRestricted (explicit=$restrictedExplicit)"
-    Write-Host "DRYRUN ARGS: $($claudeArgs -join ' ')$(if ($promptFile) { ' (prompt on stdin)' })"
+    Write-Host "DRYRUN ARGS: $($claudeArgs -join ' ') (prompt on stdin)"
     if ($reportMode) { Write-Host "DRYRUN REPORT dir=$ReportDir (nothing written)" }
-    if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
     exit 0
 }
+
+$promptFile = [System.IO.Path]::GetTempFileName()
+[System.IO.File]::WriteAllText($promptFile, $Prompt, [System.Text.UTF8Encoding]::new($false))
 
 if ($ClaudePath) {
     # Test seam only (see -ClaudePath). A real run never sets it.
@@ -447,11 +498,7 @@ $stdoutFile = [System.IO.Path]::GetTempFileName()
 $stderrFile = [System.IO.Path]::GetTempFileName()
 $proc = $null
 try {
-    if ($promptFile) {
-        $proc = Start-Process -FilePath $claudeExe -ArgumentList $claudeArgs -NoNewWindow -PassThru -RedirectStandardInput $promptFile -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
-    } else {
-        $proc = Start-Process -FilePath $claudeExe -ArgumentList $claudeArgs -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
-    }
+    $proc = Start-Process -FilePath $claudeExe -ArgumentList $claudeArgs -NoNewWindow -PassThru -RedirectStandardInput $promptFile -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
     # 2026-09-21 fix, found while building F3's non-zero-exit test: a Process object returned by
     # Start-Process -PassThru only records its exit code if its Handle was opened before the process
     # exited. A child that exits fast (e.g. the CLI rejecting its own arguments, the 2026-09-18
@@ -508,21 +555,34 @@ if (-not $reportMode) {
     exit $claudeExitCode
 }
 
-# --- F3: write {envelope, checkedAt, command} to the drop folder -------------------------------
-# The exact invocation, as launched. When the prompt went on stdin (the --allowedTools case above)
-# it is not in $claudeArgs, so it is recorded explicitly rather than lost.
+# --- F3: write {envelope, checkedAt, command, exitCode} to the drop folder ----------------------
+# The exact invocation, as launched. The prompt always goes on stdin, so it is not in $claudeArgs and
+# is recorded explicitly rather than lost -- or, with -RedactPrompt, replaced by its length and
+# SHA-256 so a report can still be matched to a known prompt without storing its text (reports are
+# kept indefinitely under %APPDATA%\AEGIS\reports; see README.md "What a report contains").
 $command = "$claudeExe $($claudeArgs -join ' ')"
-if ($promptFile) { $command += " (prompt on stdin: $(ConvertTo-QuotedArg $Prompt))" }
-
-# Read the CLI's stdout as the exact UTF-8 text it wrote (no BOM added, no line splitting), then
-# trim only surrounding whitespace -- the CLI terminates its single JSON line with a newline, and
-# a newline inside the report's "envelope" slot is noise, not data.
-$rawEnvelope = ''
-try {
-    $rawEnvelope = [System.IO.File]::ReadAllText($stdoutFile, [System.Text.UTF8Encoding]::new($false)).Trim()
-} catch {
-    $rawEnvelope = ''
+if ($RedactPrompt) {
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = -join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Prompt)) | ForEach-Object { $_.ToString('x2') })
+    } finally { $sha.Dispose() }
+    $command += " (prompt on stdin: <redacted, $($Prompt.Length) chars, sha256 $hash>)"
+} else {
+    $command += " (prompt on stdin: $(ConvertTo-QuotedArg $Prompt))"
 }
+
+# Read the CLI's stdout as the exact UTF-8 text it wrote (no BOM added, no line splitting). The
+# report embeds these characters untouched -- including the CLI's trailing newline, which is legal
+# whitespace between JSON tokens -- so the envelope slot is character-for-character the CLI's stdout.
+# (ReadAllText drops a leading UTF-8 BOM if one were ever present; the CLI does not write one.) A
+# trimmed copy is used only for the checks below.
+$rawStdout = ''
+try {
+    $rawStdout = [System.IO.File]::ReadAllText($stdoutFile, [System.Text.UTF8Encoding]::new($false))
+} catch {
+    $rawStdout = ''
+}
+$trimmedEnvelope = $rawStdout.Trim()
 if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
 Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
 
@@ -531,16 +591,35 @@ function Exit-NoReport([int]$Code, [string]$Why) {
     exit $Code
 }
 
-if (-not $rawEnvelope) {
+# PS 5.1's ConvertFrom-Json (JavaScriptSerializer) accepts some non-JSON (single-quoted strings,
+# unquoted keys), and the WCF DataContract JSON reader accepts other non-JSON (a trailing comma, two
+# concatenated objects). Requiring BOTH to accept the text is stricter than either alone, and is the
+# strictest parser available in Windows PowerShell 5.1 without a dependency. Known residue both still
+# accept: NaN and leading-zero numbers, neither of which the CLI's JSON.stringify can emit.
+Add-Type -AssemblyName System.Runtime.Serialization -ErrorAction SilentlyContinue
+function Test-StrictJson([string]$Text) {
+    try { $null = $Text | ConvertFrom-Json -ErrorAction Stop } catch { return $false }
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+        $reader = [System.Runtime.Serialization.Json.JsonReaderWriterFactory]::CreateJsonReader($bytes, [System.Xml.XmlDictionaryReaderQuotas]::Max)
+        try { while ($reader.Read()) { } } finally { $reader.Close() }
+    } catch { return $false }
+    return $true
+}
+
+if (-not $trimmedEnvelope) {
     Exit-NoReport 6 'the CLI wrote nothing to stdout (no envelope)'
 }
-if (-not $rawEnvelope.StartsWith('{')) {
+if (-not $trimmedEnvelope.StartsWith('{')) {
     Exit-NoReport 6 'the CLI stdout is not a single JSON object (expected the --output-format json result envelope)'
 }
 try {
-    $parsed = $rawEnvelope | ConvertFrom-Json -ErrorAction Stop
+    $parsed = $trimmedEnvelope | ConvertFrom-Json -ErrorAction Stop
 } catch {
     Exit-NoReport 6 "the CLI stdout is not valid JSON: $($_.Exception.Message)"
+}
+if (-not (Test-StrictJson $trimmedEnvelope)) {
+    Exit-NoReport 6 'the CLI stdout was accepted by the lenient PowerShell parser but is not strict JSON'
 }
 # Set-StrictMode-safe property checks (tools/README.md): PSObject.Properties, never a dotted read.
 $missing = @()
@@ -578,11 +657,22 @@ try {
     }
 
     # The envelope goes in as the CLI's own text -- never parsed-and-re-serialised -- so the report
-    # carries exactly the fields, order and number formatting the CLI emitted. Only the two
-    # wrapper-owned strings are JSON-encoded here.
-    $reportText = '{"envelope":' + $rawEnvelope +
+    # carries exactly the fields, order and number formatting the CLI emitted. Only the
+    # wrapper-owned values are JSON-encoded here. exitCode is the CLI process's own exit code
+    # (PR #176 review): without it a reader could only infer a failed run from is_error/subtype.
+    # testSeam appears only when -ClaudePath replaced the real CLI, so such a report can be rejected.
+    $reportText = '{"envelope":' + $rawStdout +
         ',"checkedAt":' + (ConvertTo-Json -InputObject $checkedAt -Compress) +
-        ',"command":' + (ConvertTo-Json -InputObject $command -Compress) + '}'
+        ',"command":' + (ConvertTo-Json -InputObject $command -Compress) +
+        ',"exitCode":' + ([int]$claudeExitCode).ToString([System.Globalization.CultureInfo]::InvariantCulture)
+    if ($ClaudePath) { $reportText += ',"testSeam":true' }
+    $reportText += '}'
+
+    # Belt and braces for the "never a malformed file" promise: re-check the assembled report with
+    # the same strict test before anything touches the drop folder.
+    if (-not (Test-StrictJson $reportText)) {
+        Exit-NoReport 6 'the assembled report did not re-parse as strict JSON'
+    }
 
     # Atomic publish: write a temp file in the same folder, then rename. A heartbeat-tick reader
     # globbing *.json never sees a half-written report.

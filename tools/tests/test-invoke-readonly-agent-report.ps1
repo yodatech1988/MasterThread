@@ -16,11 +16,15 @@
   under dontAsk, the same failure headless_agent_permissions.md documents).
 
   What these tests prove (the F3 build brief's four required checks):
-    (a) the report's envelope is byte-identical to the CLI's stdout (trailing newline trimmed);
+    (a) the report's envelope is character-for-character the CLI's stdout (nothing trimmed);
     (b) checkedAt is the wrapper's clock at write time, differs run to run, and appears nowhere
         inside the envelope;
     (c) a populated permission_denials array arrives in the report unmodified;
     (d) empty / malformed / non-envelope CLI output fails loudly (exit 6) and writes NO file.
+  Plus the PR #176 review fixes: the prompt always goes on stdin (a prompt containing " & % cannot
+  reach cmd.exe as shell syntax), unsafe -AgentName/-Model/-Tools values are refused before launch,
+  -ClaudePath needs AEGIS_TEST_SEAM=1 and marks its reports "testSeam": true, the report records the
+  CLI's exitCode, lenient-only JSON is rejected, and -RedactPrompt keeps the prompt text out.
 
 .PARAMETER RunLive
   Also run two live checks against the real `claude` CLI through the wrapper (Haiku, small real
@@ -34,6 +38,11 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $scriptPath = Join-Path (Split-Path -Parent $here) 'headless\Invoke-ReadOnlyAgent.ps1'
 $fixtureEnvelopePath = Join-Path $here 'fixtures\headless\envelope-with-denial.json'
 $utf8 = [System.Text.UTF8Encoding]::new($false)
+
+# -ClaudePath is refused without this opt-in (PR #176 review). Set for this process only, restored
+# in the finally block at the end.
+$priorTestSeam = $env:AEGIS_TEST_SEAM
+$env:AEGIS_TEST_SEAM = '1'
 
 $testsPassed = 0
 $testsFailed = 0
@@ -64,6 +73,19 @@ function New-FakeClaude([string]$Name, [string]$Stdout, [int]$ExitCode = 0) {
     [System.IO.File]::WriteAllText((Join-Path $dir 'out.txt'), $Stdout, $utf8)
     $cmd = Join-Path $dir 'fake-claude.cmd'
     $body = "@echo off`r`nif exist `"%~dp0out.txt`" type `"%~dp0out.txt`"`r`nexit /b $ExitCode`r`n"
+    [System.IO.File]::WriteAllText($cmd, $body, [System.Text.Encoding]::ASCII)
+    return $cmd
+}
+
+# A fake CLI that records what it received: its command-line arguments (as cmd.exe expanded them) to
+# args.txt and its stdin to stdin.txt, then prints the fixture envelope. Used to prove where the
+# prompt travels and that nothing in it is run by cmd.exe.
+function New-RecordingClaude([string]$Name) {
+    $dir = Join-Path $root $Name
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $dir 'out.txt'), $fixtureRaw, $utf8)
+    $cmd = Join-Path $dir 'fake-claude.cmd'
+    $body = "@echo off`r`n(echo ARGS=%*)> `"%~dp0args.txt`"`r`nfindstr `"^`" > `"%~dp0stdin.txt`"`r`ntype `"%~dp0out.txt`"`r`nexit /b 0`r`n"
     [System.IO.File]::WriteAllText($cmd, $body, [System.Text.Encoding]::ASCII)
     return $cmd
 }
@@ -116,11 +138,68 @@ try {
         if ($out -match 'DRYRUN REPORT') { throw "report mode must be off by default. Output: $out" }
     }
 
-    Test-Case "multi-word prompt containing '--version' is passed as ONE quoted token (was split; live-found)" {
+    Test-Case "prompt never appears on the command line; it goes on stdin (PR #176 review HIGH)" {
         $out = & $scriptPath -AgentName 'fixture-reporter' -Prompt 'run git --version now' -Restricted -DryRun *>&1 | Out-String -Width 4096
         if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE. Output: $out" }
         $argsLine = ($out -split "`n") | Where-Object { $_ -match '^DRYRUN ARGS:' }
-        if (-not $argsLine.TrimEnd().EndsWith('"run git --version now"')) { throw "prompt not passed as one quoted trailing token. Args: $argsLine" }
+        if ($argsLine -match 'run git') { throw "prompt text is on the command line. Args: $argsLine" }
+        if ($argsLine -notmatch '\(prompt on stdin\)') { throw "expected '(prompt on stdin)'. Args: $argsLine" }
+    }
+
+    Test-Case "call site: a prompt with double quotes, &, | and %VAR% reaches the CLI on stdin, verbatim, and runs nothing" {
+        $fake = New-RecordingClaude 'inject'
+        $rd = New-ReportDir 'inject'
+        $evil = 'hello " & echo INJECTED-BY-PROMPT & rem " | %PATH% ^ > x.txt'
+        $out = & $scriptPath -AgentName 'fixture-reporter' -Prompt $evil -Restricted -ReportDir $rd -ClaudePath $fake *>&1 | Out-String -Width 8192
+        if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE. Output: $out" }
+        if ($out -match '(?m)^INJECTED-BY-PROMPT') { throw "cmd.exe ran text from the prompt. Output: $out" }
+        $fakeDir = Split-Path -Parent $fake
+        if (Test-Path (Join-Path $fakeDir 'x.txt')) { throw "a redirect in the prompt created a file" }
+        $argsTxt = [System.IO.File]::ReadAllText((Join-Path $fakeDir 'args.txt'))
+        if ($argsTxt -match 'INJECTED|hello') { throw "prompt reached the command line: $argsTxt" }
+        $stdinTxt = [System.IO.File]::ReadAllText((Join-Path $fakeDir 'stdin.txt'), $utf8).TrimEnd("`r", "`n")
+        if ($stdinTxt -cne $evil) { throw "stdin did not carry the prompt verbatim. Got: [$stdinTxt]" }
+    }
+
+    Test-Case "-AgentName with cmd.exe metacharacters is refused (exit 2) and nothing is launched" {
+        $fake = New-RecordingClaude 'badagent'
+        $out = & $scriptPath -AgentName 'x & echo PWNED' -Prompt 'irrelevant' -Restricted -ClaudePath $fake *>&1 | Out-String -Width 4096
+        if ($LASTEXITCODE -ne 2) { throw "expected exit 2, got $LASTEXITCODE. Output: $out" }
+        if (Test-Path (Join-Path (Split-Path -Parent $fake) 'args.txt')) { throw "the CLI was launched" }
+        & $scriptPath -AgentName "ok-name`n" -Prompt 'irrelevant' -Restricted -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 2) { throw "a trailing newline in -AgentName must be refused, got $LASTEXITCODE" }
+    }
+
+    Test-Case "-Model outside its character set is refused (exit 2)" {
+        & $scriptPath @common -Model 'haiku & echo PWNED' -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 2) { throw "expected exit 2, got $LASTEXITCODE" }
+        & $scriptPath @common -Model 'claude-opus-4-1[1m]' -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "a normal model id must still be accepted, got $LASTEXITCODE" }
+    }
+
+    Test-Case "-Tools / -AllowedTools / -SettingsPath with a double quote or % are refused (exit 2)" {
+        & $scriptPath -AgentName 'fixture-reporter' -Prompt 'x' -Restricted:$false -Tools 'Read" & echo PWNED & rem "' -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 2) { throw "-Tools: expected exit 2, got $LASTEXITCODE" }
+        & $scriptPath -AgentName 'fixture-reporter' -Prompt 'x' -Restricted:$false -Tools 'Bash' -AllowedTools 'Bash(echo %PATH%)' -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 2) { throw "-AllowedTools: expected exit 2, got $LASTEXITCODE" }
+        & $scriptPath @common -SettingsPath 'C:\x"y.json' -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 2) { throw "-SettingsPath: expected exit 2, got $LASTEXITCODE" }
+        & $scriptPath -AgentName 'fixture-reporter' -Prompt 'x' -Restricted:$false -Tools 'Bash' -AllowedTools 'Bash(git worktree list:*),Bash(git status:*)' -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "a normal -AllowedTools value must still be accepted, got $LASTEXITCODE" }
+    }
+
+    Test-Case "-ClaudePath is refused without AEGIS_TEST_SEAM=1 (exit 2, nothing launched, no report)" {
+        $fake = New-RecordingClaude 'noseam'
+        $rd = New-ReportDir 'noseam'
+        $env:AEGIS_TEST_SEAM = $null
+        try {
+            $out = & $scriptPath @common -ReportDir $rd -ClaudePath $fake *>&1 | Out-String -Width 4096
+            $code = $LASTEXITCODE
+        } finally { $env:AEGIS_TEST_SEAM = '1' }
+        if ($code -ne 2) { throw "expected exit 2, got $code. Output: $out" }
+        if ($out -notmatch 'AEGIS_TEST_SEAM') { throw "error should name the opt-in. Output: $out" }
+        if (Test-Path (Join-Path (Split-Path -Parent $fake) 'args.txt')) { throw "the fake CLI was launched" }
+        if ((Get-Reports $rd).Count -ne 0) { throw "a report was written" }
     }
 
     Test-Case "powershell.exe -File invocation (how a scheduled task calls it) resolves its default paths (was a param-binding crash)" {
@@ -140,7 +219,7 @@ try {
         if (Test-Path $rd) { throw "DryRun must not create the report folder" }
     }
 
-    Test-Case "(a)(b)(c) valid envelope: exactly {envelope, checkedAt, command}; envelope byte-identical; denials unmodified" {
+    Test-Case "(a)(b)(c) valid envelope: exactly {envelope, checkedAt, command, exitCode, testSeam}; envelope byte-identical; denials unmodified" {
         $fake = New-FakeClaude 'valid' $fixtureRaw 0
         $rd = New-ReportDir 'valid'
         $before = [DateTime]::UtcNow.AddSeconds(-1)
@@ -152,9 +231,11 @@ try {
         if ($files[0].Name -notmatch '^fixture-reporter\.\d{8}-\d{6}\.json$') { throw "unexpected file name $($files[0].Name)" }
         if ($out -notmatch [regex]::Escape("report written to $($files[0].FullName)")) { throw "wrapper did not print the report path. Output: $out" }
         $r = Read-Report $files[0].FullName
-        if (($r.Keys -join ',') -ne 'envelope,checkedAt,command') { throw "expected keys envelope,checkedAt,command in that order; got $($r.Keys -join ',')" }
-        # (a) byte-identical: the exact bytes the CLI printed, trailing newline trimmed.
-        if ($r.Envelope -cne $fixtureTrimmed) { throw "envelope is not byte-identical to the CLI stdout" }
+        if (($r.Keys -join ',') -ne 'envelope,checkedAt,command,exitCode,testSeam') { throw "expected keys envelope,checkedAt,command,exitCode,testSeam in that order; got $($r.Keys -join ',')" }
+        if ($r.Parsed.exitCode -ne 0) { throw "expected exitCode 0, got '$($r.Parsed.exitCode)'" }
+        if ($r.Parsed.testSeam -ne $true) { throw "a report written through -ClaudePath must carry testSeam: true" }
+        # (a) byte-identical: exactly the characters the CLI printed, trailing newline included.
+        if ($r.Envelope -cne $fixtureRaw) { throw "envelope is not byte-identical to the CLI stdout" }
         # (b) clock at write time, ISO-8601 UTC, not present anywhere in the envelope.
         if ($r.Parsed.checkedAt -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$') { throw "checkedAt '$($r.Parsed.checkedAt)' is not yyyy-MM-ddTHH:mm:ssZ" }
         $ts = [DateTime]::ParseExact($r.Parsed.checkedAt, "yyyy-MM-dd'T'HH:mm:ss'Z'", [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]'AssumeUniversal,AdjustToUniversal')
@@ -170,6 +251,23 @@ try {
             if (-not $r.Parsed.command.Contains($frag)) { throw "command missing '$frag': $($r.Parsed.command)" }
         }
         if ($r.Parsed.command.Contains('stream-json')) { throw "command still carries stream-json: $($r.Parsed.command)" }
+        if (-not $r.Parsed.command.Contains('(prompt on stdin: "irrelevant")')) { throw "command does not record the stdin prompt: $($r.Parsed.command)" }
+    }
+
+    Test-Case "-RedactPrompt: command carries the prompt's length and sha256, never its text" {
+        $fake = New-FakeClaude 'redact' $fixtureRaw 0
+        $rd = New-ReportDir 'redact'
+        $secretish = 'token=abc123-DO-NOT-STORE'
+        & $scriptPath -AgentName 'fixture-reporter' -Prompt $secretish -Restricted -RedactPrompt -ReportDir $rd -ClaudePath $fake *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE" }
+        $files = Get-Reports $rd
+        if ($files.Count -ne 1) { throw "expected 1 report, got $($files.Count)" }
+        $text = [System.IO.File]::ReadAllText($files[0].FullName, $utf8)
+        if ($text.Contains('abc123')) { throw "prompt text leaked into the report" }
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        $hash = -join ($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($secretish)) | ForEach-Object { $_.ToString('x2') })
+        $cmdField = ($text | ConvertFrom-Json).command
+        if (-not $cmdField.Contains("<redacted, $($secretish.Length) chars, sha256 $hash>")) { throw "redaction marker missing: $cmdField" }
     }
 
     Test-Case "(b) checkedAt is taken per run: a second run a second later gets a later stamp and its own file" {
@@ -210,7 +308,9 @@ try {
         if ($LASTEXITCODE -ne 1) { throw "expected the CLI's own exit 1 propagated, got $LASTEXITCODE" }
         $files = Get-Reports $rd
         if ($files.Count -ne 1) { throw "expected 1 report, got $($files.Count)" }
-        if ((Read-Report $files[0].FullName).Envelope -cne $errEnv) { throw "error envelope not byte-identical" }
+        $r = Read-Report $files[0].FullName
+        if ($r.Envelope -cne ($errEnv + "`n")) { throw "error envelope not byte-identical" }
+        if ($r.Parsed.exitCode -ne 1) { throw "report must record the CLI's exit code 1, got '$($r.Parsed.exitCode)'" }
     }
 
     Test-Case "fast-exiting CLI's non-zero exit is propagated without -Report too (Start-Process Handle fix; was exit 0)" {
@@ -228,7 +328,8 @@ try {
         @{ Name = 'stream-json event array';         Out = '[{"type":"system","subtype":"init"},{"type":"result","subtype":"success"}]'; Exit = 0 },
         @{ Name = 'object missing permission_denials'; Out = '{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0.01,"usage":{}}'; Exit = 0 },
         @{ Name = 'object with type != result';      Out = '{"type":"assistant","subtype":"x","is_error":false,"num_turns":1,"total_cost_usd":0,"permission_denials":[],"usage":{}}'; Exit = 0 },
-        @{ Name = 'permission_denials not an array'; Out = '{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0,"permission_denials":"none","usage":{}}'; Exit = 0 }
+        @{ Name = 'permission_denials not an array'; Out = '{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0,"permission_denials":"none","usage":{}}'; Exit = 0 },
+        @{ Name = 'lenient-only JSON (single-quoted keys; PS 5.1 ConvertFrom-Json accepts it)'; Out = "{'type':'result','subtype':'success','is_error':false,'num_turns':1,'total_cost_usd':0,'permission_denials':[],'usage':{}}"; Exit = 0 }
     )
     $i = 0
     foreach ($bc in $badCases) {
@@ -303,11 +404,13 @@ try {
             $r = Read-Report $files[0].FullName
             $printed = @($lines | ForEach-Object { "$_" } | Where-Object { $_.StartsWith('{') -and $_.Contains('"type":"result"') })
             if ($printed.Count -ne 1) { throw "expected the wrapper to echo exactly one envelope line, got $($printed.Count)" }
-            if ($r.Envelope -cne $printed[0].Trim()) { throw "report envelope differs from the envelope the CLI printed" }
+            if ($r.Envelope.TrimEnd("`r", "`n") -cne $printed[0]) { throw "report envelope differs from the envelope the CLI printed" }
             foreach ($k in @('subtype', 'is_error', 'num_turns', 'total_cost_usd', 'permission_denials', 'usage')) {
                 if (-not $r.Parsed.envelope.PSObject.Properties[$k]) { throw "live envelope missing $k" }
             }
             if (@($r.Parsed.envelope.permission_denials).Count -ne 0) { throw "restricted no-tool run should have zero denials" }
+            if (($r.Keys -join ',') -ne 'envelope,checkedAt,command,exitCode') { throw "a real run's report must be exactly envelope,checkedAt,command,exitCode (no testSeam); got $($r.Keys -join ',')" }
+            if ($r.Parsed.exitCode -ne 0) { throw "expected exitCode 0 in the live report, got '$($r.Parsed.exitCode)'" }
             if ($r.Envelope.Contains($r.Parsed.checkedAt)) { throw "checkedAt appears inside the envelope" }
             Write-Host "       live report: $($files[0].Name) cost=`$$($r.Parsed.envelope.total_cost_usd) subtype=$($r.Parsed.envelope.subtype)" -ForegroundColor DarkGray
         }
@@ -343,6 +446,7 @@ try {
     }
 } finally {
     Remove-Item -Recurse -Force $root -ErrorAction SilentlyContinue
+    $env:AEGIS_TEST_SEAM = $priorTestSeam
 }
 
 Write-Host ""
