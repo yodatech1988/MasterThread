@@ -10,7 +10,7 @@ exist with `maxTurns`/budget enforcement. **They are not yet the resumed-Fable c
 describes**: `Ask-Fable` does not thread `--session-id`/`--resume`/`--fallback-model`/`--fork-session`
 to the real `claude` call, so today the seat is single-turn per invocation, not the warm-resumed
 continuity seat §3 of the plan and step 2 below assume. Two duplicate follow-up issues track this
-(#198, #205). The plan's §7 entry gate has conditions 1, 2, 4 and 5 verified (2026-09-22, each
+(#198; the duplicate #205 is now CLOSED). The plan's §7 entry gate has conditions 1, 2, 4 and 5 verified (2026-09-22, each
 against a merged PR or resolved card) and **condition 3 not verified** (the `readonly` classification
 in `roster_meta.json` on `origin/main` — not re-checked). The F5 and F11 WAITs are still relayed,
 each pending its own confirmation (plan §9), independent of the gate. Read the steps below against
@@ -22,14 +22,18 @@ that state: the wrappers exist, continuity resume does not yet.
 **MERGED to main** 2026-09-22T17:26:04Z (squash `c1200827b4f3cfda49c20067a02ce357a53aea37`, route B),
 closing issue #204. #208's live acceptance case surfaced a pre-existing, unrelated gap, now issue
 #212: a live `pr-state-sweep` run returns prose instead of schema-valid JSON under `--json-schema`
-(exit 8). #159 (cost-monitor) merged 03:17:07Z (`2575bf1`). F12 (#197) merged 14:59:24Z (`ec5e0c7`) —
-see the caveat above. F14 (#203) merged 14:59:52Z (`928b77d`). F9's draft (#195) merged 16:38:18Z
-(`9c7e791`) at `docs/drafts/fable_seat_draft.md`; its relocation to `standards/sessions/fable_seat.md`
-is PR **#213** ("standards: fable_seat.md (F9) relocated from drafts, TODO(F12) resolved", route C),
-**OPEN, awaiting owner merge**. The ladder's L1 report shape (issue #184) has its fix in PR **#209**
-("ladder: L1 report shape is F3's {envelope, checkedAt, command} (closes #184)", route C), also
-**OPEN, awaiting owner merge**. F8 (#202) merged 16:29:20Z (`56b9a63`) — no longer "Blocked on
-#159," which merged first. See the plan's §6 status table and issue #185.
+(exit 8, DRAFT PR #214 not yet ready — root cause is that `--json-schema` output lands in
+`envelope.structured_output` and the CLI does not enforce the schema under `--agent`). #159
+(cost-monitor) merged 03:17:07Z (`2575bf1`). F12 (#197) merged 14:59:24Z (`ec5e0c7`) — see the
+caveat above. F14 (#203) merged 14:59:52Z (`928b77d`). F9's draft (#195) merged 16:38:18Z
+(`9c7e791`); PR **#213** ("standards: fable_seat.md (F9) relocated from drafts, TODO(F12)
+resolved", route C) **MERGED to main** 2026-09-22T17:53:49Z (commit `1fe6c04`) — the continuity
+contract now lives at `standards/sessions/fable_seat.md` (the old `docs/drafts/fable_seat_draft.md`
+path no longer applies). The ladder's L1 report shape (issue #184) has its fix in PR **#209**
+("ladder: L1 report shape is F3's {envelope, checkedAt, command} (closes #184)", route C), which
+**MERGED to main** 2026-09-22T17:54:09Z (commit `9ebd4f8`), closing #184. F8 (#202) merged
+16:29:20Z (`56b9a63`) — no longer "Blocked on #159," which merged first. Issue #185 is closed (done
+via #210). See the plan's §6 status table.
 
 ---
 
@@ -84,8 +88,8 @@ flag line.
 F12 (PR #197, `ec5e0c7`) is merged, so `Invoke-Lane` and `Invoke-Subagent` exist as wrappers today.
 `Ask-Fable` exists too, but **not yet as a resumed call**: it does not thread `--session-id`/
 `--resume`/`--fallback-model`/`--fork-session`, so a design call or continuity question through it
-is single-turn, not the warm-resumed contract the row above and plan §3 describe (#198, #205
-outstanding). Before F12, the seat would have composed ten-flag invocations by hand, which is
+is single-turn, not the warm-resumed contract the row above and plan §3 describe (#198
+outstanding; the duplicate #205 is now CLOSED). Before F12, the seat would have composed ten-flag invocations by hand, which is
 exactly what a `low` seat is bad at; that composing is now wrapped, and the resume gap is what is
 left.
 
