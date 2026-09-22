@@ -275,6 +275,78 @@ class EchoArgs {
                 $null = $schemaArg | ConvertFrom-Json -ErrorAction Stop
             }
 
+            # --- issue #206 regression: & % < > ^ ! " together, real child process, byte-identical ---
+            # Issue #206's own repro used "0-100% & done" in a description field -- ordinary, human-
+            # written JSON Schema text, not an edge case. This fixture packs every character named in
+            # the issue (`& % < > ^ ! "`) into one description string and launches a REAL child
+            # process (no -DryRun) through the fake-claude test double this file already builds
+            # (echoargs.exe, a real Windows PE binary standing in for claude.exe, per this file's own
+            # header comment) to prove the schema arrives byte-identical, not just that a string in
+            # $claudeArgs looks escaped.
+            $metaCharSchemaFile = Join-Path $fixtureDir 'fixture-metachars.json'
+            $metaCharSchemaContent = '{"type":"object","properties":{"note":{"type":"string","description":"0-100% & done <ok> ^done! say \"hi\""}},"required":["note"],"additionalProperties":false}' + "`n"
+            [System.IO.File]::WriteAllText($metaCharSchemaFile, $metaCharSchemaContent, $utf8NoBom)
+
+            Test-Case "issue #206: a schema containing & % < > ^ ! `" together arrives byte-identical at a REAL child process (-ClaudePath, native exe)" {
+                $priorSeam = $env:AEGIS_TEST_SEAM
+                $priorEchoOut = $env:ECHO_OUT
+                $echoOut = Join-Path $fixtureDir 'echoout-metachars.txt'
+                $env:AEGIS_TEST_SEAM = '1'
+                $env:ECHO_OUT = $echoOut
+                try {
+                    & $scriptPath -AgentName 'worktree-sweep' -Prompt 'irrelevant' -Restricted -JsonSchemaPath $metaCharSchemaFile -ClaudePath $echoExe *>&1 | Out-Null
+                    if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE" }
+                } finally {
+                    $env:AEGIS_TEST_SEAM = $priorSeam
+                    $env:ECHO_OUT = $priorEchoOut
+                }
+                $received = Get-EchoedArgs $echoOut
+                $idx = [array]::IndexOf($received, '--json-schema')
+                if ($idx -lt 0) { throw "--json-schema not found among received args: $($received -join ' | ')" }
+                $schemaArg = $received[$idx + 1]
+                if ($schemaArg -cne $metaCharSchemaContent) {
+                    throw "schema arg the child received does not match the raw file content byte-for-byte -- this is exactly issue #206's injection/truncation hazard.`n received: [$schemaArg]`n expected: [$metaCharSchemaContent]"
+                }
+                $null = $schemaArg | ConvertFrom-Json -ErrorAction Stop
+            }
+
+            Test-Case "issue #206 (Fix A): -ClaudePath pointing at a .cmd wrapper with a sibling claude.exe uses the native exe (never invokes the .cmd)" {
+                # Proves Fix A's extension of the native-exe bypass to the -ClaudePath test seam
+                # itself: a fake npm layout (claude.cmd + sibling node_modules\...\claude.exe), passed
+                # to -ClaudePath as the .cmd, must resolve to and launch the sibling exe, exactly like
+                # the real (non-ClaudePath) resolution path already does below.
+                $fakeNpm = Join-Path $fixtureDir 'fakenpm-claudepath-prefer-exe'
+                $binDir = Join-Path $fakeNpm 'node_modules\@anthropic-ai\claude-code\bin'
+                New-Item -ItemType Directory -Path $binDir -Force | Out-Null
+                $fakeCmd = Join-Path $fakeNpm 'claude.cmd'
+                $invokedMarker = Join-Path $fakeNpm 'cmd-was-invoked.txt'
+                [System.IO.File]::WriteAllText($fakeCmd, "@echo off`r`n(echo INVOKED)> `"$invokedMarker`"`r`nexit /b 0`r`n", [System.Text.Encoding]::ASCII)
+                Copy-Item -LiteralPath $echoExe -Destination (Join-Path $binDir 'claude.exe') -Force
+
+                $priorSeam = $env:AEGIS_TEST_SEAM
+                $priorEchoOut = $env:ECHO_OUT
+                $echoOut = Join-Path $fixtureDir 'echoout-claudepath-prefer-exe.txt'
+                $env:AEGIS_TEST_SEAM = '1'
+                $env:ECHO_OUT = $echoOut
+                try {
+                    & $scriptPath -AgentName 'worktree-sweep' -Prompt 'irrelevant' -Restricted -JsonSchemaPath $metaCharSchemaFile -ClaudePath $fakeCmd *>&1 | Out-Null
+                    $code = $LASTEXITCODE
+                } finally {
+                    $env:AEGIS_TEST_SEAM = $priorSeam
+                    $env:ECHO_OUT = $priorEchoOut
+                }
+                if ($code -ne 0) { throw "expected exit 0, got $code" }
+                if (Test-Path -LiteralPath $invokedMarker) { throw "claude.cmd was launched -- -ClaudePath must prefer the sibling claude.exe and never invoke the batch file" }
+                $received = Get-EchoedArgs $echoOut
+                if ($received.Count -eq 0) { throw "the native claude.exe was never launched (no argv captured)" }
+                $idx = [array]::IndexOf($received, '--json-schema')
+                if ($idx -lt 0) { throw "--json-schema not found among received args: $($received -join ' | ')" }
+                if ($received[$idx + 1] -cne $metaCharSchemaContent) {
+                    throw "schema arg does not match the raw file content byte-for-byte.`n received: [$($received[$idx + 1])]`n expected: [$metaCharSchemaContent]"
+                }
+            }
+
+
             Test-Case "resolution: the real (non-ClaudePath, non-DryRun) code path prefers a sibling claude.exe over claude.cmd" {
                 # Fake npm install layout: <fakeNpm>\claude.cmd (would mangle the schema if launched)
                 # plus <fakeNpm>\node_modules\@anthropic-ai\claude-code\bin\claude.exe (the echo
@@ -313,8 +385,44 @@ class EchoArgs {
                 }
             }
 
-            Test-Case "resolution: falls back to claude.cmd (old behaviour) and warns when no sibling claude.exe exists" {
+            # Note: real JSON Schema content is essentially never "safe" under the fallback's
+            # cmd.exe-hazard character class -- `"` alone is structurally unavoidable in any JSON
+            # object (keys and string values both require it). $safeContentFile below is therefore
+            # deliberately NOT valid JSON; it exists only to prove the fallback path still launches
+            # and still warns for the (rare/synthetic) case where content truly has none of
+            # `" % ! \r \n`, so this content check is additive to the existing warning, not a
+            # replacement for it.
+            $safeContentFile = Join-Path $fixtureDir 'fixture-safe-no-quotes.json'
+            [System.IO.File]::WriteAllText($safeContentFile, 'type-object-no-quotes-no-percent-no-bang', $utf8NoBom)
+
+            Test-Case "resolution: falls back to claude.cmd for SAFE content (no cmd.exe-hazard characters) and warns when no sibling claude.exe exists" {
+                # issue #206 (Fix A) changed this fixture from $multilineSchemaContent (which contains
+                # a `"` and a newline, both cmd.exe hazards) to $safeContentFile (no unsafe
+                # characters) -- $multilineSchemaContent now correctly hits the new content-safety
+                # refusal below rather than falling back and launching unsafely, which is exactly the
+                # behaviour change issue #206 asked for.
                 $fakeNpm = Join-Path $fixtureDir 'fakenpm-fallback'
+                New-Item -ItemType Directory -Path $fakeNpm -Force | Out-Null
+                $fakeCmd = Join-Path $fakeNpm 'claude.cmd'
+                $invokedMarker = Join-Path $fakeNpm 'cmd-was-invoked.txt'
+                [System.IO.File]::WriteAllText($fakeCmd, "@echo off`r`n(echo INVOKED)> `"$invokedMarker`"`r`nexit /b 0`r`n", [System.Text.Encoding]::ASCII)
+                # Deliberately no node_modules\...\claude.exe next to it.
+
+                $priorPath = $env:PATH
+                $env:PATH = "$fakeNpm;$priorPath"
+                try {
+                    $out = & $scriptPath -AgentName 'worktree-sweep' -Prompt 'irrelevant' -Restricted -JsonSchemaPath $safeContentFile *>&1 | Out-String -Width 4096
+                    $code = $LASTEXITCODE
+                } finally {
+                    $env:PATH = $priorPath
+                }
+                if ($code -ne 0) { throw "expected exit 0, got $code. Output: $out" }
+                if (-not (Test-Path -LiteralPath $invokedMarker)) { throw "expected claude.cmd to still run when no sibling claude.exe exists and content is safe (old behaviour preserved for safe content). Output: $out" }
+                if ($out -notmatch 'claude\.exe next to claude\.cmd') { throw "expected a warning naming the missing sibling claude.exe when -JsonSchemaPath is in play and only claude.cmd is found. Output: $out" }
+            }
+
+            Test-Case "issue #206 (Fix A fallback, non-ClaudePath path): UNSAFE schema content is refused (exit 2, nothing launched) rather than falling back through cmd.exe unsafely" {
+                $fakeNpm = Join-Path $fixtureDir 'fakenpm-fallback-unsafe'
                 New-Item -ItemType Directory -Path $fakeNpm -Force | Out-Null
                 $fakeCmd = Join-Path $fakeNpm 'claude.cmd'
                 $invokedMarker = Join-Path $fakeNpm 'cmd-was-invoked.txt'
@@ -329,9 +437,9 @@ class EchoArgs {
                 } finally {
                     $env:PATH = $priorPath
                 }
-                if ($code -ne 0) { throw "expected exit 0, got $code. Output: $out" }
-                if (-not (Test-Path -LiteralPath $invokedMarker)) { throw "expected claude.cmd to still run when no sibling claude.exe exists (old behaviour preserved). Output: $out" }
-                if ($out -notmatch 'claude\.exe next to claude\.cmd') { throw "expected a warning naming the missing sibling claude.exe when -JsonSchemaPath is in play and only claude.cmd is found. Output: $out" }
+                if ($code -ne 2) { throw "expected exit 2 (refused, nothing launched), got $code. Output: $out" }
+                if (Test-Path -LiteralPath $invokedMarker) { throw "claude.cmd was launched with unsafe schema content -- this is exactly the injection/truncation hazard issue #206 describes. Output: $out" }
+                if ($out -notmatch 'refusing -JsonSchemaPath') { throw "expected a refusal message naming -JsonSchemaPath's content. Output: $out" }
             }
         }
     }

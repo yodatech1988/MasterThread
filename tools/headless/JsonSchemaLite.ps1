@@ -45,7 +45,14 @@ function Test-JsonSchemaLite {
         string[] of error messages. Empty = valid.
     #>
     param(
-        [Parameter(Mandatory = $true)]$Value,
+        # AllowNull() (issue #206, Fix B): a JSON `null` value is legal wherever the schema says
+        # "type":"null" or a property is nullable, and ConvertFrom-Json parses JSON null as
+        # PowerShell $null. Without AllowNull(), binding $null to a Mandatory parameter throws (or,
+        # interactively, prompts) instead of reaching the 'null' branch of the -Schema type switch
+        # below, so a legitimate null value crashed validation instead of being checked. The
+        # recursive per-property call further down passes whatever a property's value is, including
+        # $null for a null property, so it hits this same parameter and needs the same allowance.
+        [Parameter(Mandatory = $true)][AllowNull()]$Value,
         [Parameter(Mandatory = $true)]$Schema,
         [string]$Path = '$'
     )

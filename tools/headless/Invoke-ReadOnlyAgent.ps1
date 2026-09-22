@@ -780,6 +780,22 @@ if ($DryRun) {
 $promptFile = [System.IO.Path]::GetTempFileName()
 [System.IO.File]::WriteAllText($promptFile, $Prompt, [System.Text.UTF8Encoding]::new($false))
 
+# issue #206 (Fix A): resolve the sibling native claude.exe next to a .cmd wrapper, shared by both
+# the -ClaudePath test seam and the real resolution below, so a test can prove the SAME bypass the
+# real run takes (rather than a test-only shortcut) actually delivers the schema content
+# byte-identical through a real child process. See the extensive comment on the real-resolution
+# branch below for why this bypass exists and what it fixes.
+function Resolve-NativeClaudeExe([string]$CmdExePath) {
+    if ($CmdExePath -notmatch '\.cmd$') { return $CmdExePath }
+    $dir = Split-Path -Parent $CmdExePath
+    $native = Join-Path $dir 'node_modules\@anthropic-ai\claude-code\bin\claude.exe'
+    if (Test-Path -LiteralPath $native -PathType Leaf) {
+        return (Resolve-Path -LiteralPath $native).ProviderPath
+    }
+    return $CmdExePath
+}
+
+$skipCmdExeContentCheck = $false
 if ($ClaudePath) {
     # Test seam only (see -ClaudePath). A real run never sets it.
     if (-not (Test-Path -LiteralPath $ClaudePath -PathType Leaf)) {
@@ -789,6 +805,22 @@ if ($ClaudePath) {
         exit 2
     }
     $claudeExe = (Resolve-Path -LiteralPath $ClaudePath).ProviderPath
+    # A fake .cmd test double is exercised through the exact same native-exe bypass a real run takes
+    # (Resolve-NativeClaudeExe above) when the test lays down a sibling claude.exe at the same
+    # relative path claude.cmd's own body names -- this lets a test prove the real bypass, not a
+    # test-only shortcut, delivers content byte-identical. If it doesn't, $claudeExe is unchanged
+    # (byte-identical to before this fix): the content-safety belt below (see its own comment)
+    # deliberately does NOT extend to this branch, matching this parameter's existing contract that
+    # -ClaudePath "already launches whatever file a test points it at directly, never through this
+    # resolution block" -- a test double commonly ignores its argv/schema content entirely (see
+    # tools/tests/test-invoke-subagent.ps1's fake-claude.cmd, which always returns a canned
+    # envelope), so refusing it on cmd.exe-hazard characters it never actually interprets would be a
+    # false failure, not a safety improvement. A real run never sets -ClaudePath.
+    $claudeExe = Resolve-NativeClaudeExe $claudeExe
+    if ($JsonSchemaPath -and $claudeExe -match '\.cmd$') {
+        Write-Warning "Invoke-ReadOnlyAgent: -ClaudePath resolved to a .cmd file with no sibling native claude.exe found; -JsonSchemaPath's content would be run through cmd.exe unvalidated on a real (non-test-seam) run using this same .cmd file."
+    }
+    $skipCmdExeContentCheck = $true
 } else {
     # Resolve the real Windows executable explicitly -- never the bare 'claude' name, which an
     # exact-match lookup can resolve to a non-Windows shebang shim installed alongside it (see .NOTES
@@ -844,11 +876,38 @@ if ($ClaudePath) {
     if ($claudeExe -match '\.cmd$') {
         $claudeExeDir = Split-Path -Parent $claudeExe
         $nativeExe = Join-Path $claudeExeDir 'node_modules\@anthropic-ai\claude-code\bin\claude.exe'
-        if (Test-Path -LiteralPath $nativeExe -PathType Leaf) {
-            $claudeExe = (Resolve-Path -LiteralPath $nativeExe).ProviderPath
+        $resolvedNative = Resolve-NativeClaudeExe $claudeExe
+        if ($resolvedNative -ne $claudeExe) {
+            $claudeExe = $resolvedNative
         } elseif ($JsonSchemaPath) {
             Write-Warning "Invoke-ReadOnlyAgent: expected the native claude.exe next to claude.cmd at $nativeExe but did not find it; falling back to claude.cmd. -JsonSchemaPath's value is run through cmd.exe on that path and can be mangled if the schema contains a double quote or a line break (see this script's executable-resolution comment)."
         }
+    }
+}
+
+# issue #206 (Fix A), belt for the fallback: the native-exe bypass above is the real fix (it skips
+# cmd.exe's re-tokenizing pass, and its OWN argv parsing honours ConvertTo-QuotedArg's escaping, same
+# as every other quoted value on this command line). But the bypass is conditional -- a future npm
+# layout change, a non-Windows host, or a -ClaudePath test double with no sibling native exe all fall
+# back to launching a .cmd through cmd.exe, which reopens the exact hazard issue #206 describes:
+# $jsonSchemaContent (unlike $JsonSchemaPath, the PATH string, checked above at the 'SettingsPath,
+# JsonSchemaPath, Tools, AllowedTools' loop) was never checked against cmd.exe's own quote-breaking
+# characters at all. Checked here, once, after $claudeExe is final, rather than earlier, so the
+# common case (native exe found) never refuses content that is perfectly safe once cmd.exe is out of
+# the picture. Fails closed -- exit 2, nothing launched -- exactly like every other unsafe-arg refusal
+# in this script, rather than silently truncating or injecting.
+if (-not $skipCmdExeContentCheck -and $JsonSchemaPath -and $claudeExe -match '\.cmd$') {
+    if ($jsonSchemaContent -match '["%!\r\n]') {
+        Write-Host "Invoke-ReadOnlyAgent: refusing -JsonSchemaPath's file CONTENT -- the schema contains a double quote, %, !, or a line break, and this run has no native claude.exe to bypass cmd.exe with (see this script's executable-resolution comment). Nothing was launched." -ForegroundColor Red
+        if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+        if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
+        exit 2
+    }
+    if ($jsonSchemaContent.TrimEnd("`r", "`n").EndsWith('\')) {
+        Write-Host "Invoke-ReadOnlyAgent: refusing -JsonSchemaPath's file CONTENT -- it ends in a backslash, which would escape its closing quote under cmd.exe and this run has no native claude.exe to bypass cmd.exe with. Nothing was launched." -ForegroundColor Red
+        if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+        if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
+        exit 2
     }
 }
 
