@@ -769,10 +769,10 @@ substitute for `gh pr view`):**
 | F10 | #172 | **merged to main** 2026-09-22T02:18:45Z | Route C (`standards/sessions/*`); one-file diff. |
 | F3 | #176 | **merged to main** 2026-09-22T02:18:32Z, via `#174`'s squash (commit `10786c2`) | #176 squash-merged into `agent/MasterThread/fable-f2` as `8dab62c` at 02:18:24Z; that became #174's head and landed on `main` in the same `10786c2` squash. No separate F3-to-main PR is needed. |
 | #169 follow-up | #175 | **merged to main** 2026-09-22T02:32:43Z (commit `6e8f6ec`) | Merged before #169 itself; #169's branch took `main` back in via a merge commit (no force-push). |
-| F4 | — | **building (wave 2)** | No PR opened yet; dispatched to a `schema-drafter` lane. This row will get a PR number once one exists. |
+| F4 | #190, merging | **PR #190, merging** | Opened (wave 2); Merge Authority is merging it now. This row will be updated to "merged to main" with the timestamp/SHA once `gh` shows #190 `MERGED`. |
 
 F2, F3 and F10 are all on `main` as of the timestamps above (F2 and F3 via the same `10786c2`
-commit), and #175 merged at 2026-09-22T02:32:43Z (`6e8f6ec`). F4 is building (wave 2), no PR yet. The
+commit), and #175 merged at 2026-09-22T02:32:43Z (`6e8f6ec`). F4/#190 is merging. The
 task rows below still describe the work as planned, not as built.
 
 ### Group A — make the lever real (no rung change, no scheduled run)
