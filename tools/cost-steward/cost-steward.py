@@ -114,7 +114,10 @@ def rows():
             continue
         if not alive(reg.get("pid", 0)):
             continue
-        r = scan(reg)
+        try:
+            r = scan(reg)
+        except OSError:  # transcript rotated away between glob and open
+            continue
         if r:
             out.append(r)
     return sorted(out, key=lambda r: -r["ctx"])
@@ -130,6 +133,7 @@ def fmt(r):
 if __name__ == "__main__":
     if len(sys.argv) > 2 and sys.argv[1] == "--watch":
         every = int(sys.argv[2])
+        os.makedirs(os.path.dirname(STATE), exist_ok=True)
         while True:
             try:
                 prev = json.load(open(STATE))
@@ -140,7 +144,11 @@ if __name__ == "__main__":
                 cur[r["name"]] = r["level"]
                 if prev.get(r["name"]) != r["level"] and r["level"] != "OK":
                     print("COST-STEWARD " + fmt(r), flush=True)
-            json.dump(cur, open(STATE, "w"))
+            try:
+                with open(STATE, "w") as f:
+                    json.dump(cur, f)
+            except OSError:
+                pass  # change detection degrades to re-printing; the watch keeps running
             time.sleep(every)
     else:
         rs = rows()
