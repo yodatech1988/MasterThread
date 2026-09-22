@@ -4,7 +4,11 @@
 
 .DESCRIPTION
   Static only via -DryRun and fixture directories -- no test here spends budget or needs `claude`
-  on PATH, except the one -RunLive case at the bottom (live acceptance for the F4 schemas).
+  on PATH, except the one -RunLive case at the bottom (live acceptance for the F4 schemas). One
+  test drives the REAL Invoke-ReadOnlyAgent.ps1 (not stubbed) with its own -ClaudePath test seam
+  pointed at a fake CLI, per tools/README.md's testing-seam convention -- this exercises the full
+  -RunLive path (parameter binding, exit code, report file, schema check) without ever launching a
+  real `claude` process or spending budget.
 #>
 param(
     [switch]$RunLive
@@ -13,6 +17,7 @@ param(
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $scriptPath = Join-Path (Split-Path -Parent $here) 'headless\Invoke-Subagent.ps1'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $here)
+$fixtureEnvelopePath = Join-Path $here 'fixtures\headless\envelope-with-denial.json'
 
 $testsPassed = 0
 $testsFailed = 0
@@ -58,6 +63,64 @@ $budgetsFile = Join-Path $fixtureDir 'budgets.json'
 
 $schemasDir = Join-Path $fixtureDir 'schemas'
 New-Item -ItemType Directory -Path $schemasDir -Force | Out-Null
+
+# --- Fixtures for -Tools resolution regression tests (PR #197 second QA finding): three agents
+# covering readonly:"instruction" (needs -Tools, has it), readonly:"tools" (restricted, does not
+# need -Tools even with none in frontmatter), and readonly:"instruction" with no 'tools:' line at
+# all (must fail closed, matching Invoke-ReadOnlyAgent.ps1's own exit 5 meaning).
+'---
+name: fixture-instruction-agent
+model: haiku
+tools: Bash, Grep
+---
+Purpose.' | Set-Content -Path (Join-Path $agentsDir 'fixture-instruction-agent.md') -Encoding utf8
+'---
+name: fixture-restricted-agent
+model: sonnet
+---
+Purpose.' | Set-Content -Path (Join-Path $agentsDir 'fixture-restricted-agent.md') -Encoding utf8
+'---
+name: fixture-instruction-no-tools-agent
+model: haiku
+---
+Purpose.' | Set-Content -Path (Join-Path $agentsDir 'fixture-instruction-no-tools-agent.md') -Encoding utf8
+
+$rosterMetaFile = Join-Path $agentsDir 'roster_meta.json'
+(@{
+    'fixture-instruction-agent'          = @{ readonly = 'instruction' }
+    'fixture-restricted-agent'           = @{ readonly = 'tools' }
+    'fixture-instruction-no-tools-agent' = @{ readonly = 'instruction' }
+} | ConvertTo-Json) | Set-Content -Path $rosterMetaFile -Encoding utf8
+
+# Stub with the same param shape as the real Invoke-ReadOnlyAgent.ps1, capturing -Tools too (used
+# by the -Tools resolution tests below as well as the splat regression test above).
+$toolsStubPath = Join-Path $fixtureDir 'stub-invoke-readonly-agent-tools.ps1'
+@'
+param(
+    [Parameter(Mandatory = $true)][string]$AgentName,
+    [Parameter(Mandatory = $true)][string]$Prompt,
+    [string]$Tools,
+    [string]$AllowedTools,
+    [switch]$Restricted,
+    [double]$MaxBudgetUsd = 1,
+    [int]$TimeoutSec = 300,
+    [string]$SettingsPath,
+    [string]$JsonSchemaPath,
+    [string]$RosterMetaPath,
+    [string]$Model,
+    [switch]$Report,
+    [string]$ReportDir,
+    [string]$ClaudePath,
+    [switch]$DryRun
+)
+$capture = [ordered]@{
+    AgentName = $AgentName
+    Tools     = $Tools
+    ToolsSet  = $PSBoundParameters.ContainsKey('Tools')
+}
+$capture | ConvertTo-Json | Set-Content -LiteralPath $env:F12_TEST_CAPTURE_PATH -Encoding utf8
+exit 0
+'@ | Set-Content -Path $toolsStubPath -Encoding utf8
 
 try {
     Test-Case "budget resolved by model tier from agent frontmatter (haiku)" {
@@ -165,6 +228,93 @@ exit 0
             if ($captured.Report -ne $true) { throw "expected -Report to bind as a switch, got '$($captured.Report)'" }
         } finally {
             $env:F12_TEST_CAPTURE_PATH = $prevCapturePath
+        }
+    }
+
+    Test-Case "regression (PR #197 QA, 2nd finding): readonly:'instruction' agent resolves -Tools from its own frontmatter and forwards it" {
+        $captureFile = Join-Path $fixtureDir 'capture-tools-instruction.json'
+        if (Test-Path $captureFile) { Remove-Item $captureFile -Force }
+        $prevCapturePath = $env:F12_TEST_CAPTURE_PATH
+        $env:F12_TEST_CAPTURE_PATH = $captureFile
+        try {
+            $out = & $scriptPath -AgentName 'fixture-instruction-agent' -Prompt 'hello' -BudgetsPath $budgetsFile -AgentsDir $agentsDir -SchemasDir $schemasDir -InvokeReadOnlyAgentPath $toolsStubPath -RunLive *>&1 | Out-String -Width 4096
+            if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE. Output: $out" }
+            if (-not (Test-Path $captureFile)) { throw "stub never ran. Output: $out" }
+            $captured = Get-Content -LiteralPath $captureFile -Raw | ConvertFrom-Json
+            if (-not $captured.ToolsSet) { throw "expected -Tools to be forwarded to Invoke-ReadOnlyAgent.ps1 for a readonly:'instruction' agent, but it was never bound" }
+            if ($captured.Tools -ne 'Bash, Grep') { throw "expected Tools='Bash, Grep' (from frontmatter), got '$($captured.Tools)'" }
+        } finally {
+            $env:F12_TEST_CAPTURE_PATH = $prevCapturePath
+        }
+    }
+
+    Test-Case "readonly:'tools' (restricted) agent does not require -Tools, and none is forwarded even with no 'tools:' frontmatter" {
+        $captureFile = Join-Path $fixtureDir 'capture-tools-restricted.json'
+        if (Test-Path $captureFile) { Remove-Item $captureFile -Force }
+        $prevCapturePath = $env:F12_TEST_CAPTURE_PATH
+        $env:F12_TEST_CAPTURE_PATH = $captureFile
+        try {
+            $out = & $scriptPath -AgentName 'fixture-restricted-agent' -Prompt 'hello' -BudgetsPath $budgetsFile -AgentsDir $agentsDir -SchemasDir $schemasDir -InvokeReadOnlyAgentPath $toolsStubPath -RunLive *>&1 | Out-String -Width 4096
+            if ($LASTEXITCODE -ne 0) { throw "expected exit 0 (restricted agents don't need -Tools), got $LASTEXITCODE. Output: $out" }
+            if (-not (Test-Path $captureFile)) { throw "stub never ran. Output: $out" }
+            $captured = Get-Content -LiteralPath $captureFile -Raw | ConvertFrom-Json
+            if ($captured.ToolsSet) { throw "expected -Tools NOT to be forwarded for a readonly:'tools' (restricted) agent, but it was bound as '$($captured.Tools)'" }
+        } finally {
+            $env:F12_TEST_CAPTURE_PATH = $prevCapturePath
+        }
+    }
+
+    Test-Case "fail-closed (PR #197 QA, 2nd finding): readonly:'instruction' agent with no 'tools:' frontmatter refuses (exit 5), nothing launched" {
+        $captureFile = Join-Path $fixtureDir 'capture-tools-fail-closed.json'
+        if (Test-Path $captureFile) { Remove-Item $captureFile -Force }
+        $prevCapturePath = $env:F12_TEST_CAPTURE_PATH
+        $env:F12_TEST_CAPTURE_PATH = $captureFile
+        try {
+            & $scriptPath -AgentName 'fixture-instruction-no-tools-agent' -Prompt 'hello' -BudgetsPath $budgetsFile -AgentsDir $agentsDir -SchemasDir $schemasDir -InvokeReadOnlyAgentPath $toolsStubPath -RunLive 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 5) { throw "expected exit 5, got $LASTEXITCODE" }
+            if (Test-Path $captureFile) { throw "Invoke-ReadOnlyAgent.ps1 (stub) should never have been launched, but it wrote a capture file" }
+        } finally {
+            $env:F12_TEST_CAPTURE_PATH = $prevCapturePath
+        }
+    }
+
+    Test-Case "regression (PR #197 QA, 3rd finding): full -RunLive F4 path against a fake CLI -- schema check reads envelope.result correctly and PASSES" {
+        # Third bug found dry-tracing the whole -RunLive path end to end before this fix: the
+        # schema-check block did `$reportJson.envelope | ConvertFrom-Json`, but
+        # Invoke-ReadOnlyAgent.ps1's report already stores 'envelope' as a parsed OBJECT (not a JSON
+        # string) -- re-parsing a PSCustomObject threw "Invalid JSON primitive" on every real run,
+        # so a schema check could never pass, only ever error out before this fix.
+        $priorTestSeam = $env:AEGIS_TEST_SEAM
+        $env:AEGIS_TEST_SEAM = '1'
+        $fakeDir = Join-Path $fixtureDir 'fake-claude-e2e'
+        New-Item -ItemType Directory -Path $fakeDir -Force | Out-Null
+        $reportDir = Join-Path $fixtureDir 'reports-e2e'
+        try {
+            $envelope = Get-Content -LiteralPath $fixtureEnvelopePath -Raw | ConvertFrom-Json
+            $resultObj = [ordered]@{
+                agent = 'worktree-sweep'
+                repo = 'yodatech1988/MasterThread'
+                worktrees = @()
+                worktreesRemovedByThisAgent = 0
+                findings = @()
+                couldNotCheck = @()
+            }
+            $envelope.result = ($resultObj | ConvertTo-Json -Compress)
+            $envelope.permission_denials = @()
+            $utf8 = [System.Text.UTF8Encoding]::new($false)
+            [System.IO.File]::WriteAllText((Join-Path $fakeDir 'out.txt'), ($envelope | ConvertTo-Json -Depth 20 -Compress), $utf8)
+            $fakeCmd = Join-Path $fakeDir 'fake-claude.cmd'
+            [System.IO.File]::WriteAllText($fakeCmd, "@echo off`r`nif exist `"%~dp0out.txt`" type `"%~dp0out.txt`"`r`nexit /b 0`r`n", [System.Text.Encoding]::ASCII)
+
+            $realSchemasDir = Join-Path $repoRoot 'tools\headless\schemas'
+            $realBudgets = Join-Path $repoRoot 'tools\headless\budgets.json'
+            $out = & $scriptPath -AgentName 'worktree-sweep' -Prompt 'irrelevant' -BudgetsPath $realBudgets -AgentsDir (Join-Path $repoRoot 'claude-agents') -SchemasDir $realSchemasDir -ClaudePath $fakeCmd -ReportDir $reportDir -RunLive *>&1 | Out-String -Width 8192
+            if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE. Output: $out" }
+            if ($out -notmatch 'schema check PASSED') { throw "expected the schema check to pass against the fake envelope. Output: $out" }
+            $reportFiles = Get-ChildItem -LiteralPath $reportDir -Filter 'worktree-sweep.*.json' -ErrorAction SilentlyContinue
+            if (-not $reportFiles) { throw "expected a report file to have been written to $reportDir" }
+        } finally {
+            $env:AEGIS_TEST_SEAM = $priorTestSeam
         }
     }
 

@@ -67,10 +67,13 @@
 
 .NOTES
     Exit codes: 0 = ran and Invoke-ReadOnlyAgent.ps1 exited 0. 4 = no concrete budget could be
-    resolved for this agent and no override was supplied -- fails closed. 8 = a schema exists for
-    this agent and the returned envelope's result did not validate against it (schema-checked
-    envelope failure). Any other non-zero code is Invoke-ReadOnlyAgent.ps1's own exit code,
-    propagated as-is (see that script's own .NOTES for what each one means).
+    resolved for this agent and no override was supplied -- fails closed. 5 = roster_meta.json
+    classifies this agent as NOT restricted (readonly != "tools") and no 'tools:' frontmatter
+    value could be resolved for it in claude-agents/<name>.md -- fails closed rather than passing
+    no --tools to Invoke-ReadOnlyAgent.ps1 (same meaning as that script's own exit 5). 8 = a schema
+    exists for this agent and the returned envelope's result did not validate against it
+    (schema-checked envelope failure). Any other non-zero code is Invoke-ReadOnlyAgent.ps1's own
+    exit code, propagated as-is (see that script's own .NOTES for what each one means).
 #>
 [CmdletBinding()]
 param(
@@ -115,6 +118,43 @@ function Get-AgentModelTier([string]$Name, [string]$AgentsDirPath) {
     return 'default'
 }
 
+# --- Resolve the agent's -Tools value from its own frontmatter's 'tools:' line (the same field
+# tools/generate_agents_md.py reads to classify the roster), so a caller of this script never has
+# to know or state an agent's tool list either -- same "resolves restricted vs tools ... from the
+# repo's own state" promise this script's synopsis already makes. Returns $null (not 'default';
+# there is no safe default tool set) if the file/frontmatter is missing or has no 'tools:' line.
+function Get-AgentTools([string]$Name, [string]$AgentsDirPath) {
+    $agentFile = Join-Path $AgentsDirPath "$Name.md"
+    if (-not (Test-Path -LiteralPath $agentFile -PathType Leaf)) { return $null }
+    $text = [System.IO.File]::ReadAllText($agentFile)
+    $m = [regex]::Match($text, '(?m)^tools:\s*(.+?)\s*$')
+    if (-not $m.Success) { return $null }
+    $value = $m.Groups[1].Value.Trim()
+    if (-not $value) { return $null }
+    return $value
+}
+
+# --- Resolve the agent's roster_meta.json "readonly" classification, purely to decide whether a
+# -Tools value is actually required here -- this mirrors (does not replace) Invoke-ReadOnlyAgent.ps1's
+# own -Restricted default-on lookup against the exact same file/field (owner decision D3), so the
+# two scripts never disagree about what "restricted by default" means. Returns $null (not 'n/a')
+# when the roster file/entry can't be read at all -- that case is left to Invoke-ReadOnlyAgent.ps1's
+# own default-on lookup (its exit 4), not duplicated here, since it is a different failure than
+# "no tools value found for an agent that needs one" (this script's exit 5).
+function Get-AgentReadonlyClass([string]$Name, [string]$RosterMetaFile) {
+    if (-not (Test-Path -LiteralPath $RosterMetaFile -PathType Leaf)) { return $null }
+    try {
+        $roster = Get-Content -LiteralPath $RosterMetaFile -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+        return $null
+    }
+    $entryProp = $roster.PSObject.Properties[$Name]
+    if (-not $entryProp) { return $null }
+    $readonlyProp = $entryProp.Value.PSObject.Properties['readonly']
+    if (-not $readonlyProp) { return $null }
+    return [string]$readonlyProp.Value
+}
+
 function Get-ResolvedBudget([double]$Explicit, [bool]$ExplicitGiven, [string]$Tier, [string]$BudgetsFile) {
     if ($ExplicitGiven) { return $Explicit }
     if (-not (Test-Path -LiteralPath $BudgetsFile -PathType Leaf)) {
@@ -149,8 +189,23 @@ $resolvedBudget = Get-ResolvedBudget -Explicit $MaxBudgetUsd -ExplicitGiven $exp
 $schemaPath = Join-Path $SchemasDir "$AgentName.json"
 $hasSchema = Test-Path -LiteralPath $schemaPath -PathType Leaf
 
+# --- Resolve -Tools the same way -MaxBudgetUsd's tier is resolved: from the agent's own
+# frontmatter, with roster_meta.json consulted only to know whether a value is actually required
+# (see the two functions above). Not required at all when the roster classifies this agent
+# "readonly": "tools" (Invoke-ReadOnlyAgent.ps1 will run it -Restricted and ignore any -Tools
+# passed anyway). When roster_meta.json can't be read or doesn't list this agent, resolve what we
+# can and let Invoke-ReadOnlyAgent.ps1's own default-on lookup make (and report) that call.
+$readonlyClass = Get-AgentReadonlyClass -Name $AgentName -RosterMetaFile $RosterMetaPath
+$resolvedTools = Get-AgentTools -Name $AgentName -AgentsDirPath $AgentsDir
+$toolsRequired = ($readonlyClass -and $readonlyClass -ne 'tools')
+
+if ($toolsRequired -and -not $resolvedTools) {
+    Write-Host "Invoke-Subagent: '$AgentName' resolved to NOT restricted (roster_meta.json readonly='$readonlyClass') but no 'tools:' frontmatter value could be resolved for it in $AgentsDir. Refusing to guess a tool set. Nothing was launched." -ForegroundColor Red
+    exit 5
+}
+
 if ($DryRun) {
-    Write-Host "DRYRUN AgentName=$AgentName tier=$tier resolvedBudget=$resolvedBudget hasSchema=$hasSchema schemaPath=$(if ($hasSchema) { $schemaPath } else { '(none)' }) runLive=$($RunLive.IsPresent)"
+    Write-Host "DRYRUN AgentName=$AgentName tier=$tier resolvedBudget=$resolvedBudget hasSchema=$hasSchema schemaPath=$(if ($hasSchema) { $schemaPath } else { '(none)' }) readonlyClass=$(if ($readonlyClass) { $readonlyClass } else { '(unknown)' }) resolvedTools=$(if ($resolvedTools) { $resolvedTools } else { '(none)' }) runLive=$($RunLive.IsPresent)"
     exit 0
 }
 
@@ -175,6 +230,11 @@ $innerArgs = [ordered]@{
     Report        = $true
     ReportDir     = $ReportDir
     RosterMetaPath = $RosterMetaPath
+}
+if ($resolvedTools -and $readonlyClass -ne 'tools') {
+    # Not passed at all when the roster classifies this agent "tools" (restricted by default) --
+    # Invoke-ReadOnlyAgent.ps1 would only warn and ignore it there, so there is no reason to send it.
+    $innerArgs['Tools'] = $resolvedTools
 }
 if ($hasSchema -and $RunLive) {
     # Only threaded to the real claude invocation when the caller opted into spending budget on a
@@ -217,7 +277,13 @@ if ($hasSchema -and -not $SkipSchemaCheck) {
     . (Join-Path $PSScriptRoot 'JsonSchemaLite.ps1')
     $reportJson = Get-Content -LiteralPath $reportFile.FullName -Raw | ConvertFrom-Json
     $schema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
-    $resultText = $reportJson.envelope | ConvertFrom-Json | ForEach-Object { $_.result }
+    # Found by dry-tracing this path end to end (PR #197, fable/f12): Invoke-ReadOnlyAgent.ps1's
+    # report is {envelope, checkedAt, command} with envelope as a NESTED OBJECT (it already parsed
+    # the CLI's JSON stdout before writing the report) -- not a JSON string. Re-running
+    # ConvertFrom-Json on an already-parsed PSCustomObject throws ("Invalid JSON primitive"), so this
+    # never reached a real schema check on any live run. .result IS still a JSON string within that
+    # object (the CLI's own structured-output text), and is parsed as such below.
+    $resultText = $reportJson.envelope.result
     if (-not $resultText) {
         Write-Host "Invoke-Subagent: report envelope has no 'result' field to schema-check ($($reportFile.FullName))." -ForegroundColor Red
         exit 8
