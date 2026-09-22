@@ -6,10 +6,11 @@ to be read on a phone.
 
 **Nothing in this runbook is live yet.** The wrappers it calls (F12) are not built. The plan's §7
 entry gate is **still closed**: conditions 1, 2 and 5 are satisfied (2026-09-22), condition 3 is not
-re-verified, and condition 4 is **pending** the owner's answer on card
-`fable-confirm-f8-deferral-2026-09-22`. The F5 and F11 WAITs and the F8 deferral are relayed, each
-pending its own confirmation card (plan §9). Read this as the procedure the build is aiming at, not
-as instructions that work today. Each step says what it needs.
+re-verified, and condition 4 is now met by **F8 being actively built** (owner decision, 2026-09-22:
+the owner reopened F8 and assigned it to the ML Engineer instead of deferring it — card
+`fable-confirm-f8-deferral-2026-09-22` no longer reflects the decision). The F5 and F11 WAITs are
+still relayed, each pending its own confirmation (plan §9). Read this as the procedure the build is
+aiming at, not as instructions that work today. Each step says what it needs.
 
 **Wave-1 tracking (2026-09-22):** F2 (#174) and F3 (#176) are merged to `main` (commit `10786c2`,
 2026-09-22T02:18:32Z — #176 landed via #174's squash), and F10 (#172) is merged to `main`
