@@ -245,6 +245,7 @@ Assess every task before dispatching it. Pick the **first row that matches**.
 
 | # | Task shape | Model | Effort |
 |---|---|---|---|
+| 0 | Turning a still-negotiated ask into a fixed workload; a design call the round cannot settle; a three-way merge after two sessions already collided | **Fable 5.1** | high (xhigh only on a failed retry) |
 | 1 | Touches live production (push, restart, wipe), credentials or secrets, money (QuickBooks), or the death / damage path; or sets a contract other sessions build on (core module APIs, perk hooks, RPC dispatch) | **Opus 5** | high (xhigh only on a failed retry) |
 | 2 | Large multi-file data edit where invariants matter (economy, loot, rarity, trader files), or a cross-mod classname sweep | **Sonnet 5** | high |
 | 3 | Normal plan session with a clear Read / Do / Done-when: module features, tooling, tests, research lanes | **Sonnet 5** | medium |
@@ -257,9 +258,11 @@ How to apply it:
 - **Upgrade one row** when the task is live-adjacent and has no rollback, or when an earlier run in
   the same lane failed.
 - **Opus is only for row 1.** An Opus lane still gets a precise prompt.
-- The Agent tool only takes a model (`opus` / `sonnet` / `haiku`). Effort for background workers
-  can't be set per call, so state the depth in the prompt: which done-when items, and what to verify.
-  In interactive sessions Jeremy sets `/model` and `/effort` from the prompt header.
+- The Agent tool only takes a model (`opus` / `sonnet` / `haiku`); it has no per-call effort
+  parameter, so state the depth in the prompt: which done-when items, and what to verify. A headless
+  `claude -p` run is different: `--effort <low|medium|high|xhigh|max>` is a documented, working
+  per-invocation flag (verified, CLI 2.1.278, PR #169 §1a F1). In interactive sessions Jeremy sets
+  `/model` and `/effort` from the prompt header.
 
 ## How to run a round
 
