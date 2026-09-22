@@ -18,11 +18,17 @@ that state: the wrappers exist, continuity resume does not yet.
 
 **Wave tracking (2026-09-22):** F2 (#174), F3 (via #174/#176) and F10 (#172) merged to `main` at
 2026-09-22T02:18Z (commit `10786c2` for F2/F3, `092d278` for F10). F4 (#190) merged 02:46:38Z
-(`0a5ff4e`) — schemas only; per-agent verb pinning is #208's phase 1 (`pr-state-sweep` only), still
-open. #159 (cost-monitor) merged 03:17:07Z (`2575bf1`). F12 (#197) merged 14:59:24Z (`ec5e0c7`) —
+(`0a5ff4e`) — schemas only; per-agent verb pinning was #208's phase 1 (`pr-state-sweep` only), which
+**MERGED to main** 2026-09-22T17:26:04Z (squash `c1200827b4f3cfda49c20067a02ce357a53aea37`, route B),
+closing issue #204. #208's live acceptance case surfaced a pre-existing, unrelated gap, now issue
+#212: a live `pr-state-sweep` run returns prose instead of schema-valid JSON under `--json-schema`
+(exit 8). #159 (cost-monitor) merged 03:17:07Z (`2575bf1`). F12 (#197) merged 14:59:24Z (`ec5e0c7`) —
 see the caveat above. F14 (#203) merged 14:59:52Z (`928b77d`). F9's draft (#195) merged 16:38:18Z
 (`9c7e791`) at `docs/drafts/fable_seat_draft.md`; its relocation to `standards/sessions/fable_seat.md`
-is a separate, in-flight route-C PR. F8 (#202) merged 16:29:20Z (`56b9a63`) — no longer "Blocked on
+is PR **#213** ("standards: fable_seat.md (F9) relocated from drafts, TODO(F12) resolved", route C),
+**OPEN, awaiting owner merge**. The ladder's L1 report shape (issue #184) has its fix in PR **#209**
+("ladder: L1 report shape is F3's {envelope, checkedAt, command} (closes #184)", route C), also
+**OPEN, awaiting owner merge**. F8 (#202) merged 16:29:20Z (`56b9a63`) — no longer "Blocked on
 #159," which merged first. See the plan's §6 status table and issue #185.
 
 ---
