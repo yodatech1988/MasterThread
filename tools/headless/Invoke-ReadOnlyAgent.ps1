@@ -93,18 +93,68 @@
 .PARAMETER SettingsPath
     Override the settings file. Default is readonly.settings.json next to this script.
 
+.PARAMETER Report
+    Added for plan task F3 (docs/FABLE_AGENT_SUBAGENT_PLAN.md:617). Turns on L1 report mode: the
+    run uses `--output-format json` (the CLI's single result envelope -- subtype, is_error,
+    num_turns, result, total_cost_usd, permission_denials[], usage{...}) instead of the default
+    `stream-json --verbose`, and on completion the wrapper writes ONE report file to -ReportDir:
+
+        {"envelope": <the CLI's stdout, verbatim>, "checkedAt": "<UTC clock at write time>",
+         "command": "<the exact invocation>"}
+
+    Nothing else. The envelope is embedded as the CLI's own bytes (only the trailing line
+    terminator/whitespace trimmed) -- it is never parsed and re-serialised, so no field can be
+    dropped, renamed, reordered or re-formatted on the way to disk. `permission_denials`,
+    `total_cost_usd` and `usage` therefore come from the CLI, never from the agent's own prose.
+    `checkedAt` is read from [DateTime]::UtcNow immediately before the write (tools/README.md
+    "Timestamps from the clock"), never copied from inside the envelope.
+
+    File name: <agent>.<yyyyMMdd-HHmmss>.json (UTC, same stamp as checkedAt), the shape
+    headless_readiness_ladder.md's L1 section names. Written atomically (temp file in the same
+    folder, then renamed), so a heartbeat-tick reader never sees a half-written file. A second
+    report for the same agent in the same second gets a -2, -3 ... suffix rather than overwriting.
+
+    Fails loudly, never writes a partial file: if the CLI's stdout is empty, is not valid JSON, is
+    not a single JSON object, or lacks the result-envelope keys this report is measured on (type =
+    "result", subtype, is_error, num_turns, total_cost_usd, permission_denials as an array, usage),
+    NO report file is written and the wrapper exits 6. See .NOTES for how a non-zero CLI exit is
+    handled when the envelope itself is complete.
+
+    Off by default: a caller that passes neither -Report nor -ReportDir keeps the pre-F3
+    `stream-json --verbose` output and no report file is written anywhere.
+
+.PARAMETER ReportDir
+    The report drop folder. Default `%APPDATA%\AEGIS\reports` -- the folder
+    headless_readiness_ladder.md's L1 section names, and owner decision D6 (2026-09-22) keeps
+    agent reports on this PC. Passing -ReportDir explicitly also turns report mode on (same as
+    -Report). Created if missing. Test seam (tools/README.md: "Test seam is mandatory"): a test
+    passes a throwaway directory here, never the real folder.
+
+.PARAMETER ClaudePath
+    Test seam (tools/README.md: "Test seam is mandatory"). Path to the executable to launch in
+    place of the resolved `claude.cmd`. Lets a test drive the real report-writing path (the call
+    site, not a helper in isolation) against a fake CLI that prints a fixture envelope, an empty
+    stdout, malformed JSON, or a non-zero exit -- without spending budget. Not for production use:
+    a real run leaves it unset and the script resolves `claude.cmd` itself (see .NOTES). Exit 2
+    if the path does not exist.
+
 .PARAMETER DryRun
     Test seam (tools/README.md: "Test seam is mandatory"). Resolves -Restricted (explicit or via
     the roster_meta.json default-on lookup), builds the full $claudeArgs the run would use, prints
     them, and exits 0 without resolving a `claude` executable or launching anything. Lets a test
     assert which flags a given -AgentName/-Restricted/-Tools combination produces without spending
-    any budget or requiring `claude` to be installed at all.
+    any budget or requiring `claude` to be installed at all. In report mode it also prints the
+    resolved report folder and writes nothing.
 
 .EXAMPLE
     .\Invoke-ReadOnlyAgent.ps1 -AgentName worktree-sweep -Prompt "List worktrees in MasterThread" -Tools "Bash"
 
 .EXAMPLE
     .\Invoke-ReadOnlyAgent.ps1 -AgentName handoff-drift-reviewer -Prompt "Check the last handoff" -Restricted
+
+.EXAMPLE
+    .\Invoke-ReadOnlyAgent.ps1 -AgentName handoff-drift-reviewer -Prompt "Check the last handoff" -Report
+    # L1 report mode: writes %APPDATA%\AEGIS\reports\handoff-drift-reviewer.<yyyyMMdd-HHmmss>.json
 
 .NOTES
     Exit codes (fixed 2026-09-18, extended 2026-09-22 for F2): 0 = the `claude` process ran and
@@ -118,6 +168,18 @@
     default tool set, so this fails closed rather than passing an empty/absent --tools to `claude`.
     A non-zero exit here is always paired with an error written to the report output -- never a
     silent fallthrough.
+
+    Report mode (-Report / -ReportDir, plan task F3) adds two codes, and in report mode they are
+    exactly the "no report file was written" signal: 6 = the CLI's stdout was empty, not valid
+    JSON, not a single object, or missing a required result-envelope key -- nothing written. 7 =
+    the envelope was valid but the report file could not be written (folder not creatable, disk
+    error) -- nothing left behind but the error. Both win over the CLI's own exit code, which is
+    printed in the error message instead. When a COMPLETE envelope comes back with a non-zero CLI
+    exit (e.g. subtype error_max_budget_usd, is_error true), the report IS written -- it is whole
+    evidence of what the run did, including its permission_denials and cost, not a partial file --
+    and the CLI's own exit code is then propagated as usual. A timeout (3) writes no report; a
+    missing report where one was expected is itself the finding (headless_readiness_ladder.md,
+    "What every headless run must emit").
 
     2026-09-18 fix, two defects found the same night this script's first real headless run was
     attempted (PM_INBOX github-43-20260918T0403Z-l1pilot-build-and-crosslinks.md):
@@ -146,6 +208,13 @@
     on for roster_meta.json "readonly": "tools" agents. See standards/sessions/
     headless_agent_permissions.md's "three-layer ordering" section for how this composes with
     -Tools/-AllowedTools and readonly.settings.json.
+
+    2026-09-21 addition (plan task F3): -Report / -ReportDir writes the CLI's own JSON envelope
+    plus checkedAt and the exact command to the drop folder as the L1 report, replacing the
+    hand-rolled {agent, checkedAt, command, exitCode, permissionDenials, findings[]} shape that
+    headless_readiness_ladder.md still describes (that standard is route C; updating its text is a
+    separate owner-merged change). The per-agent `findings[]` contract is F4's --json-schema work,
+    not this script's.
 #>
 [CmdletBinding()]
 param(
@@ -156,13 +225,42 @@ param(
     [switch]$Restricted,
     [double]$MaxBudgetUsd = 1,
     [int]$TimeoutSec = 300,
-    [string]$SettingsPath = (Join-Path $PSScriptRoot 'readonly.settings.json'),
-    [string]$RosterMetaPath = (Join-Path $PSScriptRoot '..\..\claude-agents\roster_meta.json'),
+    # Defaults resolved in the body, not here: see the $PSScriptRoot note just below param().
+    [string]$SettingsPath,
+    [string]$RosterMetaPath,
     [string]$Model,
+    [switch]$Report,
+    [string]$ReportDir,
+    [string]$ClaudePath,
     [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
+
+# 2026-09-21 fix, found running F3's live check through `powershell.exe -File` (the way a scheduled
+# task calls this script): under Windows PowerShell 5.1, a [CmdletBinding()] script invoked with
+# -File sees an EMPTY $PSScriptRoot inside its param() default expressions, so the old defaults
+# `(Join-Path $PSScriptRoot 'readonly.settings.json')` threw "Cannot bind argument to parameter
+# 'Path' because it is an empty string" before the script body ran at all (reproduced with a
+# three-line script: fails with [CmdletBinding()], works without it; `& .\script.ps1` was never
+# affected, which is why the dot-sourced tests did not catch it). $PSScriptRoot is populated in the
+# body, so the same defaults are applied here instead. Behaviour is unchanged for every caller
+# that passes these parameters, and for every caller that relied on the defaults via `&`.
+if (-not $SettingsPath) { $SettingsPath = Join-Path $PSScriptRoot 'readonly.settings.json' }
+if (-not $RosterMetaPath) { $RosterMetaPath = Join-Path $PSScriptRoot '..\..\claude-agents\roster_meta.json' }
+
+# --- F3: report mode -------------------------------------------------------------------------
+# On when -Report is passed, or when -ReportDir is passed explicitly (a caller naming a drop folder
+# plainly wants a report in it). Off otherwise, and then nothing below changes behaviour.
+$reportMode = [bool]$Report -or $PSBoundParameters.ContainsKey('ReportDir')
+if ($reportMode -and -not $ReportDir) {
+    # Default resolved here rather than in param(), same reason as the two defaults above.
+    if (-not $env:APPDATA) {
+        Write-Host "Invoke-ReadOnlyAgent: -Report was requested with no -ReportDir and %APPDATA% is not set, so the default drop folder cannot be resolved. Pass -ReportDir." -ForegroundColor Red
+        exit 7
+    }
+    $ReportDir = Join-Path $env:APPDATA 'AEGIS\reports'
+}
 
 if (-not (Test-Path $SettingsPath)) {
     # NOTE: Write-Error is itself a terminating error under $ErrorActionPreference = 'Stop' and
@@ -260,15 +358,26 @@ $claudeArgs += @(
     '--permission-mode', 'dontAsk',
     '--permission-prompts', 'none',
     '--strict-mcp-config',
-    '--max-budget-usd', [string]$MaxBudgetUsd,
-    '--output-format', 'stream-json',
-    # 2026-09-18 fix, second real-invocation defect found the same night as the claude-resolution
-    # bug: `claude --print --output-format stream-json` refuses to run at all without --verbose
-    # ("Error: When using --print, --output-format=stream-json requires --verbose"), printed to
-    # STDERR only. Without this flag every single invocation failed before doing any work -- the
-    # error was invisible in normal output because stderr only reaches Write-Verbose below.
-    '--verbose'
+    '--max-budget-usd', [string]$MaxBudgetUsd
 )
+
+if ($reportMode) {
+    # F3: `--output-format json` WITHOUT --verbose returns exactly one JSON object -- the result
+    # envelope -- on stdout (verified live 2026-09-21, CLI 2.1.278, Haiku). Adding --verbose turns
+    # it into an array of every event (system/init, assistant, ..., result), which is not the
+    # envelope the plan names, so report mode deliberately leaves --verbose off.
+    $claudeArgs += @('--output-format', 'json')
+} else {
+    $claudeArgs += @(
+        '--output-format', 'stream-json',
+        # 2026-09-18 fix, second real-invocation defect found the same night as the claude-resolution
+        # bug: `claude --print --output-format stream-json` refuses to run at all without --verbose
+        # ("Error: When using --print, --output-format=stream-json requires --verbose"), printed to
+        # STDERR only. Without this flag every single invocation failed before doing any work -- the
+        # error was invisible in normal output because stderr only reaches Write-Verbose below.
+        '--verbose'
+    )
+}
 
 if ($Model) {
     $claudeArgs += @('--model', $Model)
@@ -288,30 +397,49 @@ if ($usingAllowedToolsFlag) {
     $promptFile = [System.IO.Path]::GetTempFileName()
     [System.IO.File]::WriteAllText($promptFile, $Prompt, [System.Text.UTF8Encoding]::new($false))
 } else {
-    $claudeArgs += $Prompt
+    # 2026-09-21 fix, found by F3's live check: the positional prompt was appended UNQUOTED, so
+    # Start-Process's bare space-join (see ConvertTo-QuotedArg above) split any multi-word prompt
+    # into separate argv tokens. Reproduced live through this wrapper: the prompt "Use the Bash tool
+    # to run exactly this command: git --version . Then report its output." made the CLI print only
+    # "2.1.278 (Claude Code)" -- the stray '--version' token was read as the CLI's own flag, the
+    # same defect the 2026-09-18 note above describes, which had been fixed for -Tools/-AllowedTools
+    # and the stdin path but not for this one. Quoted the same way as every other spaced value.
+    $claudeArgs += (ConvertTo-QuotedArg $Prompt)
 }
 
 if ($DryRun) {
     # Test seam (tools/README.md: "Test seam is mandatory"). Never resolves or launches `claude`.
     Write-Host "DRYRUN AgentName=$AgentName Restricted=$effectiveRestricted (explicit=$restrictedExplicit)"
     Write-Host "DRYRUN ARGS: $($claudeArgs -join ' ')$(if ($promptFile) { ' (prompt on stdin)' })"
+    if ($reportMode) { Write-Host "DRYRUN REPORT dir=$ReportDir (nothing written)" }
+    if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
     exit 0
 }
 
-# Resolve the real Windows executable explicitly -- never the bare 'claude' name, which an
-# exact-match lookup can resolve to a non-Windows shebang shim installed alongside it (see .NOTES
-# above). Prefer claude.cmd (the documented Windows wrapper); fall back to the bare name only if
-# no .cmd exists at all (e.g. a non-Windows host), which is itself worth knowing about.
-$claudeCmd = Get-Command 'claude.cmd' -ErrorAction SilentlyContinue
-if (-not $claudeCmd) {
-    Write-Warning "Invoke-ReadOnlyAgent: 'claude.cmd' not found on PATH; falling back to the bare 'claude' name, which is known to resolve incorrectly on a Windows host with an npm-installed CLI (see .NOTES)."
-    $claudeCmd = Get-Command 'claude' -ErrorAction SilentlyContinue
+if ($ClaudePath) {
+    # Test seam only (see -ClaudePath). A real run never sets it.
+    if (-not (Test-Path -LiteralPath $ClaudePath -PathType Leaf)) {
+        Write-Host "Invoke-ReadOnlyAgent: -ClaudePath '$ClaudePath' does not exist." -ForegroundColor Red
+        if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+        exit 2
+    }
+    $claudeExe = (Resolve-Path -LiteralPath $ClaudePath).ProviderPath
+} else {
+    # Resolve the real Windows executable explicitly -- never the bare 'claude' name, which an
+    # exact-match lookup can resolve to a non-Windows shebang shim installed alongside it (see .NOTES
+    # above). Prefer claude.cmd (the documented Windows wrapper); fall back to the bare name only if
+    # no .cmd exists at all (e.g. a non-Windows host), which is itself worth knowing about.
+    $claudeCmd = Get-Command 'claude.cmd' -ErrorAction SilentlyContinue
+    if (-not $claudeCmd) {
+        Write-Warning "Invoke-ReadOnlyAgent: 'claude.cmd' not found on PATH; falling back to the bare 'claude' name, which is known to resolve incorrectly on a Windows host with an npm-installed CLI (see .NOTES)."
+        $claudeCmd = Get-Command 'claude' -ErrorAction SilentlyContinue
+    }
+    if (-not $claudeCmd) {
+        Write-Host "Invoke-ReadOnlyAgent: could not resolve a 'claude' executable on PATH at all (tried claude.cmd, then claude)." -ForegroundColor Red
+        exit 2
+    }
+    $claudeExe = $claudeCmd.Source
 }
-if (-not $claudeCmd) {
-    Write-Host "Invoke-ReadOnlyAgent: could not resolve a 'claude' executable on PATH at all (tried claude.cmd, then claude)." -ForegroundColor Red
-    exit 2
-}
-$claudeExe = $claudeCmd.Source
 
 Write-Verbose "$claudeExe $($claudeArgs -join ' ')$(if ($promptFile) { ' (prompt on stdin)' })"
 
@@ -324,6 +452,13 @@ try {
     } else {
         $proc = Start-Process -FilePath $claudeExe -ArgumentList $claudeArgs -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
     }
+    # 2026-09-21 fix, found while building F3's non-zero-exit test: a Process object returned by
+    # Start-Process -PassThru only records its exit code if its Handle was opened before the process
+    # exited. A child that exits fast (e.g. the CLI rejecting its own arguments, the 2026-09-18
+    # "--verbose required" failure) left ExitCode $null, and `exit $null` exits 0 -- a failed run
+    # reported success. Verified live: same .cmd exiting 1, ExitCode was empty without this line
+    # and 1 with it. Opening the handle here, immediately after launch, pins it.
+    $null = $proc.Handle
 } catch {
     # Write-Host, not Write-Error -- see the note above the settings-file check: Write-Error is
     # itself terminating under $ErrorActionPreference = 'Stop' and would skip the exit code below.
@@ -351,8 +486,113 @@ try {
     exit 2
 }
 
-Get-Content $stdoutFile
-Get-Content $stderrFile | Write-Verbose
+# The CLI writes UTF-8; without -Encoding, Windows PowerShell 5.1's Get-Content decodes a BOM-less
+# file as the ANSI code page and mangles any non-ASCII character in the echoed output (the report
+# file below is read separately, as exact UTF-8, and is unaffected either way).
+Get-Content $stdoutFile -Encoding UTF8
+Get-Content $stderrFile -Encoding UTF8 | Write-Verbose
+
+$claudeExitCode = $proc.ExitCode
+if ($null -eq $claudeExitCode) {
+    # Belt and braces for the Handle fix above: never let an unreadable exit code become `exit $null`
+    # (= 0). Treated as a wrapper-side failure, exit 2, with no report written.
+    Write-Host "Invoke-ReadOnlyAgent: could not read the exit code of '$claudeExe' for agent '$AgentName' -- treating the run as failed rather than reporting success." -ForegroundColor Red
+    if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+    Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
+    exit 2
+}
+
+if (-not $reportMode) {
+    if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+    Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
+    exit $claudeExitCode
+}
+
+# --- F3: write {envelope, checkedAt, command} to the drop folder -------------------------------
+# The exact invocation, as launched. When the prompt went on stdin (the --allowedTools case above)
+# it is not in $claudeArgs, so it is recorded explicitly rather than lost.
+$command = "$claudeExe $($claudeArgs -join ' ')"
+if ($promptFile) { $command += " (prompt on stdin: $(ConvertTo-QuotedArg $Prompt))" }
+
+# Read the CLI's stdout as the exact UTF-8 text it wrote (no BOM added, no line splitting), then
+# trim only surrounding whitespace -- the CLI terminates its single JSON line with a newline, and
+# a newline inside the report's "envelope" slot is noise, not data.
+$rawEnvelope = ''
+try {
+    $rawEnvelope = [System.IO.File]::ReadAllText($stdoutFile, [System.Text.UTF8Encoding]::new($false)).Trim()
+} catch {
+    $rawEnvelope = ''
+}
 if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
 Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
-exit $proc.ExitCode
+
+function Exit-NoReport([int]$Code, [string]$Why) {
+    Write-Host "Invoke-ReadOnlyAgent: NO REPORT WRITTEN for '$AgentName' -- $Why (claude exit code $claudeExitCode). A missing report is itself the finding; nothing partial was left in $ReportDir." -ForegroundColor Red
+    exit $Code
+}
+
+if (-not $rawEnvelope) {
+    Exit-NoReport 6 'the CLI wrote nothing to stdout (no envelope)'
+}
+if (-not $rawEnvelope.StartsWith('{')) {
+    Exit-NoReport 6 'the CLI stdout is not a single JSON object (expected the --output-format json result envelope)'
+}
+try {
+    $parsed = $rawEnvelope | ConvertFrom-Json -ErrorAction Stop
+} catch {
+    Exit-NoReport 6 "the CLI stdout is not valid JSON: $($_.Exception.Message)"
+}
+# Set-StrictMode-safe property checks (tools/README.md): PSObject.Properties, never a dotted read.
+$missing = @()
+foreach ($key in @('type', 'subtype', 'is_error', 'num_turns', 'total_cost_usd', 'permission_denials', 'usage')) {
+    if (-not $parsed.PSObject.Properties[$key]) { $missing += $key }
+}
+if ($missing.Count -gt 0) {
+    Exit-NoReport 6 "the CLI JSON is missing result-envelope key(s): $($missing -join ', ')"
+}
+if ($parsed.PSObject.Properties['type'].Value -ne 'result') {
+    Exit-NoReport 6 "the CLI JSON has type '$($parsed.PSObject.Properties['type'].Value)', not 'result'"
+}
+if ($parsed.PSObject.Properties['permission_denials'].Value -isnot [array]) {
+    Exit-NoReport 6 'the CLI JSON permission_denials is not an array'
+}
+
+$tmpPath = $null
+try {
+    if (-not (Test-Path -LiteralPath $ReportDir -PathType Container)) {
+        New-Item -ItemType Directory -Path $ReportDir -Force | Out-Null
+    }
+    # Clock at write time, never typed and never taken from inside the envelope (tools/README.md
+    # "Timestamps from the clock"). The file name carries the same instant.
+    $now = [DateTime]::UtcNow
+    $checkedAt = $now.ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+    $stamp = $now.ToString('yyyyMMdd-HHmmss', [System.Globalization.CultureInfo]::InvariantCulture)
+    $safeAgent = $AgentName
+    foreach ($c in [System.IO.Path]::GetInvalidFileNameChars()) { $safeAgent = $safeAgent.Replace([string]$c, '_') }
+
+    $finalPath = Join-Path $ReportDir "$safeAgent.$stamp.json"
+    $n = 2
+    while (Test-Path -LiteralPath $finalPath) {
+        $finalPath = Join-Path $ReportDir "$safeAgent.$stamp-$n.json"
+        $n++
+    }
+
+    # The envelope goes in as the CLI's own text -- never parsed-and-re-serialised -- so the report
+    # carries exactly the fields, order and number formatting the CLI emitted. Only the two
+    # wrapper-owned strings are JSON-encoded here.
+    $reportText = '{"envelope":' + $rawEnvelope +
+        ',"checkedAt":' + (ConvertTo-Json -InputObject $checkedAt -Compress) +
+        ',"command":' + (ConvertTo-Json -InputObject $command -Compress) + '}'
+
+    # Atomic publish: write a temp file in the same folder, then rename. A heartbeat-tick reader
+    # globbing *.json never sees a half-written report.
+    $tmpPath = Join-Path $ReportDir (".$safeAgent.$stamp." + [Guid]::NewGuid().ToString('N') + '.tmp')
+    [System.IO.File]::WriteAllText($tmpPath, $reportText, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::Move($tmpPath, $finalPath)
+} catch {
+    if ($tmpPath) { Remove-Item -LiteralPath $tmpPath -ErrorAction SilentlyContinue }
+    Exit-NoReport 7 "the report could not be written: $($_.Exception.GetType().FullName): $($_.Exception.Message)"
+}
+
+Write-Host "Invoke-ReadOnlyAgent: report written to $finalPath"
+exit $claudeExitCode
