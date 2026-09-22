@@ -49,13 +49,13 @@
     this agent. The CLI's own --json-schema constraint (when -RunLive is set) is unaffected.
 
 .PARAMETER Model
-    Optional passthrough to Invoke-ReadOnlyAgent.ps1's own -Model (--model). Default: whatever the
-    CLI defaults to (currently claude-haiku-4-5-20251001 for this repo's agents, none of which
-    carry an explicit --model). Relevant to the structured-output note below: per the platform
-    docs, Haiku 4.5 structured outputs (the payload landing in envelope.structured_output) are
-    Bedrock-only, not available on the standard API -- an agent whose schema check keeps hitting
-    exit 9 (see -UseLegacyResultField and .NOTES) may need -Model sonnet or another
-    structured-output-capable model, not a schema or prompt fix.
+    Optional passthrough to Invoke-ReadOnlyAgent.ps1's own -Model (--model). Default: the named
+    agent's own frontmatter model:, or whatever the CLI defaults to if that is absent (currently
+    claude-haiku-4-5-20251001 for this repo's agents). Relevant to the structured-output note
+    below: Haiku on the standard API returns envelope.structured_output fine once the launch
+    avoids `--agent` (see Invoke-ReadOnlyAgent.ps1's .NOTES) -- an agent whose schema check keeps
+    hitting exit 9 more likely has -JsonSchemaPath's `--append-system-prompt-file` fallback failing
+    to resolve its claude-agents/<name>.md (see -AgentsDir) than a model limitation.
 
 .PARAMETER UseLegacyResultField
     Opt-in fallback: schema-check envelope.result (the model's own prose) instead of
@@ -303,18 +303,22 @@ if ($hasSchema -and -not $SkipSchemaCheck) {
     # report is {envelope, checkedAt, command} with envelope as a NESTED OBJECT (it already parsed
     # the CLI's JSON stdout before writing the report) -- not a JSON string.
     #
-    # 2026-09-23 fix (issue #212 follow-up): per code.claude.com/docs/en/headless.md "Get
+    # 2026-09-22 fix (issue #212 follow-up): per code.claude.com/docs/en/headless.md "Get
     # structured output", `--output-format json` + `--json-schema` puts the SCHEMA-VALIDATED
     # payload in envelope.structured_output, not envelope.result -- envelope.result stays the
     # model's own prose even on a fully successful, schema-conforming run. The Agent SDK
     # troubleshooting page is explicit that a "success" subtype with no structured_output must be
-    # treated as a failure, not a pass. Verified live 2026-09-22/23 against three real
-    # pr-state-sweep runs (drop-folder reports 145241, 172129, 173309): all three passed
-    # --json-schema on the command line, ran claude-haiku-4-5-20251001 with no --model override,
-    # and all three envelopes have subtype "success" and no structured_output key at all --
-    # consistent with the platform docs' note that Haiku 4.5 structured outputs are Bedrock-only,
-    # not available on the standard API this wrapper uses. The block below now reads
-    # envelope.structured_output by default; -UseLegacyResultField is an explicit opt-in fallback
+    # treated as a failure, not a pass. Verified live 2026-09-22 against three real pr-state-sweep
+    # runs (drop-folder reports 145241, 172129, 173309): all three passed --json-schema on the
+    # command line, ran claude-haiku-4-5-20251001 with no --model override, and all three envelopes
+    # have subtype "success" and no structured_output key at all. The actual cause is NOT the model:
+    # a peer's live probes (8 Haiku runs, CLI 2.1.280, same schema) found --json-schema is silently
+    # not enforced on any run launched with --agent <name> -- every non-`--agent` invocation shape
+    # returned envelope.structured_output; every `--agent` invocation returned prose with no
+    # structured_output key, subtype "success" regardless. Invoke-ReadOnlyAgent.ps1 now avoids
+    # `--agent` whenever -JsonSchemaPath is given (see its own .NOTES), which is confirmed live to
+    # restore envelope.structured_output on Haiku -- no model change needed. The block below now
+    # reads envelope.structured_output by default; -UseLegacyResultField is an explicit opt-in fallback
     # to the old (wrong-for-this-purpose) envelope.result read, kept only for a caller that knows
     # it is on a code path where structured_output is genuinely never populated (e.g. no schema
     # was actually requested) and still wants some check performed. Exit 8's meaning (schema

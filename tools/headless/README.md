@@ -38,17 +38,24 @@ argument safety) rather than reimplementing it.
   deferred to F12. Without `-RunLive`, no budget is spent and only the schema's own well-formedness
   is checked (same guarantee `test-headless-schemas.ps1` already gives offline).
 
-  **2026-09-23 (issue #212 follow-up):** the schema check reads `envelope.structured_output`, not
+  **2026-09-22 (issue #212 follow-up):** the schema check reads `envelope.structured_output`, not
   `envelope.result` — per code.claude.com/docs/en/headless.md, `--output-format json` +
   `--json-schema` puts the validated payload in `structured_output`; `envelope.result` stays the
   model's own prose even on success. A `subtype: "success"` envelope with no `structured_output`
-  is a failure (Agent SDK troubleshooting docs), reported as **exit 9** (distinct from exit 8,
-  "a payload was returned and failed validation"). Verified live against three real
-  `pr-state-sweep` drop-folder reports, all Haiku, no `--model` override, all `subtype: "success"`
-  with no `structured_output` key — consistent with the platform docs saying Haiku 4.5 structured
-  outputs are Bedrock-only. Use `-Model sonnet` (or another structured-output-capable model) for an
-  agent that needs a real live schema pass; `-UseLegacyResultField` is an explicit, off-by-default
-  opt-in back to the old `envelope.result` read for a caller that knows it wants that instead.
+  is a failure (Agent SDK troubleshooting docs), reported as `Invoke-Subagent.ps1`'s own **exit 9**
+  (distinct from that same script's exit 8, "a payload was returned and failed validation"; this is
+  unrelated to `Invoke-Lane.ps1`'s own exit 9 below, which is that script's max-turns refusal).
+  Verified live against three real `pr-state-sweep` drop-folder reports, all Haiku, no `--model`
+  override, all `subtype: "success"` with no `structured_output` key at all. The cause is not the
+  model: a peer's live probes (8 Haiku runs, CLI 2.1.280, same schema) found `--json-schema` is
+  silently not enforced on any run launched with `--agent <name>` — every non-`--agent` invocation
+  shape returned `structured_output`; every `--agent` invocation returned prose with no
+  `structured_output` key, `subtype: "success"` regardless. `Invoke-ReadOnlyAgent.ps1` now avoids
+  `--agent` whenever `-JsonSchemaPath` is given, loading the named agent's own body via
+  `--append-system-prompt-file` instead (see that script's own `.NOTES`), which is confirmed live
+  to restore `envelope.structured_output` on Haiku — no model change needed.
+  `-UseLegacyResultField` is an explicit, off-by-default opt-in back to the old `envelope.result`
+  read for a caller that knows it wants that instead.
 - **`Invoke-Lane.ps1`** — a dispatched multi-turn worker session. `claude -p` has no native
   turn-count flag, so `maxTurns` is enforced here as this wrapper's own bookkeeping: a state file
   keyed by `-SessionId` counts turns, and a call once `-MaxTurns` is reached is refused (exit 9)

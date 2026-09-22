@@ -198,7 +198,7 @@
     the script resolves `claude.cmd` itself (see .NOTES). Exit 2 if the path does not exist.
 
 .PARAMETER AgentsDir
-    2026-09-23 addition (issue #212 follow-up). Directory holding claude-agents/*.md, used only
+    2026-09-22 addition (issue #212 follow-up). Directory holding claude-agents/*.md, used only
     when -JsonSchemaPath is given: resolves claude-agents/<AgentName>.md so its body (frontmatter
     stripped) can be sent via --append-system-prompt-file instead of --agent -- see .NOTES for why.
     Default: ..\..\claude-agents next to this script (the real repo layout). Missing/unresolvable
@@ -300,7 +300,7 @@
     included, should be built against the ladder's old shape). The per-agent `findings[]` contract is F4's --json-schema work,
     not this script's.
 
-    2026-09-23 addition (issue #212 follow-up, replaces the earlier live-run-confirmed root cause
+    2026-09-22 addition (issue #212 follow-up, replaces the earlier live-run-confirmed root cause
     that only rewrote the agent's own Output section): a peer's live probes (8 Haiku runs, CLI
     2.1.280, same schema) found --json-schema is silently not enforced at all on any run launched
     with --agent <name> -- the validated payload (envelope.structured_output) never appears,
@@ -552,7 +552,7 @@ function ConvertTo-QuotedArg([string]$Value) {
     return '"' + $escaped + '"'
 }
 
-# 2026-09-23 fix (issue #212 follow-up): a peer's live probes (8 Haiku runs, CLI 2.1.280, same
+# 2026-09-22 fix (issue #212 follow-up): a peer's live probes (8 Haiku runs, CLI 2.1.280, same
 # schema) found --json-schema is silently NOT enforced on any run launched with --agent <name>:
 # every non-agent invocation shape returned envelope.structured_output; every --agent invocation
 # returned prose with no structured_output key, subtype "success" regardless. This matches all
@@ -785,7 +785,6 @@ if ($ClaudePath) {
     if (-not (Test-Path -LiteralPath $ClaudePath -PathType Leaf)) {
         Write-Host "Invoke-ReadOnlyAgent: -ClaudePath '$ClaudePath' does not exist." -ForegroundColor Red
         if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
-    if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
         if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
         exit 2
     }
@@ -891,7 +890,6 @@ try {
         Get-Content $stdoutFile -ErrorAction SilentlyContinue
         Get-Content $stderrFile -ErrorAction SilentlyContinue | Write-Verbose
         if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
-    if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
         if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
         Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
         exit 3
