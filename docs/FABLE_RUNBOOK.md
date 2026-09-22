@@ -8,6 +8,10 @@ to be read on a phone.
 gate in the plan's §7 blocks every build task except the two measurements. Read this as the
 procedure the build is aiming at, not as instructions that work today. Each step says what it needs.
 
+**Wave-1 tracking (2026-09-22):** F2, F3, F10 and the #169 follow-up have open PRs (#174, #176,
+#172, #175 — see the plan's §6 status table and issue #185). None are merged yet, so none of the
+"needs F12"/"needs F2" gates below have moved. This note will be corrected once any of them lands.
+
 ---
 
 ## The three things you touch
