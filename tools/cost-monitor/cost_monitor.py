@@ -323,7 +323,10 @@ def scan_headless(reports_dir, today, days):
         try:
             with open(path, encoding="utf-8") as fh:
                 text = fh.read()
-        except OSError:
+        except (OSError, ValueError):
+            # ValueError covers UnicodeDecodeError: a file with invalid UTF-8 bytes (e.g. a stray
+            # non-UTF-8 byte, or a UTF-16LE-with-BOM file -- what PowerShell 5.1's `>` writes) must
+            # still be a finding, never a raise out of this "Never raises" function.
             stats["unreadable"] += 1
             findings.append(("unknown", "headless_report_unreadable", "%s could not be read" % name))
             continue

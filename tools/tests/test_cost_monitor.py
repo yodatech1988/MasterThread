@@ -117,6 +117,13 @@ class Env:
             os.utime(path, (mtime.timestamp(), mtime.timestamp()))
         return path
 
+    def headless_bytes_report(self, agent, stamp, raw_bytes, suffix=""):
+        """Writes arbitrary raw bytes as a report file -- for non-UTF-8 content (a stray invalid
+        byte, or a UTF-16LE-with-BOM file, e.g. what PowerShell 5.1's `>` writes)."""
+        path = self.reports / ("%s.%s%s.json" % (agent, stamp, suffix))
+        path.write_bytes(raw_bytes)
+        return path
+
     def status(self):
         return json.loads((self.state / "status.json").read_text(encoding="utf-8"))
 
@@ -752,6 +759,29 @@ class HeadlessNdjsonFallbackTests(EnvTestCase):
             self.assertNotIn("FAKE-FIXTURE-TEXT", blob)
             self.assertNotIn("FAKE-FIXTURE-TOOL-RESULT", blob)
             self.assertNotIn("FAKE-FIXTURE-FINAL-TEXT", blob)
+
+    def test_a_file_with_an_invalid_utf8_byte_is_a_finding_not_a_raise(self):
+        # 0xff 0xfe 0x8f is not valid UTF-8 (0xff/0xfe are never valid UTF-8 lead bytes); decoding it
+        # with encoding="utf-8" must raise UnicodeDecodeError, which scan_headless has to catch.
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        self.env.headless_bytes_report("gate-execution-auditor", "20260920-090000", b"\xff\xfe\x8f")
+        code, out, _ = self.env.run()   # must not raise
+        kinds = [b["kind"] for b in self.env.status()["breaches"]]
+        self.assertIn("headless_report_unreadable", kinds)
+        self.assertNotIn("Traceback", out)
+
+    def test_a_utf16le_bom_file_is_a_finding_not_a_raise(self):
+        # PowerShell 5.1's `>` redirection writes UTF-16LE with a BOM by default. Decoded as UTF-8
+        # (what this reader always uses), the BOM bytes (FF FE) and the null bytes between UTF-16LE
+        # characters are invalid UTF-8 and must raise UnicodeDecodeError, not crash scan_headless.
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        raw = '{"envelope": {}, "checkedAt": "2026-09-20T01:00:00Z"}'.encode("utf-16-le")
+        raw = b"\xff\xfe" + raw   # UTF-16LE BOM
+        self.env.headless_bytes_report("pr-state-sweep", "20260920-090000", raw)
+        code, out, _ = self.env.run()   # must not raise
+        kinds = [b["kind"] for b in self.env.status()["breaches"]]
+        self.assertIn("headless_report_unreadable", kinds)
+        self.assertNotIn("Traceback", out)
 
 
 # ------------------------------------------------------------------ ledger
