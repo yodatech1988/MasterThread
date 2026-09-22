@@ -1,0 +1,19 @@
+{
+  "duration_api_ms": 56180,
+  "stop_reason": "tool_use",
+  "session_id": "e5f6ab12-0000-4000-8000-000000000000",
+  "total_cost_usd": 0.0772844,
+  "usage": {
+    "input_tokens": 42,
+    "cache_creation_input_tokens": 21525,
+    "cache_read_input_tokens": 76274,
+    "output_tokens": 5313
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "subtype": "success",
+  "is_error": false,
+  "num_turns": 6,
+  "type": "result",
+  "result": "{\"agent\":\"pr-state-sweep\",\"repos\":[],\"flags\":{\"rule4Violations\":[],\"noCiRun\":[]},\"findings\":[],\"couldNotCheck\":[]}"
+}

@@ -18,6 +18,8 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $scriptPath = Join-Path (Split-Path -Parent $here) 'headless\Invoke-Subagent.ps1'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $here)
 $fixtureEnvelopePath = Join-Path $here 'fixtures\headless\envelope-with-denial.json'
+$fixtureProseResultPath = Join-Path $here 'fixtures\headless\envelope-prose-result-issue212.json'
+$fixtureNoStructuredOutputPath = Join-Path $here 'fixtures\headless\envelope-success-no-structured-output.json'
 
 $testsPassed = 0
 $testsFailed = 0
@@ -306,6 +308,11 @@ exit 0
                 couldNotCheck = @()
             }
             $envelope.result = ($resultObj | ConvertTo-Json -Compress -Depth 10)
+            # 2026-09-22 (coordinator finding): the real CLI puts the schema-validated payload in
+            # envelope.structured_output (an object), not envelope.result (its own JSON-text
+            # echo) -- added here so this fixture matches the real shape and this test still
+            # exercises the DEFAULT (structured_output-reading) path, not the legacy fallback.
+            $envelope | Add-Member -NotePropertyName 'structured_output' -NotePropertyValue $resultObj -Force
             $envelope.permission_denials = @()
             $utf8 = [System.Text.UTF8Encoding]::new($false)
             [System.IO.File]::WriteAllText((Join-Path $fakeDir 'out.txt'), ($envelope | ConvertTo-Json -Depth 20 -Compress), $utf8)
@@ -319,6 +326,119 @@ exit 0
             if ($out -notmatch 'schema check PASSED') { throw "expected the schema check to pass against the fake envelope. Output: $out" }
             $reportFiles = Get-ChildItem -LiteralPath $reportDir -Filter 'pr-state-sweep.*.json' -ErrorAction SilentlyContinue
             if (-not $reportFiles) { throw "expected a report file to have been written to $reportDir" }
+        } finally {
+            $env:AEGIS_TEST_SEAM = $priorTestSeam
+        }
+    }
+
+    Test-Case "regression (issue #212, now exercised via -UseLegacyResultField): a prose (non-JSON) final message fails the LEGACY schema check with exit 8, not a silent pass" {
+        # Captured from a real live run (%APPDATA%\AEGIS\reports\pr-state-sweep.20260922-172129.json)
+        # where the old '## Output' section told pr-state-sweep to produce a markdown table plus a
+        # 'Flags' section, so under --json-schema the final message came back as prose ("Now let me
+        # compile the results into a table...") instead of the schema JSON object, and
+        # Invoke-Subagent.ps1 exited 8 because envelope.result was not valid JSON. This fixture
+        # (fixtures\headless\envelope-prose-result-issue212.json) reproduces that shape offline
+        # against a fake CLI, so the exit-8 path stays covered without spending live budget.
+        #
+        # 2026-09-22 update: the default schema check no longer reads envelope.result at all (see
+        # the structured_output tests below) -- this fixture also has no structured_output field,
+        # so under the DEFAULT path it now correctly fails with exit 9, not 8 (a different, more
+        # specific finding: "the CLI never gave us a validated answer", not "the answer we got was
+        # not JSON"). -UseLegacyResultField is what still exercises the original envelope.result /
+        # exit-8 path this test was written to cover.
+        $priorTestSeam = $env:AEGIS_TEST_SEAM
+        $env:AEGIS_TEST_SEAM = '1'
+        $fakeDir = Join-Path $fixtureDir 'fake-claude-issue212'
+        New-Item -ItemType Directory -Path $fakeDir -Force | Out-Null
+        $reportDir = Join-Path $fixtureDir 'reports-issue212'
+        try {
+            $envelope = Get-Content -LiteralPath $fixtureProseResultPath -Raw | ConvertFrom-Json
+            $utf8 = [System.Text.UTF8Encoding]::new($false)
+            [System.IO.File]::WriteAllText((Join-Path $fakeDir 'out.txt'), ($envelope | ConvertTo-Json -Depth 20 -Compress), $utf8)
+            $fakeCmd = Join-Path $fakeDir 'fake-claude.cmd'
+            [System.IO.File]::WriteAllText($fakeCmd, "@echo off`r`nif exist `"%~dp0out.txt`" type `"%~dp0out.txt`"`r`nexit /b 0`r`n", [System.Text.Encoding]::ASCII)
+
+            $realSchemasDir = Join-Path $repoRoot 'tools\headless\schemas'
+            $realBudgets = Join-Path $repoRoot 'tools\headless\budgets.json'
+            $out = & $scriptPath -AgentName 'pr-state-sweep' -Prompt 'irrelevant' -BudgetsPath $realBudgets -AgentsDir (Join-Path $repoRoot 'claude-agents') -SchemasDir $realSchemasDir -ClaudePath $fakeCmd -ReportDir $reportDir -RunLive -UseLegacyResultField *>&1 | Out-String -Width 8192
+            if ($LASTEXITCODE -ne 8) { throw "expected exit 8 (schema check failure), got $LASTEXITCODE. Output: $out" }
+            if ($out -notmatch 'envelope.result is not valid JSON') { throw "expected the 'not valid JSON' diagnostic. Output: $out" }
+        } finally {
+            $env:AEGIS_TEST_SEAM = $priorTestSeam
+        }
+    }
+
+    Test-Case "regression (issue #212): the SAME prose fixture, under the DEFAULT (non-legacy) path, fails with exit 9 (structured_output missing), not exit 8" {
+        $priorTestSeam = $env:AEGIS_TEST_SEAM
+        $env:AEGIS_TEST_SEAM = '1'
+        $fakeDir = Join-Path $fixtureDir 'fake-claude-issue212-default'
+        New-Item -ItemType Directory -Path $fakeDir -Force | Out-Null
+        $reportDir = Join-Path $fixtureDir 'reports-issue212-default'
+        try {
+            $envelope = Get-Content -LiteralPath $fixtureProseResultPath -Raw | ConvertFrom-Json
+            $utf8 = [System.Text.UTF8Encoding]::new($false)
+            [System.IO.File]::WriteAllText((Join-Path $fakeDir 'out.txt'), ($envelope | ConvertTo-Json -Depth 20 -Compress), $utf8)
+            $fakeCmd = Join-Path $fakeDir 'fake-claude.cmd'
+            [System.IO.File]::WriteAllText($fakeCmd, "@echo off`r`nif exist `"%~dp0out.txt`" type `"%~dp0out.txt`"`r`nexit /b 0`r`n", [System.Text.Encoding]::ASCII)
+
+            $realSchemasDir = Join-Path $repoRoot 'tools\headless\schemas'
+            $realBudgets = Join-Path $repoRoot 'tools\headless\budgets.json'
+            $out = & $scriptPath -AgentName 'pr-state-sweep' -Prompt 'irrelevant' -BudgetsPath $realBudgets -AgentsDir (Join-Path $repoRoot 'claude-agents') -SchemasDir $realSchemasDir -ClaudePath $fakeCmd -ReportDir $reportDir -RunLive *>&1 | Out-String -Width 8192
+            if ($LASTEXITCODE -ne 9) { throw "expected exit 9 (structured_output missing) under the default path, got $LASTEXITCODE. Output: $out" }
+            if ($out -notmatch 'SCHEMA-VALIDATED OUTPUT MISSING') { throw "expected the structured_output-missing diagnostic. Output: $out" }
+        } finally {
+            $env:AEGIS_TEST_SEAM = $priorTestSeam
+        }
+    }
+
+    Test-Case "regression (coordinator finding, 2026-09-22): subtype 'success' but envelope.structured_output absent fails closed with exit 9, not a silent pass, even when envelope.result happens to parse as schema-valid JSON" {
+        # Platform docs (code.claude.com/docs/en/headless.md 'Get structured output') say the
+        # --json-schema-validated payload lands in envelope.structured_output, not envelope.result;
+        # the Agent SDK troubleshooting page says subtype 'success' with no structured_output must
+        # be treated as a failure. This fixture's envelope.result happens to be schema-valid JSON
+        # (unlike the issue-#212 prose fixture above) precisely to prove the new default check does
+        # NOT fall back to reading envelope.result and pass just because it looks right -- it must
+        # fail on the missing structured_output field itself, with a distinct exit code (9, not 8).
+        $priorTestSeam = $env:AEGIS_TEST_SEAM
+        $env:AEGIS_TEST_SEAM = '1'
+        $fakeDir = Join-Path $fixtureDir 'fake-claude-no-structured-output'
+        New-Item -ItemType Directory -Path $fakeDir -Force | Out-Null
+        $reportDir = Join-Path $fixtureDir 'reports-no-structured-output'
+        try {
+            $envelope = Get-Content -LiteralPath $fixtureNoStructuredOutputPath -Raw | ConvertFrom-Json
+            $utf8 = [System.Text.UTF8Encoding]::new($false)
+            [System.IO.File]::WriteAllText((Join-Path $fakeDir 'out.txt'), ($envelope | ConvertTo-Json -Depth 20 -Compress), $utf8)
+            $fakeCmd = Join-Path $fakeDir 'fake-claude.cmd'
+            [System.IO.File]::WriteAllText($fakeCmd, "@echo off`r`nif exist `"%~dp0out.txt`" type `"%~dp0out.txt`"`r`nexit /b 0`r`n", [System.Text.Encoding]::ASCII)
+
+            $realSchemasDir = Join-Path $repoRoot 'tools\headless\schemas'
+            $realBudgets = Join-Path $repoRoot 'tools\headless\budgets.json'
+            $out = & $scriptPath -AgentName 'pr-state-sweep' -Prompt 'irrelevant' -BudgetsPath $realBudgets -AgentsDir (Join-Path $repoRoot 'claude-agents') -SchemasDir $realSchemasDir -ClaudePath $fakeCmd -ReportDir $reportDir -RunLive *>&1 | Out-String -Width 8192
+            if ($LASTEXITCODE -ne 9) { throw "expected exit 9 (structured_output missing), got $LASTEXITCODE. Output: $out" }
+            if ($out -notmatch 'SCHEMA-VALIDATED OUTPUT MISSING') { throw "expected the structured_output-missing diagnostic. Output: $out" }
+        } finally {
+            $env:AEGIS_TEST_SEAM = $priorTestSeam
+        }
+    }
+
+    Test-Case "-UseLegacyResultField opts back into reading envelope.result, and PASSES against the same fixture (proving the default check's exit 9 is a real behavioural difference, not a fixture artifact)" {
+        $priorTestSeam = $env:AEGIS_TEST_SEAM
+        $env:AEGIS_TEST_SEAM = '1'
+        $fakeDir = Join-Path $fixtureDir 'fake-claude-legacy-fallback'
+        New-Item -ItemType Directory -Path $fakeDir -Force | Out-Null
+        $reportDir = Join-Path $fixtureDir 'reports-legacy-fallback'
+        try {
+            $envelope = Get-Content -LiteralPath $fixtureNoStructuredOutputPath -Raw | ConvertFrom-Json
+            $utf8 = [System.Text.UTF8Encoding]::new($false)
+            [System.IO.File]::WriteAllText((Join-Path $fakeDir 'out.txt'), ($envelope | ConvertTo-Json -Depth 20 -Compress), $utf8)
+            $fakeCmd = Join-Path $fakeDir 'fake-claude.cmd'
+            [System.IO.File]::WriteAllText($fakeCmd, "@echo off`r`nif exist `"%~dp0out.txt`" type `"%~dp0out.txt`"`r`nexit /b 0`r`n", [System.Text.Encoding]::ASCII)
+
+            $realSchemasDir = Join-Path $repoRoot 'tools\headless\schemas'
+            $realBudgets = Join-Path $repoRoot 'tools\headless\budgets.json'
+            $out = & $scriptPath -AgentName 'pr-state-sweep' -Prompt 'irrelevant' -BudgetsPath $realBudgets -AgentsDir (Join-Path $repoRoot 'claude-agents') -SchemasDir $realSchemasDir -ClaudePath $fakeCmd -ReportDir $reportDir -RunLive -UseLegacyResultField *>&1 | Out-String -Width 8192
+            if ($LASTEXITCODE -ne 0) { throw "expected exit 0 (legacy field is schema-valid JSON in this fixture), got $LASTEXITCODE. Output: $out" }
+            if ($out -notmatch 'schema check PASSED') { throw "expected the legacy path to pass. Output: $out" }
         } finally {
             $env:AEGIS_TEST_SEAM = $priorTestSeam
         }

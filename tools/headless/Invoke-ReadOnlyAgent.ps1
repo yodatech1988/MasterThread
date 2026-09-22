@@ -197,6 +197,13 @@
     produced by a fake CLI can never land where L1 evidence is read. A real run leaves it unset and
     the script resolves `claude.cmd` itself (see .NOTES). Exit 2 if the path does not exist.
 
+.PARAMETER AgentsDir
+    2026-09-22 addition (issue #212 follow-up). Directory holding claude-agents/*.md, used only
+    when -JsonSchemaPath is given: resolves claude-agents/<AgentName>.md so its body (frontmatter
+    stripped) can be sent via --append-system-prompt-file instead of --agent -- see .NOTES for why.
+    Default: ..\..\claude-agents next to this script (the real repo layout). Missing/unresolvable
+    falls back to the old --agent path with a warning, rather than refusing the run.
+
 .PARAMETER DryRun
     Test seam (tools/README.md: "Test seam is mandatory"). Resolves -Restricted (explicit or via
     the roster_meta.json default-on lookup), builds the full $claudeArgs the run would use, prints
@@ -292,6 +299,24 @@
     separate owner-merged change, tracked in GitHub issue #184 -- nothing, F7's heartbeat ingest
     included, should be built against the ladder's old shape). The per-agent `findings[]` contract is F4's --json-schema work,
     not this script's.
+
+    2026-09-22 addition (issue #212 follow-up, replaces the earlier live-run-confirmed root cause
+    that only rewrote the agent's own Output section): a peer's live probes (8 Haiku runs, CLI
+    2.1.280, same schema) found --json-schema is silently not enforced at all on any run launched
+    with --agent <name> -- the validated payload (envelope.structured_output) never appears,
+    regardless of agent instructions, subtype is still "success", and envelope.result is always
+    prose. Every non-"--agent" invocation shape in the same probe returned structured_output. This
+    matches all three real pr-state-sweep drop-folder reports exactly (145241, 172129, 173309: all
+    --agent, all --json-schema, all subtype success, all no structured_output). Fix: when
+    -JsonSchemaPath is given and the named agent's own claude-agents/<name>.md is resolvable (see
+    -AgentsDir), this script launches WITHOUT --agent, instead sending that file's body (frontmatter
+    stripped) via --append-system-prompt-file -- every other read-only boundary flag
+    (--restricted, --tools/--allowedTools, --settings) is built exactly as before; only the flag
+    that delivers the agent's own instructions changes. -Model, if not explicitly passed, is
+    defaulted from the agent's own frontmatter 'model:' line in this path, since --agent normally
+    supplies that and this path no longer does. Evidence (one live Haiku run confirming
+    structured_output appears via --append-system-prompt-file, plus the ALLOWED/DENIED boundary
+    proof) is recorded in tools/headless/evidence/.
 #>
 [CmdletBinding()]
 param(
@@ -310,6 +335,7 @@ param(
     [switch]$Report,
     [string]$ReportDir,
     [string]$ClaudePath,
+    [string]$AgentsDir,
     [switch]$DryRun
 )
 
@@ -326,6 +352,7 @@ $ErrorActionPreference = 'Stop'
 # that passes these parameters, and for every caller that relied on the defaults via `&`.
 if (-not $SettingsPath) { $SettingsPath = Join-Path $PSScriptRoot 'readonly.settings.json' }
 if (-not $RosterMetaPath) { $RosterMetaPath = Join-Path $PSScriptRoot '..\..\claude-agents\roster_meta.json' }
+if (-not $AgentsDir) { $AgentsDir = Join-Path $PSScriptRoot '..\..\claude-agents' }
 
 # --- cmd.exe command-line safety (PR #176 review, 2026-09-21) ----------------------------------
 # The wrapper launches claude.cmd, so Start-Process hands the whole argument string to cmd.exe.
@@ -525,11 +552,61 @@ function ConvertTo-QuotedArg([string]$Value) {
     return '"' + $escaped + '"'
 }
 
-$claudeArgs = @(
-    '--print',
-    '--agent', $AgentName,
-    '--settings', (ConvertTo-QuotedArg $SettingsPath)
-)
+# 2026-09-22 fix (issue #212 follow-up): a peer's live probes (8 Haiku runs, CLI 2.1.280, same
+# schema) found --json-schema is silently NOT enforced on any run launched with --agent <name>:
+# every non-agent invocation shape returned envelope.structured_output; every --agent invocation
+# returned prose with no structured_output key, subtype "success" regardless. This matches all
+# three real pr-state-sweep drop-folder reports (145241, 172129, 173309) exactly. So when a schema
+# is in play (-JsonSchemaPath given), this script launches WITHOUT --agent, instead loading the
+# named agent's own body (claude-agents/<name>.md, frontmatter stripped) via
+# --append-system-prompt-file, so the model still receives the same instructions --agent would
+# have loaded -- only the flag CLAUDE uses to deliver them changes. Every read-only boundary flag
+# (--restricted, --tools/--allowedTools, --settings) is built exactly as it would be for the
+# --agent path; nothing about what the agent is allowed to do changes, only how its prompt text
+# reaches the CLI. The agent's own frontmatter 'model:' is threaded through as -Model's default
+# (below) since --agent normally supplies that too and this path no longer does.
+$agentDefPath = Join-Path $AgentsDir "$AgentName.md"
+$useAppendSystemPromptFile = ($JsonSchemaPath -and (Test-Path -LiteralPath $agentDefPath -PathType Leaf))
+$appendSystemPromptFile = $null
+$agentFrontmatterModel = $null
+if ($JsonSchemaPath -and -not (Test-Path -LiteralPath $agentDefPath -PathType Leaf)) {
+    Write-Warning "Invoke-ReadOnlyAgent: -JsonSchemaPath was given but '$agentDefPath' does not exist -- falling back to --agent '$AgentName' (the structured_output-suppressing path this change exists to avoid). Fix -AgentsDir, or expect envelope.structured_output to be absent."
+}
+if ($useAppendSystemPromptFile) {
+    $agentDefRaw = Get-Content -LiteralPath $agentDefPath -Raw
+    # Frontmatter is a leading '---' ... '---' YAML block (see any claude-agents/*.md); the body
+    # (everything after the closing '---') is what --agent would otherwise present as the agent's
+    # own instructions. A simple two-marker split, matching how generate_agents_md.py already
+    # parses these files -- no YAML dependency needed for a strip-only operation.
+    $fmMatch = [regex]::Match($agentDefRaw, '(?s)\A---\r?\n(.*?)\r?\n---\r?\n(.*)\z')
+    if ($fmMatch.Success) {
+        $frontmatterText = $fmMatch.Groups[1].Value
+        $agentBodyText = $fmMatch.Groups[2].Value
+        $modelLineMatch = [regex]::Match($frontmatterText, '(?m)^model:\s*(\S+)\s*$')
+        if ($modelLineMatch.Success) { $agentFrontmatterModel = $modelLineMatch.Groups[1].Value }
+    } else {
+        # No parseable frontmatter block -- use the file's own full text as the system prompt
+        # rather than refuse; still strictly better than the old always-prose --agent path.
+        $agentBodyText = $agentDefRaw
+    }
+    $appendSystemPromptFile = [System.IO.Path]::GetTempFileName()
+    [System.IO.File]::WriteAllText($appendSystemPromptFile, $agentBodyText, [System.Text.UTF8Encoding]::new($false))
+}
+
+if ($useAppendSystemPromptFile) {
+    $claudeArgs = @(
+        '--print',
+        '--append-system-prompt-file', (ConvertTo-QuotedArg $appendSystemPromptFile),
+        '--settings', (ConvertTo-QuotedArg $SettingsPath)
+    )
+    if (-not $Model -and $agentFrontmatterModel) { $Model = $agentFrontmatterModel }
+} else {
+    $claudeArgs = @(
+        '--print',
+        '--agent', $AgentName,
+        '--settings', (ConvertTo-QuotedArg $SettingsPath)
+    )
+}
 
 # --- F2: --restricted (layer 1) INSTEAD OF --tools/--allowedTools (layer 2) --------------------
 # Per docs/FABLE_AGENT_SUBAGENT_PLAN.md §5's own two invocation shapes: a subagent needing no shell
@@ -708,6 +785,7 @@ if ($ClaudePath) {
     if (-not (Test-Path -LiteralPath $ClaudePath -PathType Leaf)) {
         Write-Host "Invoke-ReadOnlyAgent: -ClaudePath '$ClaudePath' does not exist." -ForegroundColor Red
         if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+        if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
         exit 2
     }
     $claudeExe = (Resolve-Path -LiteralPath $ClaudePath).ProviderPath
@@ -793,6 +871,7 @@ try {
     # itself terminating under $ErrorActionPreference = 'Stop' and would skip the exit code below.
     Write-Host "Invoke-ReadOnlyAgent: failed to launch '$claudeExe': $($_.Exception.GetType().FullName): $($_.Exception.Message)" -ForegroundColor Red
     if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+    if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
     Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
     exit 2
 }
@@ -811,12 +890,14 @@ try {
         Get-Content $stdoutFile -ErrorAction SilentlyContinue
         Get-Content $stderrFile -ErrorAction SilentlyContinue | Write-Verbose
         if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+        if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
         Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
         exit 3
     }
 } catch {
     Write-Host "Invoke-ReadOnlyAgent: error waiting on '$AgentName': $($_.Exception.GetType().FullName): $($_.Exception.Message)" -ForegroundColor Red
     if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+    if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
     Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
     exit 2
 }
@@ -833,12 +914,14 @@ if ($null -eq $claudeExitCode) {
     # (= 0). Treated as a wrapper-side failure, exit 2, with no report written.
     Write-Host "Invoke-ReadOnlyAgent: could not read the exit code of '$claudeExe' for agent '$AgentName' -- treating the run as failed rather than reporting success." -ForegroundColor Red
     if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+    if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
     Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
     exit 2
 }
 
 if (-not $reportMode) {
     if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+    if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
     Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
     exit $claudeExitCode
 }
@@ -863,6 +946,7 @@ try {
 }
 $trimmedEnvelope = $rawStdout.Trim()
 if ($promptFile) { Remove-Item $promptFile -ErrorAction SilentlyContinue }
+if ($appendSystemPromptFile) { Remove-Item $appendSystemPromptFile -ErrorAction SilentlyContinue }
 Remove-Item $stdoutFile, $stderrFile -ErrorAction SilentlyContinue
 
 function Exit-NoReport([int]$Code, [string]$Why) {

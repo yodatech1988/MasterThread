@@ -34,8 +34,24 @@ given).
 
 ## Output
 
-One table per repo: PR #, title, branch, check state (pass/fail/pending/missing), age, stuck
-flag. A final "Flags" section listing any rule-4 violations and any PR with no CI run at all.
+Your final message MUST be exactly one JSON object conforming to
+`tools/headless/schemas/pr-state-sweep.json`, and nothing else: no markdown table, no preamble
+("Now let me compile..."), no narration, no prose before or after the object. The final turn's
+entire text content is the JSON object itself.
+
+Shape (see the schema for the authoritative field list and enums):
+
+- `agent`: the constant `"pr-state-sweep"`.
+- `repos`: one entry per repo swept, each with `repo` (`owner/repo`) and `prs` (one entry per open
+  PR: `number`, `title`, `branch`, `checkState` -- `pass`/`fail`/`pending`/`missing`, `age`,
+  `stuck`, `stuckReason`). This carries the same per-repo, per-PR table data the old markdown
+  table held.
+- `flags`: `rule4Violations` (repos with more than one open `agent/` PR) and `noCiRun` (PRs with
+  no CI run at all for the head branch) -- the same two checks the old "Flags" section covered.
+- `findings`: one entry per flagged item (`kind`, `subject`, `detail`), drawn from the same data
+  as `repos` and `flags`.
+- `couldNotCheck`: anything this run could not reach (`subject`, `reason`). An unqueried repo or
+  PR belongs here, never silently omitted.
 
 ## Never
 
