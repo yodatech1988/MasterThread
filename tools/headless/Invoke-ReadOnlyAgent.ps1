@@ -96,15 +96,22 @@
     Override the settings file. Default is readonly.settings.json next to this script.
 
 .PARAMETER JsonSchemaPath
-    Added for plan task F12 (docs/FABLE_AGENT_SUBAGENT_PLAN.md section 5): passed through as
-    `--json-schema <path>` when supplied, so the CLI's own structured-output validation constrains
-    the agent's answer to one of the tools/headless/schemas/*.json files built in F4. Optional --
-    a caller that never passes it gets byte-identical behaviour to before this parameter existed.
-    Must be an existing file; same cmd.exe-safety checks as -SettingsPath apply (refused with exit
-    2, nothing launched, if the value contains a double quote, %, !, a line break, or ends in a
-    backslash). This parameter only threads the flag through -- it does not itself validate the
-    agent's returned JSON against the schema; see tools/headless/Invoke-Subagent.ps1 and
-    JsonSchemaLite.ps1 for that (F12's own wrapper, layered on top of this script).
+    Added for plan task F12 (docs/FABLE_AGENT_SUBAGENT_PLAN.md section 5). Points at one of the
+    tools/headless/schemas/*.json files built in F4. Fixed 2026-09-22 (QA, PR #197 comments): the
+    CLI's --json-schema flag expects the schema file's CONTENT, not its path -- passing the path
+    string made the CLI fail during its own argument/schema parsing before ever reaching the API
+    (exit 1, no output, wrapper exit 6, no session transcript). This parameter's own file is read
+    with `Get-Content -Raw` and that content -- not the path -- is what is passed as `--json-schema`
+    (quoted with the same ConvertTo-QuotedArg helper used for every other value on this command
+    line), so the CLI's own structured-output validation constrains the agent's answer to that
+    schema. Optional -- a caller that never passes it gets byte-identical behaviour to before this
+    parameter existed. The path itself must be an existing file; same cmd.exe-safety checks as
+    -SettingsPath apply to the PATH value (refused with exit 2, nothing launched, if the path
+    contains a double quote, %, !, a line break, or ends in a backslash) -- those checks do not
+    re-run against the file's contents. This parameter only threads the flag through -- it does not
+    itself validate the agent's returned JSON against the schema; see
+    tools/headless/Invoke-Subagent.ps1 and JsonSchemaLite.ps1 for that (F12's own wrapper, layered
+    on top of this script).
 
 .PARAMETER Report
     Added for plan task F3 (docs/FABLE_AGENT_SUBAGENT_PLAN.md:617). Turns on L1 report mode: the
@@ -477,11 +484,17 @@ $claudeArgs += @(
     '--max-budget-usd', [string]$MaxBudgetUsd
 )
 
-# F12: --json-schema, threaded through unchanged when supplied. Omitted entirely when not passed,
-# so a caller that never sets -JsonSchemaPath gets the exact same $claudeArgs as before this
-# parameter existed.
+# F12 bug fix (QA, PR #197 comments 2026-09-22, zero-cost mock repro + `claude --help` text): the
+# CLI's --json-schema flag expects the schema file's CONTENT, not its path. Passing the path string
+# made the CLI fail during its own argument/schema parsing before ever reaching the API -- exit 1,
+# no output, wrapper exit 6, no session transcript (the live QA failure signature). Fixed by reading
+# the file's content here and passing that as the flag's value, quoted with the same
+# ConvertTo-QuotedArg helper used for every other value on this command line. Omitted entirely when
+# not passed, so a caller that never sets -JsonSchemaPath gets the exact same $claudeArgs as before
+# this parameter existed.
 if ($JsonSchemaPath) {
-    $claudeArgs += @('--json-schema', (ConvertTo-QuotedArg $JsonSchemaPath))
+    $jsonSchemaContent = Get-Content -Raw -LiteralPath $JsonSchemaPath
+    $claudeArgs += @('--json-schema', (ConvertTo-QuotedArg $jsonSchemaContent))
 }
 
 if ($reportMode) {
