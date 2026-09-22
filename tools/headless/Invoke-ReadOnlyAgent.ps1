@@ -121,7 +121,16 @@
     `command` is the exact command line that was launched: the resolved executable and every
     argument. The prompt is not part of it -- it travels on stdin (see -Prompt) -- and it is not
     stored anywhere in the report, so a prompt built from handoff or card content is not kept
-    indefinitely under %APPDATA%\AEGIS\reports (D6).
+    indefinitely under %APPDATA%\AEGIS\reports (D6). As a result `command` alone does not re-run the
+    same request; the prompt has to be supplied on stdin again. That is a narrower reading of the
+    brief's "exact invocation string", pending the brief holder's confirmation (PR #176 review
+    round 2).
+
+    Known residual, not solved (PR #176 review round 2): keeping the prompt out does not keep
+    secrets out. The envelope is stored whole, and envelope.result and
+    permission_denials[].tool_input can carry file contents or command lines the agent read or
+    tried. There is no redaction and no retention limit on the drop folder (D6 keeps reports on
+    this PC indefinitely).
 
     Fails loudly, never writes a partial file: if the CLI exits non-zero, or its stdout is empty,
     is not valid JSON, is not a single JSON object, or lacks the result-envelope keys this report
@@ -174,8 +183,9 @@
     2 = this wrapper itself failed to resolve or launch `claude` (never reached the subprocess at
     all), or refused an argument that is unsafe on cmd.exe's command line (-AgentName or -Model
     outside their allowed character sets; -SettingsPath/-Tools/-AllowedTools containing a double
-    quote, % or a line break, or ending in a backslash; -SettingsPath not an existing file), or
-    refused -ClaudePath (no AEGIS_TEST_SEAM=1, or a report aimed at the real drop folder). 3 = the
+    quote, %, ! or a line break, or ending in a backslash; -SettingsPath not an existing file), or
+    refused -ClaudePath (no AEGIS_TEST_SEAM=1, or a report aimed at the real drop folder), or got
+    -Report with no -ReportDir while %APPDATA% is unset (no default folder to resolve). 3 = the
     run timed out and its whole process tree was killed. 4 = -Restricted was not passed explicitly and the
     default-on lookup against roster_meta.json could not be completed (file missing, unparsable,
     or the named agent is not listed) -- fails closed rather than assuming unrestricted. 5 = the
@@ -279,16 +289,22 @@ function Exit-UnsafeArg([string]$Name, [string]$Why) {
     Write-Host "Invoke-ReadOnlyAgent: refusing -$Name -- $Why. Nothing was launched." -ForegroundColor Red
     exit 2
 }
-if ($AgentName -cnotmatch '^[A-Za-z0-9._-]+\z') {
-    Exit-UnsafeArg 'AgentName' "'$AgentName' must match ^[A-Za-z0-9._-]+$ (it is passed to cmd.exe unquoted)"
+# PR #176 review round 2 (safety): the first character must be alphanumeric. Both values are placed
+# straight after --agent / --model, so a value starting with '-' (e.g. '--dangerously-skip-permissions'
+# or '--permission-mode') could be read by the CLI's parser as a new flag instead of the option's
+# value, widening permissions past every layer. Refused here rather than left to the parser.
+if ($AgentName -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]*\z') {
+    Exit-UnsafeArg 'AgentName' "'$AgentName' must match ^[A-Za-z0-9][A-Za-z0-9._-]*$ (it is passed to cmd.exe unquoted and must not start with '-')"
 }
-if ($Model -and $Model -cnotmatch '^[A-Za-z0-9._\[\]-]+\z') {
-    Exit-UnsafeArg 'Model' "'$Model' must match ^[A-Za-z0-9._\[\]-]+$ (it is passed to cmd.exe unquoted)"
+if ($Model -and $Model -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._\[\]-]*\z') {
+    Exit-UnsafeArg 'Model' "'$Model' must match ^[A-Za-z0-9][A-Za-z0-9._\[\]-]*$ (it is passed to cmd.exe unquoted and must not start with '-')"
 }
 foreach ($quotedName in @('SettingsPath', 'Tools', 'AllowedTools')) {
     $quotedValue = Get-Variable -Name $quotedName -ValueOnly
-    if ($quotedValue -and $quotedValue -match '["%\r\n]') {
-        Exit-UnsafeArg $quotedName 'the value contains a double quote, %, or a line break, which cmd.exe would interpret even inside quotes'
+    # '!' added in PR #176 review round 2 (safety): with cmd.exe delayed expansion switched on
+    # (Command Processor\DelayedExpansion=1 in HKCU or HKLM), cmd.exe expands !VAR! even inside quotes.
+    if ($quotedValue -and $quotedValue -match '["%!\r\n]') {
+        Exit-UnsafeArg $quotedName 'the value contains a double quote, %, !, or a line break, which cmd.exe would interpret even inside quotes'
     }
     # PR #176 review round 2: these values are wrapped as "value" (ConvertTo-QuotedArg). A value
     # ending in a backslash becomes "...\" and the CLI's argv parser reads that trailing \" as an
@@ -304,6 +320,13 @@ foreach ($quotedName in @('SettingsPath', 'Tools', 'AllowedTools')) {
 # AEGIS_TEST_SEAM=1, and in report mode it may only write to an explicit -ReportDir that is not the
 # real drop folder (see below), so even a leftover AEGIS_TEST_SEAM=1 cannot put a fake CLI's output
 # where L1 evidence is read.
+#
+# Known limitation, stated rather than solved (PR #176 review round 2, safety): the "not the real
+# drop folder" check below compares full path STRINGS (GetFullPath, case-insensitive). A junction or
+# symlink pointing at %APPDATA%\AEGIS\reports, an 8.3 short name, a \\?\ or \\localhost\c$ path, or
+# an APPDATA value changed in the same process would all pass it. The guard stops a leftover
+# AEGIS_TEST_SEAM=1 or a careless test from landing fake output in the drop folder. It is not a
+# boundary against a caller that already runs code as this user and sets AEGIS_TEST_SEAM=1 on purpose.
 if ($ClaudePath -and $env:AEGIS_TEST_SEAM -ne '1') {
     Write-Host "Invoke-ReadOnlyAgent: -ClaudePath is a test seam and is refused unless the environment variable AEGIS_TEST_SEAM is set to 1. A real run resolves claude.cmd itself. Nothing was launched." -ForegroundColor Red
     exit 2
@@ -316,8 +339,10 @@ $reportMode = [bool]$Report -or $PSBoundParameters.ContainsKey('ReportDir')
 if ($reportMode -and -not $ReportDir) {
     # Default resolved here rather than in param(), same reason as the two defaults above.
     if (-not $env:APPDATA) {
-        Write-Host "Invoke-ReadOnlyAgent: -Report was requested with no -ReportDir and %APPDATA% is not set, so the default drop folder cannot be resolved. Pass -ReportDir." -ForegroundColor Red
-        exit 7
+        # Exit 2 (refused before launch), not 7: .NOTES defines 7 as "the envelope was valid but the
+        # report file could not be written", and nothing has been launched yet (PR #176 review round 2).
+        Write-Host "Invoke-ReadOnlyAgent: -Report was requested with no -ReportDir and %APPDATA% is not set, so the default drop folder cannot be resolved. Pass -ReportDir. Nothing was launched." -ForegroundColor Red
+        exit 2
     }
     $ReportDir = Join-Path $env:APPDATA 'AEGIS\reports'
 }
@@ -540,8 +565,10 @@ try {
         Write-Warning "Invoke-ReadOnlyAgent: '$AgentName' exceeded ${TimeoutSec}s, killing it. This is itself a finding worth reporting -- see headless_agent_permissions.md Verification section for why a run should not hang under --permission-prompts none."
         # PR #176 review round 2: $proc is the cmd.exe running claude.cmd. Killing only it left the
         # node CLI (and anything it started) running after this wrapper reported exit 3. Kill the
-        # whole tree; fall back to the single process if taskkill did not end it.
-        & (Join-Path $env:SystemRoot 'System32\taskkill.exe') /T /F /PID $proc.Id 2>&1 | Write-Verbose
+        # whole tree; fall back to the single process if taskkill did not end it. The System32 path
+        # comes from the OS, not from $env:SystemRoot, which an unset or poisoned environment could
+        # change (PR #176 review round 2, safety).
+        & (Join-Path ([Environment]::GetFolderPath('System')) 'taskkill.exe') /T /F /PID $proc.Id 2>&1 | Write-Verbose
         if (-not $proc.WaitForExit(5000)) { try { $proc.Kill() } catch {} }
         Write-Host "Invoke-ReadOnlyAgent: timeout after ${TimeoutSec}s running agent '$AgentName'" -ForegroundColor Red
         Get-Content $stdoutFile -ErrorAction SilentlyContinue

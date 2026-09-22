@@ -173,6 +173,61 @@ try {
         if ($LASTEXITCODE -ne 2) { throw "a trailing newline in -AgentName must be refused, got $LASTEXITCODE" }
     }
 
+    Test-Case "-AgentName / -Model starting with '-' is refused (exit 2): no flag injection after --agent / --model (PR #176 review round 2)" {
+        $fake = New-RecordingClaude 'flaginject'
+        foreach ($bad in @('--dangerously-skip-permissions', '--permission-mode', '-x', '.hidden', '_x')) {
+            $out = & $scriptPath -AgentName $bad -Prompt 'irrelevant' -Restricted -ClaudePath $fake *>&1 | Out-String -Width 4096
+            if ($LASTEXITCODE -ne 2) { throw "-AgentName '$bad': expected exit 2, got $LASTEXITCODE. Output: $out" }
+        }
+        if (Test-Path (Join-Path (Split-Path -Parent $fake) 'args.txt')) { throw "the CLI was launched" }
+        foreach ($bad in @('--dangerously-skip-permissions', '-haiku', '[1m]')) {
+            & $scriptPath @common -Model $bad -DryRun *>&1 | Out-Null
+            if ($LASTEXITCODE -ne 2) { throw "-Model '$bad': expected exit 2, got $LASTEXITCODE" }
+        }
+        & $scriptPath -AgentName 'worktree-sweep' -Prompt 'x' -Restricted -Model 'haiku' -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "a normal agent name and model must still be accepted, got $LASTEXITCODE" }
+        & $scriptPath -AgentName '9lives' -Prompt 'x' -Restricted -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "a name starting with a digit must still be accepted, got $LASTEXITCODE" }
+    }
+
+    Test-Case "-Tools / -AllowedTools / -SettingsPath containing '!' are refused (exit 2; cmd.exe delayed expansion)" {
+        & $scriptPath -AgentName 'fixture-reporter' -Prompt 'x' -Restricted:$false -Tools 'Bash!PATH!' -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 2) { throw "-Tools: expected exit 2, got $LASTEXITCODE" }
+        & $scriptPath -AgentName 'fixture-reporter' -Prompt 'x' -Restricted:$false -Tools 'Bash' -AllowedTools 'Bash(echo !PATH!)' -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 2) { throw "-AllowedTools: expected exit 2, got $LASTEXITCODE" }
+        & $scriptPath @common -SettingsPath 'C:\x!y.json' -DryRun *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 2) { throw "-SettingsPath: expected exit 2, got $LASTEXITCODE" }
+    }
+
+    Test-Case "-Report with no -ReportDir and %APPDATA% unset -> exit 2, nothing launched (was exit 7)" {
+        $fake = New-RecordingClaude 'noappdata'
+        $realAppData = $env:APPDATA
+        try {
+            $env:APPDATA = $null
+            $out = & $scriptPath @common -Report -ClaudePath $fake *>&1 | Out-String -Width 4096
+            $code = $LASTEXITCODE
+        } finally { $env:APPDATA = $realAppData }
+        if ($code -ne 2) { throw "expected exit 2, got $code. Output: $out" }
+        if ($out -notmatch 'APPDATA') { throw "error should name %APPDATA%. Output: $out" }
+        if (Test-Path (Join-Path (Split-Path -Parent $fake) 'args.txt')) { throw "the CLI was launched" }
+    }
+
+    Test-Case "command in the report matches the argv the child actually received (not only the DryRun string)" {
+        $fake = New-RecordingClaude 'cmdmatch'
+        $rd = New-ReportDir 'cmdmatch'
+        & $scriptPath -AgentName 'fixture-reporter' -Prompt 'x' -Restricted:$false -Tools 'Read,Grep' -AllowedTools 'Bash(git status:*)' -Model 'haiku' -ReportDir $rd -ClaudePath $fake *>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE" }
+        $files = Get-Reports $rd
+        if ($files.Count -ne 1) { throw "expected 1 report, got $($files.Count)" }
+        $cmdField = (Read-Report $files[0].FullName).Parsed.command
+        $received = ([System.IO.File]::ReadAllText((Join-Path (Split-Path -Parent $fake) 'args.txt'))).TrimEnd("`r", "`n", ' ')
+        if (-not $received.StartsWith('ARGS=')) { throw "unexpected args.txt: $received" }
+        $received = $received.Substring(5)
+        if (-not $cmdField.StartsWith("$fake ")) { throw "command does not start with the executable: $cmdField" }
+        $cmdArgs = $cmdField.Substring($fake.Length + 1)
+        if ($cmdArgs -cne $received) { throw "command args differ from what the child received.`n command:  $cmdArgs`n received: $received" }
+    }
+
     Test-Case "-Model outside its character set is refused (exit 2)" {
         & $scriptPath @common -Model 'haiku & echo PWNED' -DryRun *>&1 | Out-Null
         if ($LASTEXITCODE -ne 2) { throw "expected exit 2, got $LASTEXITCODE" }
@@ -344,8 +399,17 @@ try {
         @{ Name = 'object missing permission_denials'; Out = '{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0.01,"usage":{}}'; Exit = 0 },
         @{ Name = 'object with type != result';      Out = '{"type":"assistant","subtype":"x","is_error":false,"num_turns":1,"total_cost_usd":0,"permission_denials":[],"usage":{}}'; Exit = 0 },
         @{ Name = 'permission_denials not an array'; Out = '{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0,"permission_denials":"none","usage":{}}'; Exit = 0 },
-        @{ Name = 'lenient-only JSON (single-quoted keys; PS 5.1 ConvertFrom-Json accepts it)'; Out = "{'type':'result','subtype':'success','is_error':false,'num_turns':1,'total_cost_usd':0,'permission_denials':[],'usage':{}}"; Exit = 0 }
+        @{ Name = 'lenient-only JSON (single-quoted keys; PS 5.1 ConvertFrom-Json accepts it)'; Out = "{'type':'result','subtype':'success','is_error':false,'num_turns':1,'total_cost_usd':0,'permission_denials':[],'usage':{}}"; Exit = 0 },
+        @{ Name = 'trailing comma (WCF reader accepts it)'; Out = '{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0,"permission_denials":[],"usage":{},}'; Exit = 0 },
+        @{ Name = 'two concatenated objects (WCF reader accepts it)'; Out = '{"type":"result","subtype":"success","is_error":false,"num_turns":1,"total_cost_usd":0,"permission_denials":[],"usage":{}}{"type":"result"}'; Exit = 0 }
     )
+    # Every required result-envelope key, not only permission_denials (PR #176 review round 2,
+    # tests-real): drop one key at a time from an otherwise complete envelope.
+    $fullKeys = [ordered]@{ type = '"result"'; subtype = '"success"'; is_error = 'false'; num_turns = '1'; total_cost_usd = '0'; permission_denials = '[]'; usage = '{}' }
+    foreach ($drop in @($fullKeys.Keys)) {
+        $parts = @($fullKeys.Keys | Where-Object { $_ -ne $drop } | ForEach-Object { '"' + $_ + '":' + $fullKeys[$_] })
+        $badCases += @{ Name = "object missing $drop"; Out = '{' + ($parts -join ',') + '}'; Exit = 0 }
+    }
     $i = 0
     foreach ($bc in $badCases) {
         $i++
@@ -407,14 +471,18 @@ try {
         $dir = Join-Path $root 'timeout'
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
         $cmd = Join-Path $dir 'fake-claude.cmd'
-        # The fake CLI starts a long-lived child (as claude.cmd starts node), tagged with a marker.
-        $body = "@echo off`r`npowershell.exe -NoProfile -Command `"Start-Sleep -Seconds 60; '$marker'`"`r`nexit /b 0`r`n"
+        # The fake CLI starts a long-lived child (as claude.cmd starts node), tagged with a marker. The
+        # child writes started.txt first, so the test can prove it was really running before the kill
+        # (PR #176 review round 2, tests-real: otherwise a child that never started passes vacuously).
+        $started = Join-Path $dir 'started.txt'
+        $body = "@echo off`r`npowershell.exe -NoProfile -Command `"Set-Content -LiteralPath '$started' -Value up; Start-Sleep -Seconds 60; '$marker'`"`r`nexit /b 0`r`n"
         [System.IO.File]::WriteAllText($cmd, $body, [System.Text.Encoding]::ASCII)
-        $out = & $scriptPath @common -TimeoutSec 3 -ClaudePath $cmd *>&1 | Out-String -Width 4096
+        $out = & $scriptPath @common -TimeoutSec 8 -ClaudePath $cmd *>&1 | Out-String -Width 4096
         $code = $LASTEXITCODE
         Start-Sleep -Milliseconds 500
         $left = @(Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($marker) })
         if ($code -ne 3) { throw "expected exit 3, got $code. Output: $out" }
+        if (-not (Test-Path -LiteralPath $started)) { throw "the child never started before the timeout, so the tree-kill was not exercised" }
         if ($left.Count -ne 0) { throw "the CLI's child process is still running after the timeout (PID $($left[0].ProcessId))" }
     }
 
