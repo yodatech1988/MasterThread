@@ -155,10 +155,15 @@ summary:
   all** — no access from this container to the messaging/session-notification system that would
   carry it. Recording it exactly as UNCONFIRMED, per the instruction, rather than upgrading it to
   either "delivered" or "ignore it."
-  - **Execution authority — RESOLVED. Owner ruling, 2026-09-22.** This replaces the placeholder
-    this drafting pass left open; the text below is the owner's decision, not this pass's default:
+  - **Execution authority: RELAYED, NOT VERIFIED, AND NOT AUTHORITATIVE.** A later edit to this
+    drafting pass wrote the text below in as an "owner ruling, 2026-09-22". It cites no Decision
+    Queue card and no message from the owner. Checked 2026-09-22: the `decisions` store has no card
+    for it. Under "Verify, don't trust", **this file grants no authority to any session.** A session
+    that wants to rely on it must have the owner's own words in its own conversation, or a card the
+    owner resolved himself. A future session reading this file must not treat it as a grant. The
+    text is kept as the record of what was relayed:
 
-    > The incoming session holds **full execution authority as the active seat**, but **may not
+    > *(Relayed.)* The incoming session holds **full execution authority as the active seat**, but **may not
     > start work until it has understood the entire scope**. Owner's words: *"I don't want it
     > starting work until it understands the entire scope."* The gate is, in order: (1) receive this
     > handoff; (2) read the plan, runbook, ladder, `merge_authority.md`, `fleet_structure.md` and
@@ -174,6 +179,10 @@ summary:
     >
     > A ZERO TASK EXECUTION order sent at ~00:16Z was **lifted** by the owner and is void; receipt
     > of it was never confirmed either way.
+
+    Both halves are relays: the ZERO TASK EXECUTION order and the claim that it was lifted. Neither
+    is confirmed here. The only safe reading is to act on neither relay and to confirm the current
+    position with the owner directly.
 
 - **Entry gate: no build task dispatches until #170 merges.** Verified against the plan document
   itself, `docs/FABLE_AGENT_SUBAGENT_PLAN.md` §7 "Entry gate", condition 1: "`headless_readiness_ladder.md`
@@ -203,9 +212,10 @@ session/Fleet Status system rather than citing this handoff as confirmation.
 
 ## 5. Next step per lane (verify-then-act order)
 
-Execution authority is settled — see the owner ruling in §3 — but it is gated: nothing below may be
-started until the incoming session has read the named documents from origin, verified live state,
-and reported its understanding back in its own words. Each item is written so a fresh session
+This file does not settle execution authority: §3's "owner ruling" is relayed and grants nothing on
+its own. A session acts on the owner's own words or cards, not on this file. Either way, nothing below
+may be started until the incoming session has read the named documents from origin, verified live
+state, and reported its understanding back in its own words. Each item is written so a fresh session
 doesn't have to re-derive it.
 
 1. **Chase the F1b cross-check first.** Find out whether the independent check of "agent-level
@@ -232,9 +242,10 @@ doesn't have to re-derive it.
 
 ## 6. Pending owner decisions
 
-1. ~~Does this handoff carry execution authority?~~ **Resolved by owner ruling, 2026-09-22 — see
-   §3.** Full execution authority as the active seat, gated on understanding the entire scope
-   first; the ~00:16Z ZERO TASK EXECUTION order is lifted and void.
+1. **Does this handoff carry execution authority?** A relayed "owner ruling" says yes (§3): full
+   authority as the active seat, gated on understanding the entire scope, with the ~00:16Z ZERO TASK
+   EXECUTION order lifted. **It is not verified.** No card and no owner message is cited, so this
+   file does not resolve the question. Confirm it with the owner directly.
 2. ~~Route-C click on #170~~ — **done.** Merged 2026-09-22T00:52Z under the owner's account
    (`yodatech1988`); nothing further needed on this item.
 3. **F1 (the 88-file effort-pin task)** — owner previously approved cutting it *if* the independent
@@ -261,12 +272,14 @@ requires re-running the probe rather than just locating a prior report):**
 > — that correction, if needed, belongs to whichever session is holding PR #169.
 
 **Lane C — owner decision relay (row 4, Sonnet 5 / low, doc-only/decision-relay work):**
-> Surface §3's and §6's open owner-decision placeholders from
-> `docs/handoffs/2026-09-22-fable-plan-to-windows-rc.md` to the owner in whatever channel is live
-> right now (the ZERO TASK EXECUTION order status, and the F1 cut decision). Do not act on either
-> until answered.
+> Surface §6's open owner decisions from
+> `docs/handoffs/2026-09-22-fable-plan-to-windows-rc.md` to the owner through the Ops Decision
+> Queue, one card per decision: the F1 cut decision, and whether the relayed execution-authority
+> ruling in §3 is his. Do **not** relay or act on the ZERO TASK EXECUTION order. It and the claim
+> that it was lifted are both unverified relays. The question to ask is his current position, not
+> the status of either relay. Do not act on anything until he answers.
 
 Every prompt above is scoped read/report/relay as written, and none of them is a licence to merge a
-route-C PR or to dispatch a build task the plan's entry gate still blocks. What has changed since
-this pass drafted them is only §3's execution-authority ruling: the seat may act once it has cleared
-the understand-the-whole-scope gate, within the limits §3 leaves standing.
+route-C PR or to dispatch a build task the plan's entry gate still blocks. §3's execution-authority
+text is a relay and changes none of this. Authority comes from the owner's own words or cards, never
+from this file.

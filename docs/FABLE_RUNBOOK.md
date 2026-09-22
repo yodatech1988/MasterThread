@@ -6,7 +6,7 @@ to be read on a phone.
 
 **Nothing in this runbook is live yet.** The wrappers it calls (F12) are not built. The plan's §7
 entry gate is now mostly satisfied (conditions 1, 2, 4, 5 as of 2026-09-22), but F5 and F11 are on
-owner WAIT and F8 is deferred (plan §9). Read this as the procedure the build is aiming at, not as
+owner WAIT and F8 is deferred (plan §9, relayed and not yet confirmed on a card). Read this as the procedure the build is aiming at, not as
 instructions that work today. Each step says what it needs.
 
 ---
@@ -42,9 +42,12 @@ Only the seat writes the board — `claude -p` cannot hold `ArtifactData`, so no
 own approval.
 
 **4. You read and tap.** Summary on top, links in `points`.
-On a paired phone a confirm is three taps with a 10s arm window. Decision cards resolve on your tap;
-action cards resolve **on evidence**, so an agent closes them once it can see the thing is done —
-you do not have to come back and press the button.
+On a paired phone a confirm is three taps with a 10s arm window. Decision cards resolve on your
+tap, and only yours. Action cards take two steps. You do the thing and press **"I did it - check
+it"**. That records your claim and leaves the card open. Then **the seat** checks the live result
+and closes the card, recording what it checked. The seat never closes an action card you have not
+claimed. No agent closes one either, because agents cannot write to the board (step 3). If the
+check fails, the card stays open with what was found.
 
 **5. Seat dispatches.** One wrapper call per task, by table lookup (plan §4). Never a hand-typed
 flag line.
@@ -91,8 +94,9 @@ F-task id, status only — no logs, code or secrets), files the next cards. Back
 that class from a phone; you cannot *execute* it.
 
 This bites in one specific place: **registering the scheduled run (F5) is itself a click-file**, so
-the step that moves the fleet to L1 is desk-only. **Owner decision D5 (2026-09-22): accepted** —
-rung changes stay desk-only; no second approval path is built (plan §9).
+the step that moves the fleet to L1 is desk-only. **Owner decision D5 (2026-09-22, relayed and not
+yet confirmed on a card; see plan §9's provenance note):** rung changes stay desk-only, and no second
+approval path is built.
 
 Also worth knowing: the approval-device gate is **"not real security"** in its own words — a
 `localStorage` id against a shared pairing list. It guards against a wrong-device tap. It is not
@@ -105,8 +109,10 @@ hard-to-reverse action.
 
 - **A report that says nothing is not a quiet day.** A scheduled run that emitted no file is a
   finding — "a silent watcher and a quiet fleet must not look alike" (`fleet_roster_monitor.md`).
-- **A refusal reads as an empty answer.** Fable can decline at HTTP 200. Every Fable call runs
-  `--fallback-model opus`; a seat at `low` will otherwise relay "nothing found" as a finding.
+- **A refusal reads as an empty answer.** Fable can decline at HTTP 200, and a seat at `low` will
+  relay that as "nothing found". A refusal is a stop. The wrapper reports it as a refusal, and it is
+  filed for you. It is never retried on another model. (`--fallback-model opus` is only for when
+  Fable is overloaded or unavailable. It is not a way around a refusal.)
 - **A cold resume succeeds and costs ~70× more.** ~$0.51 against ~$0.007. It does not fail, so F12
   has to make it loud.
 - **Green CI is not evidence, and neither is its absence.** Say which kind of failure you are
