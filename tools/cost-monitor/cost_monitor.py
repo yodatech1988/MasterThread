@@ -54,7 +54,7 @@ DEFAULT_RATES_REPO = os.path.join(os.path.expanduser("~"), "GitHub", "ops-polici
 RATES_REF = "origin/main"
 RATES_PATH = "routing/models.yaml"
 DATED_SUFFIX = re.compile(r"^-[0-9]{8}$")
-FIELDS = ("in", "out", "cache_read", "cache_write", "msgs")
+FIELDS = ("in", "out", "cache_read", "cache_write", "cache_write_5m", "cache_write_1h", "cache_write_unknown", "msgs")
 API_KEY_NAME = "ANTHROPIC_API_KEY"
 ERROR_NO_MORE_ITEMS = 259   # winreg.EnumValue past the last value
 MACHINE_ENV_KEY = BS.join(["SYSTEM", "CurrentControlSet", "Control", "Session Manager", "Environment"])
@@ -66,6 +66,15 @@ STATE_NAMES = {OK: "ok", ALERT: "alert", STOP: "stop-and-ask", UNKNOWN: "unknown
 
 def default_state_dir():
     return os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "AEGIS", "cost")
+
+
+def default_reports_dir():
+    """The Fable headless drop folder (F3, plan:617): one {envelope, checkedAt, command} report per
+    headless run, written by tools/headless/Invoke-ReadOnlyAgent.ps1 -Report. D6 keeps it on this PC."""
+    return os.path.join(os.environ.get("APPDATA") or os.path.expanduser("~"), "AEGIS", "reports")
+
+
+HEADLESS_STAMP_RE = re.compile(r"^(?P<agent>.+)\.\d{8}-\d{6}(?:-\d+)?$")
 
 
 def safe_label(text, limit=60):
@@ -133,14 +142,24 @@ def match_model(model, rates):
 
 
 def usd(counts, entry, cfg):
-    """(low, high, io_only) what-if dollars, or None when the model is unpriced."""
+    """(low, high, io_only) what-if dollars, or None when the model is unpriced.
+
+    Cache-write pricing is TTL-aware (F8, 2026-09-22): a response whose usage.cache_creation carries
+    the 5m/1h split is priced at the CONFIRMED per-TTL rate for each bucket -- low and high collapse
+    to the same exact number. A response with only the aggregate cache_creation_input_tokens (TTL
+    unknown -- an older transcript shape, or a model that doesn't report the split) keeps the original
+    low(5m)-high(1h) range convention, so the uncertainty is about which TTL was used, never about
+    the rate itself."""
     if entry is None:
         return None
     cm = cfg["cache_multipliers"]
     read = entry["read_factor"] if entry["read_factor"] is not None else cm["read"]
     base = counts["in"] * entry["in"] + counts["out"] * entry["out"] + counts["cache_read"] * entry["in"] * read
-    low = base + counts["cache_write"] * entry["in"] * cm["write_low"]
-    high = base + counts["cache_write"] * entry["in"] * cm["write_high"]
+    confirmed = (counts["cache_write_5m"] * entry["in"] * cm["write_5m"] +
+                counts["cache_write_1h"] * entry["in"] * cm["write_1h"])
+    unknown = counts["cache_write_unknown"]
+    low = base + confirmed + unknown * entry["in"] * cm["write_5m"]
+    high = base + confirmed + unknown * entry["in"] * cm["write_1h"]
     return low / 1e6, high / 1e6, (counts["in"] * entry["in"] + counts["out"] * entry["out"]) / 1e6
 
 
@@ -191,9 +210,22 @@ def scan(projects_dir, today, days):
                 out = usage.get("output_tokens") or 0
                 if mid in best and best[mid]["out"] >= out:
                     continue
+                # TTL split (usage.cache_creation.ephemeral_5m_input_tokens / ephemeral_1h_input_tokens),
+                # when the API reports it, prices exactly (F8). Its absence -- an older transcript shape,
+                # or a response that only carries the aggregate cache_creation_input_tokens -- is priced
+                # as unknown-TTL, kept separate rather than guessed into one bucket or the other.
+                cache = usage.get("cache_creation") or {}
+                cw_5m = cache.get("ephemeral_5m_input_tokens") or 0
+                cw_1h = cache.get("ephemeral_1h_input_tokens") or 0
+                if cw_5m or cw_1h:
+                    cw_total, cw_unknown = cw_5m + cw_1h, 0
+                else:
+                    cw_total = usage.get("cache_creation_input_tokens") or 0
+                    cw_unknown = cw_total
                 best[mid] = {"out": out, "in": usage.get("input_tokens") or 0,
                              "cache_read": usage.get("cache_read_input_tokens") or 0,
-                             "cache_write": usage.get("cache_creation_input_tokens") or 0,
+                             "cache_write": cw_total, "cache_write_5m": cw_5m, "cache_write_1h": cw_1h,
+                             "cache_write_unknown": cw_unknown,
                              "model": model, "day": (row.get("timestamp") or "")[:10],
                              "sid": sid, "kind": kind, "agent": agent}
     stats["responses"] = len(best)
@@ -207,7 +239,7 @@ def aggregate(best, titles, first_day):
         if not r["day"] or r["day"] < first_day:
             continue
         for tgt in (by_model[(r["day"], r["model"])], by_row[(r["day"], r["kind"], r["sid"], r["agent"], r["model"])]):
-            for f in ("in", "out", "cache_read", "cache_write"):
+            for f in FIELDS[:-1]:   # every count field except msgs, which is incremented separately
                 tgt[f] += r[f]
             tgt["msgs"] += 1
     rows = []
@@ -218,6 +250,70 @@ def aggregate(best, titles, first_day):
         row.update({f: c[f] for f in FIELDS})
         rows.append(row)
     return by_model, rows
+
+
+# ------------------------------------------------------------------------------------ headless (F8)
+def scan_headless(reports_dir, today, days):
+    """Reads the Fable headless drop folder (F3, plan:617) as a second, independent ledger source
+    alongside scan()'s interactive-transcript read. Each report is exactly {envelope, checkedAt,
+    command}; the envelope is the CLI's own --output-format json result, already reported at
+    API-list-price parity while billed against the subscription (plan sec 11). This reads
+    envelope.total_cost_usd / modelUsage rather than re-pricing tokens against routing/models.yaml,
+    and asserts every modelUsage entry's costBasis == "list" -- a future CLI change to a different
+    basis (e.g. "subscription") is a finding, not a silent change to what the ledger means.
+
+    Returns (rows, findings, stats). Never raises: a missing folder is zero reports, not an error --
+    most sessions never run a headless agent. A malformed report file is a finding, not a crash."""
+    first_day, last_day = today - dt.timedelta(days=days - 1), today
+    rows, findings = [], []
+    stats = {"files": 0, "unreadable": 0, "reports": 0}
+    if not os.path.isdir(reports_dir):
+        return rows, findings, stats
+    for path in sorted(glob.glob(os.path.join(reports_dir, "*.json"))):
+        stats["files"] += 1
+        name = os.path.basename(path)
+        m = HEADLESS_STAMP_RE.match(os.path.splitext(name)[0])
+        agent = m.group("agent") if m else os.path.splitext(name)[0]
+        try:
+            with open(path, encoding="utf-8") as fh:
+                rec = json.load(fh)
+        except (OSError, ValueError):
+            stats["unreadable"] += 1
+            findings.append(("unknown", "headless_report_unreadable", "%s could not be read as JSON" % name))
+            continue
+        if not isinstance(rec, dict) or "envelope" not in rec or "checkedAt" not in rec:
+            stats["unreadable"] += 1
+            findings.append(("unknown", "headless_report_shape", "%s is not the {envelope, checkedAt, command} shape" % name))
+            continue
+        envelope = rec.get("envelope")
+        if not isinstance(envelope, dict):
+            stats["unreadable"] += 1
+            findings.append(("unknown", "headless_report_shape", "%s envelope is not a JSON object" % name))
+            continue
+        day = str(rec.get("checkedAt") or "")[:10]
+        if not day or day < first_day.isoformat() or day > last_day.isoformat():
+            continue
+        model_usage = envelope.get("modelUsage") or {}
+        if not model_usage:
+            findings.append(("unknown", "headless_no_model_usage", "%s has no modelUsage to verify costBasis against" % name))
+            continue
+        stats["reports"] += 1
+        for model_id, mu in model_usage.items():
+            if not isinstance(mu, dict):
+                continue
+            basis = mu.get("costBasis")
+            if basis != "list":
+                findings.append(("alert", "headless_cost_basis",
+                                 "%s model %s reports costBasis=%r, not 'list' -- its dollar figure may no longer be API-list-price-equivalent"
+                                 % (name, model_id, basis)))
+            rows.append({"day": day, "kind": "headless", "id": agent, "agent": "", "model": model_id, "label": agent,
+                        "in": int(mu.get("inputTokens") or 0), "out": int(mu.get("outputTokens") or 0),
+                        "cache_read": int(mu.get("cacheReadInputTokens") or 0),
+                        "cache_write": int(mu.get("cacheCreationInputTokens") or 0),
+                        "msgs": 1, "cost_usd": float(mu.get("costUSD") or 0.0), "cost_basis": basis,
+                        "provider": mu.get("provider"), "canonical_model": mu.get("canonicalModel"),
+                        "report_total_cost_usd": envelope.get("total_cost_usd"), "report_file": name})
+    return rows, findings, stats
 
 
 # ------------------------------------------------------------------------------------ api key
@@ -262,9 +358,14 @@ def check_api_key(env=None, registry=_registry_has_key):
 
 
 # ------------------------------------------------------------------------------------ evaluate
-def evaluate(day, by_model, rows, rates, cfg, api_key):
+def evaluate(day, by_model, rows, rates, cfg, api_key, headless_rows=(), headless_findings=()):
     """Returns (state_code, breaches, totals) for one UTC day. Alerts use the HIGH cache-write
-    estimate, so an uncertain multiplier can only make the monitor louder, never quieter."""
+    estimate, so an uncertain multiplier can only make the monitor louder, never quieter.
+
+    headless_rows/headless_findings (F8) fold in the drop-folder scan: its own reported dollars are
+    additive to totals under a separate headless_usd key (not re-priced or merged into by_model,
+    whose dollars come from routing/models.yaml), and its findings (e.g. a costBasis breach) can
+    raise the day's exit code exactly like any other breach."""
     th = cfg["thresholds"]
     breaches, per_model, unpriced = [], {}, {}
     for (d, model), c in by_model.items():
@@ -300,6 +401,12 @@ def evaluate(day, by_model, rows, rates, cfg, api_key):
         breaches.append(("alert", "api_key_present", "%s is set in: %s. It outranks the subscription token and turns work into metered billing." % (API_KEY_NAME, ", ".join(where))))
     if unpriced:
         breaches.append(("unknown", "unpriced_model", "no verified rate for: %s. The day's dollar total is a floor." % ", ".join(sorted(unpriced))))
+
+    headless_today = [r for r in headless_rows if r["day"] == day]
+    totals["headless_usd"] = sum(r["cost_usd"] for r in headless_today)
+    totals["headless_reports"] = len({r["report_file"] for r in headless_today})
+    breaches.extend(headless_findings)
+
     kinds = {b[0] for b in breaches}
     code = STOP if "stop" in kinds else ALERT if "alert" in kinds else UNKNOWN if "unknown" in kinds else OK
     return code, breaches, totals
@@ -310,17 +417,20 @@ def _digest(payload):
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
 
-def write_ledger(state_dir, by_model, rows, rates, meta, cfg, now):
+def write_ledger(state_dir, by_model, rows, rates, meta, cfg, now, headless_rows=()):
     """Append-only, one file per data day. A line is appended only when that day's content changed
     since the file's last line, so a rerun adds nothing and a finished day stops growing. Older
     lines are never rewritten, which is what keeps history if Claude prunes old transcripts.
     Session rows carry a `label` (the aiTitle). Anything that copies the ledger off this PC must
-    drop it."""
+    drop it.
+
+    headless_rows (F8) are appended under their own `headless` key per day, alongside `sessions` --
+    a distinct source (the drop folder, not a transcript), never merged into the same rows."""
     os.makedirs(state_dir, exist_ok=True)
     fingerprint = {"rates": meta["source"], "verified": meta["verified_on"], "cache": cfg["cache_multipliers"]}
     interval = cfg.get("ledger_min_interval_minutes", 60)
     written = []
-    for day in sorted({d for d, _ in by_model}):
+    for day in sorted({d for d, _ in by_model} | {r["day"] for r in headless_rows}):
         model_rows = []
         for (d, model), c in sorted(by_model.items()):
             if d != day:
@@ -332,7 +442,8 @@ def write_ledger(state_dir, by_model, rows, rates, meta, cfg, now):
             row.update({f: c[f] for f in FIELDS})
             model_rows.append(row)
         session_rows = [r for r in rows if r["day"] == day]
-        digest = _digest([model_rows, session_rows, fingerprint])
+        headless_day_rows = [r for r in headless_rows if r["day"] == day]
+        digest = _digest([model_rows, session_rows, headless_day_rows, fingerprint])
         path = os.path.join(state_dir, "ledger-%s.jsonl" % day)
         last_digest = last_at = None
         if os.path.exists(path):
@@ -352,7 +463,8 @@ def write_ledger(state_dir, by_model, rows, rates, meta, cfg, now):
                 continue
         record = {"schema": 1, "day": day, "written_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "digest": digest,
                   "what_if_not_a_bill": True, "rates_source": meta["source"], "rates_verified_on": meta["verified_on"],
-                  "cache_multipliers": cfg["cache_multipliers"], "models": model_rows, "sessions": session_rows}
+                  "cache_multipliers": cfg["cache_multipliers"], "models": model_rows, "sessions": session_rows,
+                  "headless": headless_day_rows}
         with open(path, "a", encoding="utf-8", newline=NL) as fh:
             fh.write(json.dumps(record, sort_keys=True) + NL)
         written.append(path)
@@ -379,7 +491,8 @@ def write_status(state_dir, code, breaches, totals, api_key, meta, cfg, stats, n
 
 
 # ------------------------------------------------------------------------------------ report
-def report(out, by_model, rows, rates, meta, cfg, stats, totals, breaches, api_key, code, top):
+def report(out, by_model, rows, rates, meta, cfg, stats, totals, breaches, api_key, code, top,
+           headless_rows=(), reports_dir=None):
     def p(s=""):
         out.write(s + NL)
     cm, th = cfg["cache_multipliers"], cfg["thresholds"]
@@ -388,8 +501,10 @@ def report(out, by_model, rows, rates, meta, cfg, stats, totals, breaches, api_k
     p("Read: %d files, %d lines, %d unique API responses (%d unreadable files)." % (stats["files"], stats["lines"], stats["responses"], stats["unreadable"]))
     p("Rates: %s" % meta["source"])
     p("       verification record: %s; per-model verified_on: %s" % (meta["verification_record"], ", ".join(meta["verified_on"])))
-    p("Cache multipliers (%s): read %sx (a model's own override wins), write %sx-%sx for 5m/1h -> low-high range."
-      % (cm["status"], cm["read"], cm["write_low"], cm["write_high"]))
+    p("Cache write rates (%s): 5-minute TTL %sx, 1-hour TTL %sx (confirmed per-TTL). Cache-write tokens of"
+      % (cm["status"], cm["write_5m"], cm["write_1h"]))
+    p("  unknown TTL are priced as a %sx-%sx low-high range. Cache read %sx (a model's own override wins)."
+      % (cm["write_5m"], cm["write_1h"], cm["read"]))
     p("Thresholds (%s): Opus alert $%s, stop-and-ask $%s per day." % (th["status"], th["opus_whatif_alert_usd_per_day"], th["opus_whatif_stop_usd_per_day"]))
     p()
     p("%-11s %-28s %6s %10s %10s %13s %12s  %s" % ("day(UTC)", "model", "msgs", "input", "output", "cache_read", "cache_write", "what-if $ (low-high)  [in+out only]"))
@@ -412,7 +527,16 @@ def report(out, by_model, rows, rates, meta, cfg, stats, totals, breaches, api_k
     names = {True: "SET", False: "not set", None: "could not check"}
     p("%s (presence only, value never stored or printed): %s" % (API_KEY_NAME, ", ".join("%s=%s" % (k, names[api_key[k]]) for k in ("process", "user", "machine"))))
     p()
-    p("Evaluated day %s: what-if $%.2f-$%.2f (Opus $%.2f = %.0f%%)" % (totals["day"], totals["usd_low"], totals["usd_high"], totals["opus_usd_high"], totals["opus_share"] * 100))
+    day_headless = [r for r in headless_rows if r["day"] == totals["day"]]
+    p("Headless drop-folder reports (F3, %s): $%.4f across %d report(s) for %s."
+      % (reports_dir or "?", totals.get("headless_usd", 0.0), totals.get("headless_reports", 0), totals["day"]))
+    for r in sorted(day_headless, key=lambda r: -r["cost_usd"]):
+        p("  %-24s %-28s $%.4f  (costBasis=%s)" % (r["id"], r["model"], r["cost_usd"], r["cost_basis"]))
+    if not day_headless:
+        p("  (none)")
+    p()
+    p("Evaluated day %s: what-if $%.2f-$%.2f (Opus $%.2f = %.0f%%); headless (reported) $%.4f"
+      % (totals["day"], totals["usd_low"], totals["usd_high"], totals["opus_usd_high"], totals["opus_share"] * 100, totals.get("headless_usd", 0.0)))
     for sev, kind, detail in breaches:
         p("  [%s] %s: %s" % (sev.upper(), kind, detail))
     p("Exit %d (%s)" % (code, STATE_NAMES[code]))
@@ -424,7 +548,7 @@ def load_config(path):
         cfg = json.load(fh)
     required = (("thresholds", ("opus_whatif_alert_usd_per_day", "opus_whatif_stop_usd_per_day", "opus_share_alert_fraction",
                                 "opus_share_min_day_usd", "session_output_alert_tokens", "status")),
-                ("cache_multipliers", ("read", "write_low", "write_high", "status")))
+                ("cache_multipliers", ("read", "write_5m", "write_1h", "status")))
     for section, keys in required:
         missing = [k for k in keys if k not in cfg.get(section, {})]
         if missing:
@@ -441,6 +565,8 @@ def main(argv=None, now=None, out=None, err=None, registry=_registry_has_key):
     ap.add_argument("--rates-file", help="test seam; default reads origin/main of the ops-policies checkout")
     ap.add_argument("--rates-repo", default=DEFAULT_RATES_REPO)
     ap.add_argument("--config", default=os.path.join(HERE, "config.json"))
+    ap.add_argument("--reports-dir", default=default_reports_dir(),
+                    help="Fable headless drop folder (F3 report files) to also ingest (default: %%APPDATA%%\\AEGIS\\reports)")
     ap.add_argument("--days", type=int, default=7, help="UTC days to read, ending today (default 7)")
     ap.add_argument("--day", help="UTC day to evaluate, YYYY-MM-DD (default today)")
     ap.add_argument("--top", type=int, default=10)
@@ -463,15 +589,17 @@ def main(argv=None, now=None, out=None, err=None, registry=_registry_has_key):
     if not stats["files"] and stats["unreadable"]:
         err.write("cost-monitor: every transcript file was unreadable" + NL)
         return UNKNOWN
+    headless_rows, headless_findings, headless_stats = scan_headless(args.reports_dir, today, days)
     by_model, rows = aggregate(best, titles, (today - dt.timedelta(days=days - 1)).isoformat())
-    if not by_model:
+    if not by_model and not headless_rows:
         # Reading nothing is not the same as spending nothing: a mistyped folder or pruned transcripts
         # would otherwise report "ok" and look like a quiet week.
         err.write("cost-monitor: no usage found in %d file(s) over the last %d day(s); refusing to report ok%s" % (stats["files"], days, NL))
         return UNKNOWN
     api_key = check_api_key(registry=registry)
-    code, breaches, totals = evaluate(args.day or today.isoformat(), by_model, rows, rates, cfg, api_key)
-    if not any(r["day"] == totals["day"] for r in rows):
+    code, breaches, totals = evaluate(args.day or today.isoformat(), by_model, rows, rates, cfg, api_key,
+                                      headless_rows=headless_rows, headless_findings=headless_findings)
+    if not any(r["day"] == totals["day"] for r in rows) and not any(r["day"] == totals["day"] for r in headless_rows):
         # A day with no data is a quiet day only if we could have seen its data. Files we could not
         # read, or a newest transcript that stopped growing, mean it may be a blind spot instead.
         why = []
@@ -486,10 +614,11 @@ def main(argv=None, now=None, out=None, err=None, registry=_registry_has_key):
             err.write("cost-monitor: " + detail + NL)
             if code == OK:
                 code = UNKNOWN
-    report(out, by_model, rows, rates, meta, cfg, stats, totals, breaches, api_key, code, args.top)
+    report(out, by_model, rows, rates, meta, cfg, stats, totals, breaches, api_key, code, args.top,
+           headless_rows=headless_rows, reports_dir=args.reports_dir)
     if not args.no_write:
         try:
-            wrote = write_ledger(args.state_dir, by_model, rows, rates, meta, cfg, now)
+            wrote = write_ledger(args.state_dir, by_model, rows, rates, meta, cfg, now, headless_rows=headless_rows)
             write_status(args.state_dir, code, breaches, totals, api_key, meta, cfg, stats, now)
         except OSError as exc:
             err.write("cost-monitor: cannot write under %s: %s%s" % (args.state_dir, exc, NL))

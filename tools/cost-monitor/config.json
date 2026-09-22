@@ -1,5 +1,5 @@
 {
-  "_readme": "Defaults pending owner approval (PM plan, 2026-09-20). They alert, they never enforce. Cache multipliers are ASSUMED, not checked against a current price page.",
+  "_readme": "Defaults pending owner approval (PM plan, 2026-09-20). They alert, they never enforce. Cache write rates are CONFIRMED per-TTL (F8, 2026-09-22) against docs/FABLE_AGENT_SUBAGENT_PLAN.md sections 1b and 11 and the Anthropic pricing page; a cache-write token whose TTL is unknown (older transcript shape, no cache_creation split) is still priced as a low(5m)-high(1h) range.",
   "thresholds": {
     "status": "DEFAULT - pending owner approval, not yet approved",
     "opus_whatif_alert_usd_per_day": 50,
@@ -9,10 +9,10 @@
     "session_output_alert_tokens": 300000
   },
   "cache_multipliers": {
-    "status": "ASSUMED - not checked against a current Anthropic price page",
+    "status": "CONFIRMED - 5-minute TTL write=1.25x, 1-hour TTL write=2.0x, per docs/FABLE_AGENT_SUBAGENT_PLAN.md secs 1b/11 (measured 2026-09-21/22) and the Anthropic pricing page (read 2026-09-21). Read ratio (0.1) is still an assumption pending its own price-page check.",
     "read": 0.1,
-    "write_low": 1.25,
-    "write_high": 2.0
+    "write_5m": 1.25,
+    "write_1h": 2.0
   },
   "alert_on_api_key": true,
   "ledger_min_interval_minutes": 60
