@@ -1,0 +1,45 @@
+{
+  "agent": "pr-state-sweep",
+  "repos": [
+    {
+      "repo": "yodatech1988/MasterThread",
+      "prs": [
+        {
+          "number": 169,
+          "title": "docs: Fable agent/subagent plan",
+          "branch": "claude/fable-agent-ecosystem-plan-98hs5i",
+          "checkState": "pass",
+          "age": "3d",
+          "stuck": false,
+          "stuckReason": null
+        },
+        {
+          "number": 159,
+          "title": "cost-monitor",
+          "branch": "agent/MasterThread/cost-monitor",
+          "checkState": "missing",
+          "age": "5d",
+          "stuck": true,
+          "stuckReason": "no run exists for the head branch"
+        }
+      ]
+    }
+  ],
+  "flags": {
+    "rule4Violations": [],
+    "noCiRun": [
+      {
+        "repo": "yodatech1988/MasterThread",
+        "number": 159
+      }
+    ]
+  },
+  "findings": [
+    {
+      "kind": "no-ci-run",
+      "subject": "yodatech1988/MasterThread#159",
+      "detail": "gh run list -b agent/MasterThread/cost-monitor returned no runs"
+    }
+  ],
+  "couldNotCheck": []
+}
