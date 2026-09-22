@@ -1,0 +1,8 @@
+# Python bytecode caches.
+#
+# Every session that runs `python tools/generate_agents_md.py --check` or
+# `python -m unittest discover -s tools/tests` leaves these behind, which dirties
+# the working tree and trips the session-stop git check. They are build artifacts:
+# regenerated on demand, never useful to commit.
+__pycache__/
+*.py[cod]
