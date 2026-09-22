@@ -3,8 +3,9 @@
 **Status:** owner-directed 2026-09-22, given directly in chat to session `yoda-61`: *"you need to be
 responsible for effective cost usage and instruct when things need to compact to save tokens"*, then
 *"This needs to be a seat that must be filled for PM to do work, as is the merge authority seat."*
-The seat and its staffing rule are the owner's words. The numeric thresholds below are **default
-pending confirmation** (Decision Queue card `cost-steward-thresholds-2026-09-22`); this file takes
+The seat, its staffing rule and the rule that limits are priced per model are the owner's words.
+The dollar levels are **default pending confirmation** (Decision Queue card
+`cost-steward-thresholds-2026-09-22`, drafted before the per-model direction). This file takes
 effect when the owner merges it (route C, `merge_authority.md`).
 
 The cost steward answers one question for every live session: **is this session still cheap to
@@ -53,20 +54,35 @@ The steward holds a Fleet Status `sessions` row with `role: "cost-steward"`.
    the PM in the steward's own summaries; the Fleet Status `costs` panel is written only per that
    panel's own write contract.
 
-## Advice levels (default pending confirmation)
+## Advice levels: priced per model
 
-| Level | Trigger | Instruction |
+Owner direction, given directly in chat on 2026-09-22: *"your limits need to be based on the models
+cost not a general rule."* So a level trips on **what the session's next turn costs**, not on a
+token count shared by every model. The next turn's floor is its context multiplied by that model's
+cache-read price. A level also trips on the share of the context window used, whichever comes first,
+so a cheap model is still compacted before it runs out of room.
+
+| Level | Trips at (warm turn cost, or window share) | Instruction |
 |---|---|---|
-| OK | context < 150K | none |
-| WATCH | context >= 150K | finish the current task before starting another large one; prefer subagents for reading |
-| COMPACT | context >= 250K | compact at the next natural break (after the current tool round finishes) |
-| COMPACT-NOW | context >= 400K | stop starting new work; compact or rotate now |
-| COMPACT-BEFORE-RESUME | context >= 150K **and** idle > 48 min | the 1-hour cache is about to expire; the next turn will re-write the whole context at 2x input price, so compact before the next substantive turn |
+| OK | below both | none |
+| WATCH | $0.075 per turn, or 50% of window | finish the current task before starting another large one; prefer subagents for reading |
+| COMPACT | $0.125 per turn, or 70% of window | compact at the next natural break (after the current tool round finishes) |
+| COMPACT-NOW | $0.20 per turn, or 85% of window | stop starting new work; compact or rotate now |
+| COMPACT-BEFORE-RESUME | idle over 48 min **and** a cold resume would cost $1.50 or more | the 1-hour cache is about to expire, and the next turn re-writes the whole context at 2x input price; compact before the next substantive turn |
 
-Why these numbers: at 250K tokens on Opus 5, every turn costs about $0.125 in cache reads alone
-before it produces anything, and a cold resume costs about $2.50. Thresholds are per model family in
-spirit; if the owner confirms different numbers, change the constants in the script and this table
-together.
+What that means per model (list prices read 2026-09-22; context in tokens):
+
+| Model | Cache read $/MTok | WATCH | COMPACT | COMPACT-NOW | Cold-resume warning at |
+|---|---|---|---|---|---|
+| Opus 5 | 0.50 | 150K | 250K | 400K | 150K |
+| Fable 5.1 | 0.25 | 300K | 500K | 800K | 75K |
+| Sonnet 5 | 0.20 | 375K | 625K | 850K (window) | 375K |
+| Haiku 4.5 (200K window) | 0.10 | 100K (window) | 140K (window) | 170K (window) | never (tops out at $0.40) |
+
+Fable's steady-state limits are looser than Opus's because its cache reads are cheaper. Its
+cold-resume warning is the tightest, because its cache writes cost four times Opus's per token. The
+dollar constants and prices live together at the top of `cost-steward.py`. Change them there and in
+this table together, and re-read the price page when prices change.
 
 ## How compaction actually happens
 

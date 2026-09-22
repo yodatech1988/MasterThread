@@ -17,8 +17,13 @@ PRICES = {  # input, output, cache_write_1h, cache_write_5m, cache_read
     "claude-opus-5": (5, 25, 10, 6.25, 0.5), "claude-opus-4-8": (5, 25, 10, 6.25, 0.5),
     "claude-sonnet-5": (2, 10, 4, 2.5, 0.2), "claude-haiku-4-5": (1, 5, 2, 1.25, 0.1),
 }
-# Advice thresholds (default pending owner confirmation; recalibrate from real data).
-WARN_CTX, COMPACT_CTX, URGENT_CTX = 150_000, 250_000, 400_000
+WINDOW = {"claude-haiku-4-5": 200_000}  # everything else current: 1M
+# Owner direction 2026-09-22: limits follow each model's cost, not one token count.
+# A level trips on the dollar cost of the next warm turn (context x cache-read price),
+# or on share of the context window, whichever comes first.
+WATCH_USD, COMPACT_USD, URGENT_USD = 0.075, 0.125, 0.20   # per warm turn
+WATCH_WIN, COMPACT_WIN, URGENT_WIN = 0.50, 0.70, 0.85     # share of context window
+COLD_USD = 1.50     # a cold resume (full 1h cache re-write) above this is worth compacting first
 CACHE_TTL_S = 3600  # 1h cache: an idle session past this re-writes its whole context
 STATE = os.path.join(os.environ.get("APPDATA", HOME), "AEGIS", "cost-steward.state.json")
 
@@ -84,15 +89,17 @@ def scan(reg):
             pass
     warm_turn = ctx * p[4] / 1e6          # next turn if cache is warm
     cold_turn = ctx * p[2] / 1e6          # next turn if the 1h cache has expired
-    if ctx >= URGENT_CTX:
+    win = next((v for k, v in WINDOW.items() if (model or "").startswith(k)), 1_000_000)
+    share = ctx / win
+    if warm_turn >= URGENT_USD or share >= URGENT_WIN:
         level = "COMPACT-NOW"
-    elif ctx >= COMPACT_CTX:
+    elif warm_turn >= COMPACT_USD or share >= COMPACT_WIN:
         level = "COMPACT"
-    elif ctx >= WARN_CTX:
+    elif warm_turn >= WATCH_USD or share >= WATCH_WIN:
         level = "WATCH"
     else:
         level = "OK"
-    if idle is not None and idle > CACHE_TTL_S * 0.8 and ctx >= WARN_CTX and level in ("WATCH", "COMPACT"):
+    if idle is not None and idle > CACHE_TTL_S * 0.8 and cold_turn >= COLD_USD and level != "COMPACT-NOW":
         level = "COMPACT-BEFORE-RESUME"
     return dict(name=reg.get("name"), status=reg.get("status"), model=model, ctx=ctx, cost=cost,
                 turns=len(seen), compactions=compactions, idle=idle, warm=warm_turn, cold=cold_turn, level=level)
