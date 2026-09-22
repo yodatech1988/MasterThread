@@ -146,7 +146,13 @@ try {
     }
 
     Test-Case "-JsonSchemaPath works alongside a non-restricted -Tools call too" {
-        $out = & $scriptPath -AgentName 'diff-reviewer' -Prompt 'irrelevant' -Tools 'Bash' -JsonSchemaPath $schemaFile -DryRun *>&1 | Out-String -Width 4096
+        # -AllowedTools passed explicitly here (2026-09-22, phase 1 of the roster allowedTools
+        # overlay): 'diff-reviewer' has Bash in -Tools and no roster_meta.json 'allowedTools' list
+        # of its own (phase 2, not yet done), so without this the call would now be refused with
+        # exit 8 before ever reaching the --json-schema logic this test actually exercises. Passing
+        # -AllowedTools explicitly here isolates that -- unrelated -- concern, same as any other
+        # caller that already scopes its own Bash access.
+        $out = & $scriptPath -AgentName 'diff-reviewer' -Prompt 'irrelevant' -Tools 'Bash' -AllowedTools 'Bash(gh pr diff *)' -JsonSchemaPath $schemaFile -DryRun *>&1 | Out-String -Width 4096
         if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE. Output: $out" }
         if ($out -notmatch [regex]::Escape('--json-schema')) { throw "expected --json-schema in built args. Output: $out" }
         $schemaContent = Get-Content -Raw -LiteralPath $schemaFile
