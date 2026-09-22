@@ -95,6 +95,31 @@
 .PARAMETER SettingsPath
     Override the settings file. Default is readonly.settings.json next to this script.
 
+.PARAMETER JsonSchemaPath
+    Added for plan task F12 (docs/FABLE_AGENT_SUBAGENT_PLAN.md section 5). Points at one of the
+    tools/headless/schemas/*.json files built in F4. Fixed 2026-09-22 (QA, PR #197 comments): the
+    CLI's --json-schema flag expects the schema file's CONTENT, not its path -- passing the path
+    string made the CLI fail during its own argument/schema parsing before ever reaching the API
+    (exit 1, no output, wrapper exit 6, no session transcript). This parameter's own file is read
+    with `Get-Content -Raw` and that content -- not the path -- is what is passed as `--json-schema`
+    (quoted with the same ConvertTo-QuotedArg helper used for every other value on this command
+    line), so the CLI's own structured-output validation constrains the agent's answer to that
+    schema. Optional -- a caller that never passes it gets byte-identical behaviour to before this
+    parameter existed. The path itself must be an existing file; same cmd.exe-safety checks as
+    -SettingsPath apply to the PATH value (refused with exit 2, nothing launched, if the path
+    contains a double quote, %, !, a line break, or ends in a backslash) -- those checks do not
+    re-run against the file's contents. 2026-09-22 follow-up fix (QA, PR #197 comments, second
+    round): those PATH-only checks left real schema CONTENT unguarded -- a `"` or a line break in
+    the schema itself (ordinary for hand-written JSON Schema) reached cmd.exe by way of claude.cmd
+    and was mangled, since cmd.exe does not honour ConvertTo-QuotedArg's backslash-escaped quote and
+    cannot carry a literal newline in a single command line at all. Fixed by having the executable
+    resolution below prefer the native claude.exe (found next to claude.cmd) over claude.cmd itself
+    whenever this parameter's content needs to survive intact -- see that resolution block's own
+    comment for the verified mechanics. This parameter only threads the flag through -- it does not
+    itself validate the agent's returned JSON against the schema; see
+    tools/headless/Invoke-Subagent.ps1 and JsonSchemaLite.ps1 for that (F12's own wrapper, layered
+    on top of this script).
+
 .PARAMETER Report
     Added for plan task F3 (docs/FABLE_AGENT_SUBAGENT_PLAN.md:617). Turns on L1 report mode: the
     run uses `--output-format json` (the CLI's single result envelope -- subtype, is_error,
@@ -256,6 +281,7 @@ param(
     [int]$TimeoutSec = 300,
     # Defaults resolved in the body, not here: see the $PSScriptRoot note just below param().
     [string]$SettingsPath,
+    [string]$JsonSchemaPath,
     [string]$RosterMetaPath,
     [string]$Model,
     [switch]$Report,
@@ -299,7 +325,7 @@ if ($AgentName -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]*\z') {
 if ($Model -and $Model -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._\[\]-]*\z') {
     Exit-UnsafeArg 'Model' "'$Model' must match ^[A-Za-z0-9][A-Za-z0-9._\[\]-]*$ (it is passed to cmd.exe unquoted and must not start with '-')"
 }
-foreach ($quotedName in @('SettingsPath', 'Tools', 'AllowedTools')) {
+foreach ($quotedName in @('SettingsPath', 'JsonSchemaPath', 'Tools', 'AllowedTools')) {
     $quotedValue = Get-Variable -Name $quotedName -ValueOnly
     # '!' added in PR #176 review round 2 (safety): with cmd.exe delayed expansion switched on
     # (Command Processor\DelayedExpansion=1 in HKCU or HKLM), cmd.exe expands !VAR! even inside quotes.
@@ -371,6 +397,13 @@ if (-not (Test-Path -LiteralPath $SettingsPath -PathType Leaf)) {
     exit 2
 }
 
+# F12: -JsonSchemaPath must exist too, checked before anything is launched, same convention as
+# -SettingsPath above.
+if ($JsonSchemaPath -and -not (Test-Path -LiteralPath $JsonSchemaPath -PathType Leaf)) {
+    Write-Host "Invoke-ReadOnlyAgent: -JsonSchemaPath file not found (or not a file) at $JsonSchemaPath" -ForegroundColor Red
+    exit 2
+}
+
 # --- F2: resolve whether this run is -Restricted -----------------------------------------------
 # Explicit -Restricted (true or false) always wins -- the caller's stated intent is authoritative.
 # Only when the caller did not pass it at all do we consult roster_meta.json's "readonly"
@@ -414,8 +447,54 @@ if ($restrictedExplicit) {
 # --version flag, and the whole invocation printed only the version string. Every value that could
 # contain a space must be wrapped in an embedded double quote so the resulting command-line string
 # carries it as one token, the same way a person would quote it by hand at a real prompt.
+#
+# 2026-09-22 fix (PR #197 live QA, two rounds): the original version blindly replaced EVERY `"`
+# with `\"`, regardless of whether it was already escaped. Real JSON Schema text passed via
+# -JsonSchemaPath (tools/headless/schemas/pr-state-sweep.json) legitimately contains already-
+# escaped quotes inside nested description strings -- source text like `\"3h\"` (one backslash then
+# a quote: a valid JSON-escaped quote character). The blind replace turned that into `\\"3h\\"`
+# (backslash-backslash-quote), corrupting the schema (CLI stderr: "Error: --json-schema is not
+# valid JSON: JSON Parse error: Invalid escape character 3").
+#
+# ROUND 1 of this fix (leave an already-odd backslash run untouched, only escape an even/bare run)
+# looked correct as a STRING transformation and passed every DryRun/static test, but a live
+# -Verbose run against the real pr-state-sweep.json (this PR's own QA step 5) still failed with
+# "JSON Parse error: Expected '}'". Root cause, found by writing a native argv-echoing test double
+# and round-tripping the real schema file through it: this command line is consumed by Windows'
+# own CreateProcess/argv decoding (standard "backslashes only special immediately before a quote"
+# rule, the same one .NET's own argument parser and CommandLineToArgvW use), NOT by a simple
+# find-and-replace reversal. That decode rule is: a run of N backslashes immediately before a `"`
+# produces floor(N/2) literal backslashes, and if N is ODD, one literal quote character in the
+# delivered argument (if N is even, the quote toggles/ends quoting instead -- never what we want
+# here, since the whole value sits inside one outer pair of quotes). So a SINGLE backslash before a
+# quote (`\"`, N=1) decodes to floor(1/2)=0 backslashes + a literal quote -- the backslash is
+# CONSUMED by the decoder, not preserved. Verified empirically: round-tripping the real schema
+# file's raw bytes through ConvertTo-QuotedArg (round-1 version) and then this exact decode rule
+# does NOT reproduce the original bytes -- every already-escaped `\"3h\"` loses its backslash.
+#
+# Correct fix: for a source backslash run of length k immediately before a `"` (k=0 for an
+# ordinary bare quote, k=1 for an already-JSON-escaped quote, k=2 for a literal escaped backslash
+# followed by a bare quote, and so on), emit (2k + 1) backslashes before the quote on the command
+# line. Per the decode rule above, floor((2k+1)/2) = k literal backslashes come back out, plus the
+# literal quote (odd count, so it is always data, never a delimiter) -- exactly reconstructing the
+# source's k backslashes and the quote itself, for any depth of pre-escaping:
+#   - `foo"bar`   (k=0) -> command line `foo\"bar`     -> decodes back to `foo"bar`   (bare quote)
+#   - `\"foo\"`    (k=1) -> command line `\\\"foo\\\"`  -> decodes back to `\"foo\"`   (pre-escaped
+#                                                          quote survives, not stripped)
+#   - `\\"foo\\"`  (k=2) -> command line `\\\\\"foo...` -> decodes back to `\\"foo\\"` (escaped
+#                                                          backslash + quote survives)
+# Verified live 2026-09-22: this formula, run through the same native-exe argv round-trip that
+# exposed round 1's defect, reproduces the real pr-state-sweep.json's raw bytes exactly, and the
+# real `claude` CLI accepted the resulting --json-schema value (see this PR's QA notes for the
+# live -Verbose run's exit code and output).
 function ConvertTo-QuotedArg([string]$Value) {
-    return '"' + ($Value -replace '"', '\"') + '"'
+    $evaluator = {
+        param($m)
+        $backslashCount = $m.Value.Length - 1
+        return ('\' * (2 * $backslashCount + 1)) + '"'
+    }
+    $escaped = [regex]::Replace($Value, '\\*"', $evaluator)
+    return '"' + $escaped + '"'
 }
 
 $claudeArgs = @(
@@ -457,6 +536,19 @@ $claudeArgs += @(
     '--strict-mcp-config',
     '--max-budget-usd', [string]$MaxBudgetUsd
 )
+
+# F12 bug fix (QA, PR #197 comments 2026-09-22, zero-cost mock repro + `claude --help` text): the
+# CLI's --json-schema flag expects the schema file's CONTENT, not its path. Passing the path string
+# made the CLI fail during its own argument/schema parsing before ever reaching the API -- exit 1,
+# no output, wrapper exit 6, no session transcript (the live QA failure signature). Fixed by reading
+# the file's content here and passing that as the flag's value, quoted with the same
+# ConvertTo-QuotedArg helper used for every other value on this command line. Omitted entirely when
+# not passed, so a caller that never sets -JsonSchemaPath gets the exact same $claudeArgs as before
+# this parameter existed.
+if ($JsonSchemaPath) {
+    $jsonSchemaContent = Get-Content -Raw -LiteralPath $JsonSchemaPath
+    $claudeArgs += @('--json-schema', (ConvertTo-QuotedArg $jsonSchemaContent))
+}
 
 if ($reportMode) {
     # F3: `--output-format json` WITHOUT --verbose returns exactly one JSON object -- the result
@@ -535,6 +627,52 @@ if ($ClaudePath) {
         exit 2
     }
     $claudeExe = $claudeCmd.Source
+
+    # 2026-09-22 fix (F12 QA follow-up, PR #197): resolved 'claude.cmd' is a batch file, so Windows
+    # launches it through cmd.exe, which re-tokenizes the WHOLE joined command-line string built
+    # below and does not honour a backslash-escaped quote (`\"`) the way ConvertTo-QuotedArg (above)
+    # assumes -- see that function's own comment, and the extensive cmd.exe-hazard refusal checks
+    # this script already has for -SettingsPath/-Tools/-AllowedTools/-JsonSchemaPath. Those checks
+    # only cover the PATH strings, never a file's CONTENT (JsonSchemaPath's own doc comment already
+    # says so), and --json-schema is the one flag whose value is arbitrary file content rather than a
+    # short operator-chosen string. Confirmed live 2026-09-22 (CLI 2.1.278): a --json-schema value
+    # containing a `"` and a newline -- ordinary for real, human-readable JSON Schema -- reaches
+    # cmd.exe as `"{\"type\":...`; cmd.exe closes the quoted region at that embedded `\"` (it does
+    # not treat the backslash as an escape), after which the rest of the schema runs as unquoted
+    # shell text, and the literal newline breaks the single-line command string outright. Neither
+    # survives, and `claude --json-schema` has no file-path or stdin input mode to route around it
+    # (verified against `claude --help` and by a real invocation: passing a path errors "not valid
+    # JSON", and a JSON-Schema-without-newlines round-trips fine over stdin/argv when nothing
+    # reinterprets the argument -- see this PR's test coverage).
+    #
+    # claude.cmd's own body is a one-line forward to the real Windows PE binary at
+    # node_modules\@anthropic-ai\claude-code\bin\claude.exe, in the same folder Get-Command resolved
+    # above. Launching that binary directly skips cmd.exe's re-tokenizing pass entirely --
+    # CreateProcess hands it the joined command-line string as-is, and the CLI's own argv parsing
+    # follows the standard Windows CommandLineToArgvW convention, where `\"` IS honoured as an
+    # escaped embedded quote and a literal newline inside a quoted argument survives -- exactly what
+    # ConvertTo-QuotedArg already produces, and exactly what this script's own quoting comments say a
+    # normal Windows command line expects. Verified live (2026-09-22): the same quoted --json-schema
+    # value that cmd.exe mangles reached the CLI's schema validator intact once claude.exe was
+    # launched directly instead of claude.cmd.
+    #
+    # Preferred whenever the sibling .exe is found, for every run (not only -JsonSchemaPath ones) --
+    # it is strictly safer for every other quoted argument on this command line too, and changes
+    # nothing about which flags are passed. Falls back to the resolved claude.cmd/bare-claude
+    # unchanged (byte-identical launch to before this fix) if the sibling .exe is not where
+    # claude.cmd's own body names it (a future npm layout change, or a non-Windows host) -- with a
+    # loud warning when -JsonSchemaPath is in play, since that fallback path is the one this fix
+    # exists to avoid. -ClaudePath (the test seam) is untouched: it already launches whatever file a
+    # test points it at directly, never through this resolution block.
+    if ($claudeExe -match '\.cmd$') {
+        $claudeExeDir = Split-Path -Parent $claudeExe
+        $nativeExe = Join-Path $claudeExeDir 'node_modules\@anthropic-ai\claude-code\bin\claude.exe'
+        if (Test-Path -LiteralPath $nativeExe -PathType Leaf) {
+            $claudeExe = (Resolve-Path -LiteralPath $nativeExe).ProviderPath
+        } elseif ($JsonSchemaPath) {
+            Write-Warning "Invoke-ReadOnlyAgent: expected the native claude.exe next to claude.cmd at $nativeExe but did not find it; falling back to claude.cmd. -JsonSchemaPath's value is run through cmd.exe on that path and can be mangled if the schema contains a double quote or a line break (see this script's executable-resolution comment)."
+        }
+    }
 }
 
 Write-Verbose "$claudeExe $($claudeArgs -join ' ')$(if ($promptFile) { ' (prompt on stdin)' })"

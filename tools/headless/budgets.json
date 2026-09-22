@@ -1,0 +1,28 @@
+{
+  "_comment": "Plan task F12. Concrete per-line --max-budget-usd caps, derived from F3's measured envelopes (docs/FABLE_AGENT_SUBAGENT_PLAN.md section 2/9, PR #174/#176). A line with no concrete cap here, and no explicit -MaxBudgetUsd override from the caller, is refused rather than run with a guessed default (Invoke-ReadOnlyAgent.ps1's own fail-closed convention). The margin multiplier is this lane's own judgment call, not a further owner decision -- flagged in the F12 PR for the owner or the Cost Manager (F8) to revise once real usage data exists.",
+  "measuredEnvelopes": {
+    "_comment": "Read from the plan, not re-measured here.",
+    "haiku": { "coldUsd": 0.051, "warmUsd": 0.0026 },
+    "sonnet": { "coldUsd": 0.102, "warmUsd": 0.0051 },
+    "opus": { "coldUsd": 0.255, "warmUsd": 0.0128 },
+    "fable": { "coldUsd": 0.509, "warmResumedUsd": 0.007 }
+  },
+  "subagent": {
+    "_comment": "Invoke-Subagent.ps1 (plan section 5 rows 5-7). Roughly 10x the cold envelope for that model tier, to cover a real multi-turn read-only run rather than just the preamble.",
+    "haiku": 0.50,
+    "sonnet": 1.00,
+    "opus": 2.50,
+    "default": 0.50
+  },
+  "lane": {
+    "_comment": "Invoke-Lane.ps1. A lane is a dispatched worker session, several turns, mostly Sonnet-tier. Cap is per RESUME CALL (this wrapper's unit of dispatch), not per whole lane lifetime -- the lane's own MaxTurns cap bounds how many of these calls can happen.",
+    "sonnet": 1.50,
+    "opus": 4.00,
+    "default": 1.50
+  },
+  "fableSeat": {
+    "_comment": "Ask-Fable.ps1. cold is the first call on a new/expired --session-id (pays the ~$0.51 preamble); resumed is every call after (reads cached context at Fable's $0.25/MTok cache-read rate, measured ~$0.007-0.064 depending on context size). A silently-cold resume costs ~70x a warm one without failing, so the two get separate caps rather than one number wide enough to hide the difference.",
+    "coldUsd": 1.00,
+    "resumedUsd": 0.20
+  }
+}
