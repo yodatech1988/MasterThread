@@ -108,6 +108,15 @@ class Env:
                         encoding="utf-8")
         return path
 
+    def headless_ndjson_report(self, agent, stamp, text, suffix="", mtime=None):
+        """Writes a raw multi-line NDJSON transcript (no {envelope, checkedAt, command} wrapper) --
+        what Invoke-ReadOnlyAgent.ps1 writes when called without -Report."""
+        path = self.reports / ("%s.%s%s.json" % (agent, stamp, suffix))
+        path.write_text(text, encoding="utf-8", newline="\n")
+        if mtime is not None:
+            os.utime(path, (mtime.timestamp(), mtime.timestamp()))
+        return path
+
     def status(self):
         return json.loads((self.state / "status.json").read_text(encoding="utf-8"))
 
@@ -674,6 +683,75 @@ class HeadlessDropFolderTests(EnvTestCase):
         st = (self.env.state / "status.json").read_text(encoding="utf-8")
         for blob in (out, err, st) + tuple(self.env.ledger_lines()):
             self.assertNotIn(TEXT_SENTINEL, blob)
+
+
+# ------------------------------------------------------------------ headless NDJSON fallback
+NDJSON_FIXTURE = (HERE / "fixtures" / "headless" / "ndjson-transcript-sample.json").read_text(encoding="utf-8")
+
+
+@requires_yaml
+class HeadlessNdjsonFallbackTests(EnvTestCase):
+    """L1-pilot gap (2026-09-22): Invoke-ReadOnlyAgent.ps1 called without -Report writes a raw
+    `--output-format stream-json` transcript (one JSON object per line) instead of the intended
+    {envelope, checkedAt, command} wrapper. cost_monitor.py must still book it, by falling back to
+    the last `type: result` line as the envelope, so ~$2 of real L1-pilot spend isn't silently unbooked."""
+
+    def test_ndjson_transcript_is_read_via_its_last_result_event(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        self.env.headless_ndjson_report("gate-execution-auditor", "20260920-090000", NDJSON_FIXTURE)
+        code, out, _ = self.env.run()
+        st = self.env.status()
+        self.assertAlmostEqual(st["totals"]["headless_usd"], 0.0234)
+        self.assertEqual(st["totals"]["headless_reports"], 1)
+        self.assertEqual(code, 0)
+        self.assertNotIn("headless_report_unreadable", [b["kind"] for b in st["breaches"]])
+        self.assertNotIn("headless_report_shape", [b["kind"] for b in st["breaches"]])
+
+    def test_ndjson_fallback_row_is_written_to_the_ledger_and_tagged(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        self.env.headless_ndjson_report("pr-state-sweep", "20260920-090000", NDJSON_FIXTURE)
+        self.env.run()
+        rec = json.loads(self.env.ledger_lines()[0])
+        self.assertEqual(len(rec["headless"]), 1)
+        row = rec["headless"][0]
+        self.assertEqual(row["id"], "pr-state-sweep")
+        self.assertAlmostEqual(row["cost_usd"], 0.0234)
+        self.assertEqual(row["source"], "ndjson-fallback")
+
+    def test_a_well_formed_report_is_tagged_source_report_not_fallback(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        self.env.headless_report("pr-state-sweep", "20260920-010000",
+                                 envelope(0.5, {"claude-haiku-4-5-20251001": model_usage(0.5)}))
+        self.env.run()
+        rec = json.loads(self.env.ledger_lines()[0])
+        self.assertEqual(rec["headless"][0]["source"], "report")
+
+    def test_ndjson_checked_at_falls_back_to_mtime_when_filename_has_no_parseable_stamp(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        # No agent.STAMP.json shape at all -- HEADLESS_FILENAME_STAMP_RE will not match this name.
+        self.env.headless_ndjson_report("weird-name-no-stamp", "extra", NDJSON_FIXTURE,
+                                        suffix="", mtime=NOW)
+        code, out, _ = self.env.run()
+        self.assertAlmostEqual(self.env.status()["totals"]["headless_usd"], 0.0234)
+
+    def test_ndjson_transcript_with_no_result_line_is_a_finding_not_a_crash(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        no_result = "\n".join(NDJSON_FIXTURE.splitlines()[:-1]) + "\n"   # drop the result line
+        self.env.headless_ndjson_report("gate-execution-auditor", "20260920-090000", no_result)
+        code, out, _ = self.env.run()
+        kinds = [b["kind"] for b in self.env.status()["breaches"]]
+        self.assertIn("headless_report_unreadable", kinds)
+        self.assertNotIn("Traceback", out)
+
+    def test_ndjson_fixture_text_never_leaks(self):
+        self.env.session(SID1, [assistant("m1", "claude-opus-5", 5)])
+        self.env.headless_ndjson_report("gate-execution-auditor", "20260920-090000", NDJSON_FIXTURE)
+        code, out, err = self.env.run()
+        st = (self.env.state / "status.json").read_text(encoding="utf-8")
+        for blob in (out, err, st) + tuple(self.env.ledger_lines()):
+            self.assertNotIn("FAKE-FIXTURE-TEXT", blob)
+            self.assertNotIn("FAKE-FIXTURE-TOOL-RESULT", blob)
+            self.assertNotIn("FAKE-FIXTURE-FINAL-TEXT", blob)
 
 
 # ------------------------------------------------------------------ ledger

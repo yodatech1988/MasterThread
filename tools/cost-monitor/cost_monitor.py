@@ -75,6 +75,45 @@ def default_reports_dir():
 
 
 HEADLESS_STAMP_RE = re.compile(r"^(?P<agent>.+)\.\d{8}-\d{6}(?:-\d+)?$")
+HEADLESS_FILENAME_STAMP_RE = re.compile(r"\.(?P<ymd>\d{8})-(?P<hms>\d{6})(?:-\d+)?\.json$")
+
+
+def _checked_at_from_filename(name):
+    """A report's own filename stamp (agent.YYYYMMDD-HHMMSS[-N].json), used as a checkedAt fallback
+    when the report carries none of its own (an NDJSON transcript, see _last_result_event). Returns
+    an ISO UTC string, or None if the filename does not carry a parseable stamp."""
+    m = HEADLESS_FILENAME_STAMP_RE.search(name)
+    if not m:
+        return None
+    try:
+        stamp = dt.datetime.strptime(m.group("ymd") + m.group("hms"), "%Y%m%d%H%M%S")
+    except ValueError:
+        return None
+    return stamp.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _last_result_event(text):
+    """A report file written without Invoke-ReadOnlyAgent.ps1's -Report flag is a raw
+    `--output-format stream-json` transcript instead of the intended {envelope, checkedAt, command}
+    wrapper: one JSON object per line, streamed as the run progresses (system/assistant/user/... events),
+    with a final `type: result` event that carries the same fields the envelope was always meant to
+    have (total_cost_usd, modelUsage, num_turns, ...). This is the NDJSON fallback (2026-09-22, F-ledger
+    gap: 19/19 gate-execution-auditor and 19/22 pr-state-sweep L1-pilot reports were written this way).
+
+    Returns the last line whose parsed `type` is "result" as a dict, matching the shape scan_headless
+    already expects for `envelope`; or None if the text is not single-JSON and no such line is found."""
+    result = None
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict) and row.get("type") == "result":
+            result = row
+    return result
 
 
 def safe_label(text, limit=60):
@@ -263,7 +302,13 @@ def scan_headless(reports_dir, today, days):
     basis (e.g. "subscription") is a finding, not a silent change to what the ledger means.
 
     Returns (rows, findings, stats). Never raises: a missing folder is zero reports, not an error --
-    most sessions never run a headless agent. A malformed report file is a finding, not a crash."""
+    most sessions never run a headless agent. A malformed report file is a finding, not a crash.
+
+    A report that is not a single JSON object is retried as an NDJSON stream-json transcript
+    (_last_result_event): its last `type: result` line stands in for `envelope`, and `checkedAt` is
+    derived from the filename's own stamp (or the file's mtime, if that fails to parse) since a raw
+    transcript carries no checkedAt of its own. Rows from this path carry `source: "ndjson-fallback"`
+    so the ledger can tell them apart from a normal -Report envelope (source: "report")."""
     first_day, last_day = today - dt.timedelta(days=days - 1), today
     rows, findings = [], []
     stats = {"files": 0, "unreadable": 0, "reports": 0}
@@ -274,13 +319,26 @@ def scan_headless(reports_dir, today, days):
         name = os.path.basename(path)
         m = HEADLESS_STAMP_RE.match(os.path.splitext(name)[0])
         agent = m.group("agent") if m else os.path.splitext(name)[0]
+        ndjson_fallback = False
         try:
             with open(path, encoding="utf-8") as fh:
-                rec = json.load(fh)
-        except (OSError, ValueError):
+                text = fh.read()
+        except OSError:
             stats["unreadable"] += 1
-            findings.append(("unknown", "headless_report_unreadable", "%s could not be read as JSON" % name))
+            findings.append(("unknown", "headless_report_unreadable", "%s could not be read" % name))
             continue
+        try:
+            rec = json.loads(text)
+        except ValueError:
+            result_event = _last_result_event(text)
+            if result_event is None:
+                stats["unreadable"] += 1
+                findings.append(("unknown", "headless_report_unreadable", "%s could not be read as JSON" % name))
+                continue
+            checked_at = (_checked_at_from_filename(name)
+                         or dt.datetime.fromtimestamp(os.path.getmtime(path), dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+            rec = {"envelope": result_event, "checkedAt": checked_at, "command": None}
+            ndjson_fallback = True
         if not isinstance(rec, dict) or "envelope" not in rec or "checkedAt" not in rec:
             stats["unreadable"] += 1
             findings.append(("unknown", "headless_report_shape", "%s is not the {envelope, checkedAt, command} shape" % name))
@@ -312,7 +370,8 @@ def scan_headless(reports_dir, today, days):
                         "cache_write": int(mu.get("cacheCreationInputTokens") or 0),
                         "msgs": 1, "cost_usd": float(mu.get("costUSD") or 0.0), "cost_basis": basis,
                         "provider": mu.get("provider"), "canonical_model": mu.get("canonicalModel"),
-                        "report_total_cost_usd": envelope.get("total_cost_usd"), "report_file": name})
+                        "report_total_cost_usd": envelope.get("total_cost_usd"), "report_file": name,
+                        "source": "ndjson-fallback" if ndjson_fallback else "report"})
     return rows, findings, stats
 
 
