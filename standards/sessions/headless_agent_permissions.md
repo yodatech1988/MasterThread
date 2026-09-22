@@ -364,3 +364,72 @@ real-path-keyed guards, call-site tests); a headless caller such as `Invoke-Read
 itself a call site and gets the same treatment.
 
 Related: `headless_readiness_ladder.md`.
+
+## Merge seat and the auto-mode classifier (`[Merge Without Review]`)
+
+Issue: yodatech1988/MasterThread#182. Owner decision given directly in PM yoda-09's chat on
+2026-09-22. Docs read 2026-09-22 at https://code.claude.com/docs/en/auto-mode-config.
+
+**What happened.** The merge-authority seat tried a route B `gh pr merge` on MasterThread #173 and
+got an auto-mode classifier denial in the category `[Merge Without Review]`. In auto mode, any tool
+call that no permission rule has already settled goes to a classifier. That classifier treats a
+merge the model starts on its own, with no human approving the command, as unreviewed.
+`merge_authority.md`'s seat convention isn't visible to it. A classifier denial is a stop, not an
+obstacle (`CLAUDE.md`), so the seat did not retry or route around it.
+
+**Why allow rules are not the fix.** The docs say narrow Bash allow rules "stay in effect in auto
+mode. Claude Code resolves them before the classifier runs" (section "Route all shell commands
+through the classifier"). Only broad rules such as `Bash(*)` are suspended. An allow rule that
+reliably matched the merge would therefore skip the classifier, and it would skip every human check
+along with it. An unreviewed merge is exactly what the owner doesn't want automated.
+
+The machine already had matching allow rules at project scope when #173 was blocked:
+`Bash(gh pr merge --squash --match-head-commit *)` in `GitHub\.claude\settings.json` and
+`Bash(gh pr merge *)` in `GitHub\.claude\settings.local.json`. Why they didn't settle that call was
+**not verified**. Possible reasons: the seat's working directory was outside `GitHub\`, or the
+command was compound or used a form the rule prefix doesn't match. Either way, don't count on an
+allow rule to clear a classifier block.
+
+**Chosen fix: a `permissions.ask` rule at user scope.** `C:\Users\yoda_\.claude\settings.json` now
+carries:
+
+```json
+"permissions": { "ask": [ "Bash(gh pr merge *)" ] }
+```
+
+The docs (section "Add a human checkpoint") say: "Content-scoped ask rules like the ones below are
+evaluated before the classifier and always force a permission prompt, even in auto mode". They also
+say "The classifier cannot auto-approve a matching action."
+
+- **Precedence.** Rules are checked deny, then ask, then allow, and the first match wins
+  (`/docs/en/permissions`). So this ask rule beats the project-level allow rules above. The
+  existing `--admin` deny rules still beat it.
+- **What the owner sees.** The seat does its review and posts the `MERGE-VERDICT` comment as before.
+  The merge command then shows the owner a prompt, and his click is the human review.
+- **Scope.** It's user scope, so every session on this machine gets the prompt, not only the seat.
+  Sessions that are already running only pick it up once they reload their settings.
+- **Syntax.** Space-separated, no colon, matching the docs' own example `Bash(git push *)`.
+- **Limit.** It's a prefix match (see "Bash rule limits" in the permissions docs). A command like
+  `gh --repo X pr merge ...` or `cd dir && gh pr merge ...` may not match it. The seat should run
+  `gh pr merge` as a plain, standalone command so the prompt fires. If a firmer check is ever
+  needed, the docs point to a PreToolUse hook, which reads the full command text.
+
+**Alternatives considered.**
+
+1. **An `autoMode.allow` prose rule.** For example, "a `gh pr merge` by the merge seat after a
+   `MERGE-VERDICT` comment is allowed". This is **unconfirmed**. `autoMode.allow` entries only act
+   as exceptions to `soft_deny` rules, and nobody has checked whether `[Merge Without Review]` is a
+   soft or hard rule (`claude auto-mode defaults --label 'Merge'` would show it). It would also take
+   away the human checkpoint. Not chosen.
+2. **The owner merges everything himself (route C for all PRs).** This works today with no config
+   change, but it throws away the seat's route B throughput. Not chosen.
+3. **`permissions.ask` (chosen).** It's documented behavior, it survives context compaction (unlike
+   a boundary stated only in chat), and it costs one owner click per merge.
+
+**Project settings can't carry `autoMode`.** The docs say: "The classifier doesn't read `autoMode`
+from project settings in `.claude/settings.json` or `.claude/settings.local.json`" (section "Where
+the classifier reads configuration"). Only `~/.claude/settings.json`, managed settings and the
+`--settings` flag or Agent SDK count. A repo can't check in its own classifier exceptions, so any
+`autoMode` change for the seat would have to go in user or managed settings, and that change is the
+owner's call. The `permissions.ask` rule used here isn't an `autoMode` key, but it lives at user
+scope for the same reason: one file covers every session.
