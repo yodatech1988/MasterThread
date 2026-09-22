@@ -63,6 +63,27 @@ def reading(names, start):
     ids = sessions_by_name(names)
     per = {n: sum(spend(t, start) for t in transcripts(s)) for n, s in ids.items()}
     missing = [n for n in names if n not in ids]
+    # Headless `claude -p` runs get their own session and exit, so they are in no live registry
+    # entry. Count any transcript touched since the round began that no live session owns
+    # (conservative: an unrelated session that ended mid-round is counted too).
+    live = set()
+    for f in glob.glob(os.path.join(HOME, ".claude", "sessions", "*.json")):
+        try:
+            live.add(json.load(open(f, encoding="utf8"))["sessionId"])
+        except (OSError, ValueError, KeyError):
+            pass
+    t0 = time.mktime(time.strptime(start[:19], "%Y-%m-%dT%H:%M:%S")) - time.timezone
+    head = 0.0
+    for p in glob.glob(os.path.join(HOME, ".claude", "projects", "*", "*.jsonl")):
+        sid = os.path.basename(p)[:-6]
+        try:
+            if sid in live or os.path.getmtime(p) < t0:
+                continue
+        except OSError:
+            continue
+        head += sum(spend(t, start) for t in [p] + glob.glob(os.path.join(os.path.dirname(p), sid, "**", "*.jsonl"), recursive=True))
+    if head:
+        per["headless/ended"] = head
     return per, missing
 
 
