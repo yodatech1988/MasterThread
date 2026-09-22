@@ -86,8 +86,19 @@ this table together, and re-read the price page when prices change.
 
 ## How compaction actually happens
 
-`/compact` is a command only the session's user can type; a session cannot compact itself, and no
-peer can do it for it. So an instruction takes one of two forms:
+**Enforced by autocompact.** Owner direction, given directly in chat on 2026-09-22: *"this needs to
+be enforced in autocompact"*, then *"you do it"*. `~/.claude/settings.json` carries
+`"autoCompactWindow": 250000`, so every session on this PC compacts automatically near 250K tokens,
+or near its model's window if that is smaller (Claude Code 2.1.278: "the actual threshold is the
+minimum of this setting and your model's maximum context window"). The setting is one global value;
+Claude Code has no per-model form. 250K is Opus 5's COMPACT level and the tightest of the priced
+levels, so no model runs past its own. A Fable or Sonnet session that should run to its looser level
+is launched with `--autocompact 500k` / `625k`, or set with `/autocompact` in the session.
+`CLAUDE_CODE_AUTO_COMPACT_WINDOW` overrides the setting and must not be set. The steward's meter
+still reports WATCH and the cold-resume warning, which autocompact does not cover.
+
+Short of the autocompact point, `/compact` is a command only the session's user can type; a session
+cannot compact itself, and no peer can do it for it. So an instruction takes one of two forms:
 
 - **Compact.** The steward messages the session. The session finishes its tool round, writes
   anything it would hate to lose into its durable record (Fleet Status row, handoff notes, the PR
