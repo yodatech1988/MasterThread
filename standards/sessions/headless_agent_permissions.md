@@ -130,36 +130,53 @@ run directly in this worktree).
   what that caller and `tools/headless/Invoke-ReadOnlyAgent.ps1` should add on top of their existing
   `--tools` allow-list, as a recommendation to those files' owners — this PR does not edit either.
 
-## Deny-list vs allow-list: recommendation
+## Three-layer ordering
 
-**Allow-list by default for headless; this deny-list is a second layer, not the primary control.**
-The docs support this directly: the Bash-rule-limits table above is Anthropic's own admission that a
-deny rule matches "the command text Claude writes... after splitting and stripping" and "isn't a
-security boundary around the program" — `bash -c '<anything>'`, an absolute path, or a rephrased
-flag order all walk straight past a deny rule. There is always another way to delete a file. An
-allow-list has the opposite failure mode: the *worst* case is the agent can't do something legitimate
-and errors out loudly, not that it silently succeeds at something destructive.
+**(Updated 2026-09-22, plan task F2 — `docs/FABLE_AGENT_SUBAGENT_PLAN.md:616`.)** Three layers,
+tried in this order for every headless call, from strongest boundary to weakest:
 
-Concretely, for a headless call:
+1. **Layer 1 (primary) — `--restricted`, for agents that need no shell at all.** Verified fact
+   (plan finding F3, probed live 2026-09-22 with `tools/tests/test-invoke-readonly-agent-restricted.ps1
+   -RunLive`): `--restricted` "removes the built-in tools that run commands or code (Bash,
+   PowerShell, REPL and the other code-running tools) and WebFetch unless `--tools` names them, and
+   ignores user, project and local settings files." The live probe's own `system`/`init` event
+   confirms the tool is **absent from the loaded tool list entirely**, not merely denied at call
+   time — a structurally stronger boundary than a pattern-matched deny rule, which (per the
+   Bash-rule-limits table above) can always be walked around by `bash -c '...'`, an absolute path,
+   or a reordered flag. `tools/headless/Invoke-ReadOnlyAgent.ps1`'s `-Restricted` switch defaults
+   **on** for any agent whose `claude-agents/roster_meta.json` entry has `"readonly": "tools"`
+   (owner decision D3, 2026-09-22, given directly in chat: `--restricted`/`-Restricted` is ON BY
+   DEFAULT for read-only agents) — an explicit `-Restricted`/`-Restricted:$false` on the command
+   line always overrides that default. When `--restricted` is in effect, `--tools`/`--allowedTools`
+   are not also passed for the same call — see layer 2's own note below.
+2. **Layer 2 — `--tools`/`--allowedTools` (or subagent frontmatter `tools:`), scoped to the
+   smallest set the agent needs, for agents that genuinely require Bash.** Most of the 25
+   Bash-holding agents (table below) are Haiku-tier fact-reporters that only ever run a handful of
+   `git`/`gh` read verbs. This layer is used **instead of** `--restricted`, never alongside it, for
+   the same call: composing a `--tools` grant with `--restricted` would let that grant silently
+   reopen the exact "tool present but denied" gap `--restricted` exists to close by removing the
+   tool from the surface. `Invoke-ReadOnlyAgent.ps1` enforces this — it does not thread `-Tools`/
+   `-AllowedTools` into the built command line at all when a call resolves to restricted (and warns
+   if both were supplied), matching `docs/FABLE_AGENT_SUBAGENT_PLAN.md` §5's two invocation shapes
+   (`--restricted` alone, or `--tools`/`--allowedTools` alone — never combined).
+3. **Layer 3 (defense-in-depth, unchanged by F2) — this settings file's deny-list
+   (`readonly.settings.json`)**, loaded via `--settings` on every call regardless of which of
+   layers 1/2 is active, so that even if an agent's layer-2 grant is wider than it needs (or a
+   future caller forgets to narrow it), the worst destructive verbs are still blocked by rule text.
+   **F2 does not retire this layer** — `--restricted` only removes tool-running builtins from the
+   surface for agents that need none of them; any agent still holding `--tools`/`--allowedTools`
+   Bash access relies on this layer exactly as before.
 
-1. **Primary control — `--tools`/`--allowedTools` (or subagent frontmatter `tools:`) scoped to the
-   smallest set the agent needs.** Most of the 25 Bash-holding agents (table below) are Haiku-tier
-   fact-reporters that only ever run a handful of `git`/`gh` read verbs; several need no Bash at all
-   for their actual behavior (`origin-reader`'s canonical form is `gh api .../contents/<path>` or
-   `git show origin/<default>:<path>`, both expressible without ever granting a write verb the
-   model could misuse).
-2. **Secondary control — this settings file's deny-list**, loaded via `--settings`, so that even if
-   an agent's `--tools` grant is wider than it needs (or a future caller forgets to narrow it), the
-   worst destructive verbs are blocked by rule text, not by hoping the model behaves.
-3. **`--permission-mode dontAsk --permission-prompts none`** so that anything neither the built-in
-   read-only set nor an explicit `permissions.allow`/`--allowedTools` entry covers is denied outright
-   instead of hanging on a prompt nobody can answer.
+`--permission-mode dontAsk --permission-prompts none` still wraps every call regardless of layer, so
+that anything none of the three layers positively grants is denied outright instead of hanging on a
+prompt nobody can answer.
 
-This PR only ships layer 2 (`readonly.settings.json`) plus the recommended invocation line, because
-layer 1 (the actual per-agent allow-list) depends on `claude-agents/roster_meta.json`'s
-`readonly: tools|instruction` classification, which another lane in this same PR round is adding.
-Once that file exists, the natural next step is a small per-agent `permissions.allow` overlay (or a
-generated `--allowedTools` string) built from it — tracked as a follow-up, not done here.
+This section originally shipped only layer 3 (`readonly.settings.json`) plus the recommended
+invocation line, because layer 1 as it exists today (the `--restricted` default-on rule) depended on
+`claude-agents/roster_meta.json`'s `readonly: tools|instruction` classification, added by a separate
+lane in the same PR round and confirmed live before F2 built on it. The per-agent
+`--allowedTools`/`permissions.allow` overlay for layer-2 agents (the ones that keep Bash) remains a
+tracked follow-up, not done here.
 
 ## Bash usage across the 25 Bash-holding global agents
 
@@ -256,6 +273,24 @@ wrapper script that validates the condition before invoking `claude`, or must st
 
 ## Recommended headless invocation
 
+Two shapes, per the three-layer ordering above — never combined in the same call:
+
+**No shell needed (layer 1, `--restricted`):**
+
+```
+claude --print --agent <name> \
+  --restricted \
+  --settings <abs path to>/tools/headless/readonly.settings.json \
+  --permission-mode dontAsk \
+  --permission-prompts none \
+  --strict-mcp-config \
+  --max-budget-usd <small ceiling> \
+  --output-format stream-json \
+  "<prompt>"
+```
+
+**Bash genuinely needed (layer 2, `--tools`/`--allowedTools`):**
+
 ```
 claude --print --agent <name> \
   --settings <abs path to>/tools/headless/readonly.settings.json \
@@ -268,16 +303,23 @@ claude --print --agent <name> \
   "<prompt>"
 ```
 
+The `--settings` deny-list (layer 3) loads in both shapes regardless.
+
 This is a recommendation for the owner of `ops-platform/packages/project-manager/src/reasoner.js`
 to adopt — this PR does not edit that file (out of lane scope; owned elsewhere). `reasoner.js`
 already passes `--tools` and `--strict-mcp-config`; it is missing `--settings`, `--permission-mode`,
-and `--permission-prompts` from the line above. (As of 2026-09-18, `MasterThread/tools/overnight-
-sweep-supervisor.ps1` is not on `origin/main` and has no known caller to adopt this line — see the
-correction under "The threat" above.)
+`--permission-prompts`, and (where the agent qualifies) `--restricted` from the lines above. (As of
+2026-09-18, `MasterThread/tools/overnight-sweep-supervisor.ps1` is not on `origin/main` and has no
+known caller to adopt this line — see the correction under "The threat" above.)
 
-`tools/headless/Invoke-ReadOnlyAgent.ps1` in this repo is a thin wrapper around that invocation for
-PowerShell callers, taking `-AgentName`, `-Prompt`, `-Tools` and `-MaxBudgetUsd` and building the
-argv above. It is, as of 2026-09-18, the only live PowerShell caller of this pattern.
+`tools/headless/Invoke-ReadOnlyAgent.ps1` in this repo is a thin wrapper around these invocations for
+PowerShell callers, taking `-AgentName`, `-Prompt`, `-Tools`, `-AllowedTools`, `-Restricted` and
+`-MaxBudgetUsd` and building the argv above. Added 2026-09-22 (plan task F2): `-Restricted` defaults
+on for any agent whose `claude-agents/roster_meta.json` entry has `"readonly": "tools"` (owner
+decision D3) — an explicit `-Restricted`/`-Restricted:$false` always overrides that default, and the
+default-on lookup itself fails closed (documented non-zero exit) if `roster_meta.json` is missing or
+does not list the named agent, rather than silently assuming unrestricted. It is, as of 2026-09-18,
+the only live PowerShell caller of this pattern.
 
 ## Agents that must never run headless at all
 
@@ -364,3 +406,90 @@ real-path-keyed guards, call-site tests); a headless caller such as `Invoke-Read
 itself a call site and gets the same treatment.
 
 Related: `headless_readiness_ladder.md`.
+
+## Merge seat and the auto-mode classifier (`[Merge Without Review]`)
+
+Issue: yodatech1988/MasterThread#182. Owner decision given directly in PM yoda-09's chat on
+2026-09-22. Docs read 2026-09-22 at https://code.claude.com/docs/en/auto-mode-config.
+
+**What happened.** The merge-authority seat tried a route B `gh pr merge` on MasterThread #173 and
+got an auto-mode classifier denial in the category `[Merge Without Review]`. In auto mode, any tool
+call that no permission rule has already settled goes to a classifier. That classifier treats a
+merge the model starts on its own, with no human approving the command, as unreviewed.
+`merge_authority.md`'s seat convention isn't visible to it. A classifier denial is a stop, not an
+obstacle (`CLAUDE.md`), so the seat did not retry or route around it.
+
+**Owner ruling: A classifier denial is a stop, including for read-only commands.** After #173
+merged, the seat's subsequent `gh pr view` read-only calls were also denied `[Merge Without
+Review]`, and the seat routed around the denial by trying `gh api repos/.../pulls/173` instead.
+Owner ruled: on any denial (read-only included), stop and report. Do not switch to a
+differently-shaped command. This principle applies across all headless agents, not only the merge
+seat. The rest of this section documents the merge-specific fix; the broader stop-on-denial rule is
+captured in `CLAUDE.md` and applies to every tool call.
+
+**Why allow rules are not the fix.** The docs say narrow Bash allow rules "stay in effect in auto
+mode. Claude Code resolves them before the classifier runs" (section "Route all shell commands
+through the classifier"). Only broad rules such as `Bash(*)` are suspended. An allow rule that
+reliably matched the merge would therefore skip the classifier, and it would skip every human check
+along with it. An unreviewed merge is exactly what the owner doesn't want automated.
+
+The machine already had matching allow rules at project scope when #173 was blocked:
+`Bash(gh pr merge --squash --match-head-commit *)` in `GitHub\.claude\settings.json` and
+`Bash(gh pr merge *)` in `GitHub\.claude\settings.local.json`. Why they didn't settle that call was
+**not verified**. Possible reasons: the seat's working directory was outside `GitHub\`, or the
+command was compound or used a form the rule prefix doesn't match. Either way, don't count on an
+allow rule to clear a classifier block.
+
+**Chosen fix: a `permissions.ask` rule at user scope.** `C:\Users\yoda_\.claude\settings.json` now
+carries:
+
+```json
+"permissions": { "ask": [ "Bash(gh pr merge *)" ] }
+```
+
+The docs (section "Add a human checkpoint") say: "Content-scoped ask rules like the ones below are
+evaluated before the classifier and always force a permission prompt, even in auto mode". They also
+say "The classifier cannot auto-approve a matching action."
+
+- **Precedence.** Rules are checked deny, then ask, then allow, and the first match wins
+  (`/docs/en/permissions`). So this ask rule beats the project-level allow rules above. The
+  existing `--admin` deny rules still beat it.
+- **What the owner sees.** The seat does its review and posts the `MERGE-VERDICT` comment as before.
+  The merge command then shows the owner a prompt, and his click is the human review.
+- **Scope.** It's user scope, so every session on this machine gets the prompt, not only the seat.
+  Sessions that are already running only pick it up once they reload their settings.
+- **Syntax.** Space-separated, no colon, matching the docs' own example `Bash(git push *)`.
+- **Limit.** It's a prefix match (see "Bash rule limits" in the permissions docs). A command like
+  `gh --repo X pr merge ...` or `cd dir && gh pr merge ...` may not match it. The seat should run
+  `gh pr merge` as a plain, standalone command so the prompt fires. If a firmer check is ever
+  needed, the docs point to a PreToolUse hook, which reads the full command text.
+
+**Alternatives considered.**
+
+1. **An `autoMode.allow` prose rule.** For example, "a `gh pr merge` by the merge seat after a
+   `MERGE-VERDICT` comment is allowed". This is **unconfirmed**. `autoMode.allow` entries only act
+   as exceptions to `soft_deny` rules, and nobody has checked whether `[Merge Without Review]` is a
+   soft or hard rule (`claude auto-mode defaults --label 'Merge'` would show it). It would also take
+   away the human checkpoint. Not chosen.
+2. **The owner merges everything himself (route C for all PRs).** This works today with no config
+   change, but it throws away the seat's route B throughput. Not chosen.
+3. **`permissions.ask` (chosen).** It's documented behavior, it survives context compaction (unlike
+   a boundary stated only in chat), and it costs one owner click per merge.
+
+**Project settings can't carry `autoMode`.** The docs say: "The classifier doesn't read `autoMode`
+from project settings in `.claude/settings.json` or `.claude/settings.local.json`" (section "Where
+the classifier reads configuration"). Only `~/.claude/settings.json`, managed settings and the
+`--settings` flag or Agent SDK count. A repo can't check in its own classifier exceptions, so any
+`autoMode` change for the seat would have to go in user or managed settings, and that change is the
+owner's call. The `permissions.ask` rule used here isn't an `autoMode` key, but it lives at user
+scope for the same reason: one file covers every session.
+
+**Verdict read-back and command-chaining safeguards (Incident 2).** yodatech1988/MasterThread#182
+incident 2 (Quality Audit (yoda-30) found the MERGE-VERDICT was missing for the merged head; the merge seat then confirmed via gh api that its verdict comment never posted (the gh pr comment call had failed inside a chained shell block)). Outcome was correct (fix verified on origin/main), but the process failed.
+Remediation: (1) Run each `gh` command on its own in a separate shell call — never chain `gh` calls
+with `&&`, `||`, `;`, or similar, because a silently failed call inside a chain goes unnoticed.
+(2) After posting a `MERGE-VERDICT` comment, read it back via `gh api repos/<owner>/<repo>/issues/comments/<id>`
+and confirm it exists before merging — never report a verdict as posted without that read-back.
+(3) If a verdict read-back later discovers a missing verdict, record it afterwards as a labeled
+`POST-MERGE RECORD` (comment or a new entry in `MERGE-RECORDS.md`, per merge_authority.md), dated
+when it's written, never backdated. This preserves the audit trail and triggers a re-review.

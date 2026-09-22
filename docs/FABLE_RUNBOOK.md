@@ -4,14 +4,17 @@ Status: **DRAFT, 2026-09-21.** Companion to `docs/FABLE_AGENT_SUBAGENT_PLAN.md`,
 reasoning, the measurements and the build plan. This file is the operating procedure only, written
 to be read on a phone.
 
-**Nothing in this runbook is live yet.** The wrappers it calls (F12) are not built, and the entry
-gate in the plan's §7 blocks every build task except the two measurements. Read this as the
-procedure the build is aiming at, not as instructions that work today. Each step says what it needs.
+**Nothing in this runbook is live yet.** The wrappers it calls (F12) are not built. The plan's §7
+entry gate is **still closed**: conditions 1, 2 and 5 are satisfied (2026-09-22), condition 3 is not
+re-verified, and condition 4 is **pending** the owner's answer on card
+`fable-confirm-f8-deferral-2026-09-22`. The F5 and F11 WAITs and the F8 deferral are relayed, each
+pending its own confirmation card (plan §9). Read this as the procedure the build is aiming at, not
+as instructions that work today. Each step says what it needs.
 
 **Wave-1 tracking (2026-09-22):** F2 (#174) and F3 (#176) are merged to `main` (commit `10786c2`,
 2026-09-22T02:18:32Z — #176 landed via #174's squash), and F10 (#172) is merged to `main`
-(2026-09-22T02:18:45Z). See the plan's §6 status table and issue #185. The #169 follow-up (#175) is
-still open. None of the "needs F12" gates below have moved yet — those wrappers (F12) are still
+(2026-09-22T02:18:45Z). See the plan's §6 status table and issue #185. The #169 follow-up (#175) merged
+to `main` at 2026-09-22T02:32:43Z (`6e8f6ec`). None of the "needs F12" gates below have moved yet — those wrappers (F12) are still
 unbuilt regardless of F2/F3/F10 landing.
 
 ---
@@ -23,6 +26,7 @@ unbuilt regardless of F2/F3/F10 landing.
 | **Seat** | One Sonnet 5 / low Claude Code session. Routes and dispatches. Derives nothing. | Phone or desk |
 | **Board** | Decision Queue + Fleet Status. Read state, tap approvals. | Phone (paired device) |
 | **Continuity** | The Fable seat. What changed, what we decided, what's next. | Phone or desk |
+| **Tracker** | Live F-task/round/agent progress board for this plan's own build-out (plan §2, F14). Read-only for you; only the seat writes it. | Phone (paired device) |
 
 Everything else is an agent. You never run a lane yourself.
 
@@ -46,9 +50,12 @@ Only the seat writes the board — `claude -p` cannot hold `ArtifactData`, so no
 own approval.
 
 **4. You read and tap.** Summary on top, links in `points`.
-On a paired phone a confirm is three taps with a 10s arm window. Decision cards resolve on your tap;
-action cards resolve **on evidence**, so an agent closes them once it can see the thing is done —
-you do not have to come back and press the button.
+On a paired phone a confirm is three taps with a 10s arm window. Decision cards resolve on your
+tap, and only yours. Action cards take two steps. You do the thing and press **"I did it - check
+it"**. That records your claim and leaves the card open. Then **the seat** checks the live result
+and closes the card, recording what it checked. The seat never closes an action card you have not
+claimed. No agent closes one either, because agents cannot write to the board (step 3). If the
+check fails, the card stays open with what was found.
 
 **5. Seat dispatches.** One wrapper call per task, by table lookup (plan §4). Never a hand-typed
 flag line.
@@ -66,7 +73,8 @@ is exactly what a `low` seat is bad at.
 **6. Agents run headless** and file schema-checked JSON. They never write a card, never merge, never
 schedule anything.
 
-**7. Seat ingests the reports**, writes Fleet Status rows, files the next cards. Back to step 4.
+**7. Seat ingests the reports**, writes Fleet Status rows, updates the F-task tracker (one row per
+F-task id, status only — no logs, code or secrets), files the next cards. Back to step 4.
 
 ---
 
@@ -74,6 +82,8 @@ schedule anything.
 
 - **The seat never upgrades itself.** A hard task dispatches a callee; it does not raise the seat's
   model or effort.
+- **Only the seat writes the F-task tracker** — same rule as Fleet Status and the Decision Queue.
+  An agent files a report; it never writes a tracker row, and neither does the Fable seat.
 - **The seat never judges production.** Row-1 work goes to an Opus callee or to an owner click-file.
 - **Operations never depend on the continuity seat.** If it is unreachable the round still runs off
   the durable record — repo, Fleet Status, cards. A wrapper that blocks a lane because continuity is
@@ -92,9 +102,9 @@ schedule anything.
 that class from a phone; you cannot *execute* it.
 
 This bites in one specific place: **registering the scheduled run (F5) is itself a click-file**, so
-the step that moves the fleet to L1 is desk-only. Plan §9 decision 5 recommends accepting that —
-rung changes are rare and deliberate and already need an owner card — rather than building a second
-approval path.
+the step that moves the fleet to L1 is desk-only. **D5 (2026-09-22, relayed; pending the owner's
+answer on card `fable-confirm-d5-rung-changes-desk-only-2026-09-22`):** rung changes stay desk-only,
+and no second approval path is built.
 
 Also worth knowing: the approval-device gate is **"not real security"** in its own words — a
 `localStorage` id against a shared pairing list. It guards against a wrong-device tap. It is not
@@ -107,8 +117,10 @@ hard-to-reverse action.
 
 - **A report that says nothing is not a quiet day.** A scheduled run that emitted no file is a
   finding — "a silent watcher and a quiet fleet must not look alike" (`fleet_roster_monitor.md`).
-- **A refusal reads as an empty answer.** Fable can decline at HTTP 200. Every Fable call runs
-  `--fallback-model opus`; a seat at `low` will otherwise relay "nothing found" as a finding.
+- **A refusal reads as an empty answer.** Fable can decline at HTTP 200, and a seat at `low` will
+  relay that as "nothing found". A refusal is a stop. The wrapper reports it as a refusal, and it is
+  filed for you. It is never retried on another model. (`--fallback-model opus` is only for when
+  Fable is overloaded or unavailable. It is not a way around a refusal.)
 - **A cold resume succeeds and costs ~70× more.** ~$0.51 against ~$0.007. It does not fail, so F12
   has to make it loud.
 - **Green CI is not evidence, and neither is its absence.** Say which kind of failure you are
@@ -123,3 +135,7 @@ hard-to-reverse action.
 The expensive thing is not the model — it is paying for a system prompt twice. Batch the sweeps into
 one hourly burst, keep the continuity seat warm, and let Haiku subagents stay stateless. Measured
 figures and their caveats are in the plan's §1b.
+
+Every number here is an **API-list-price-equivalent dollar figure**, read from the CLI's own
+`total_cost_usd`/`modelUsage[*].costBasis: "list"` fields, even though the call itself is billed
+against the Claude Code subscription, not metered API usage. See plan §11.
