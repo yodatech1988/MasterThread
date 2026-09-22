@@ -80,7 +80,7 @@ What that means per model (list prices read 2026-09-22; context in tokens):
 | Haiku 4.5 (200K window) | 0.10 | 100K (window) | 140K (window) | 170K (window) | never (tops out at $0.40) |
 
 Fable's steady-state limits are looser than Opus's because its cache reads are cheaper. Its
-cold-resume warning is the tightest, because its cache writes cost four times Opus's per token. The
+cold-resume warning is the tightest, because its cache writes cost twice what Opus's do per token. The
 dollar constants and prices live together at the top of `cost-steward.py`. Change them there and in
 this table together, and re-read the price page when prices change.
 
