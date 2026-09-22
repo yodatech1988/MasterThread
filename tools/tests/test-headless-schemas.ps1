@@ -232,6 +232,45 @@ Test-Case "validator self-check: rejects wrong type, missing key, extra key, bad
     }
 }
 
+# --- JsonSchemaLite.ps1 regression (issue #206, Fix B) --------------------------------------------
+# tools/headless/JsonSchemaLite.ps1 is the shared module Invoke-Subagent.ps1:297-349 dot-sources and
+# calls Test-JsonSchemaLite against (this test file's Get-SchemaErrors above is a separate, unrelated
+# in-file copy used only for the F4 schema regressions and is not touched by Fix B). Before Fix B,
+# Test-JsonSchemaLite's -Value parameter was [Parameter(Mandatory = $true)] with no [AllowNull()], so
+# a JSON `null` value -- legal wherever a schema says "type":"null" or a property is nullable --
+# failed PowerShell parameter binding (a terminating error, or an interactive prompt) instead of
+# reaching the 'null' branch of the type switch. These tests dot-source the REAL module (not the
+# in-file copy above) so a fix here is evidence for what Invoke-Subagent.ps1 actually calls.
+. (Join-Path $repoRoot 'tools\headless\JsonSchemaLite.ps1')
+
+Test-Case "JsonSchemaLite: top-level null against type null is VALID (no exception, no errors)" {
+    $schema = '{"type":"null"}' | ConvertFrom-Json
+    $errs = Test-JsonSchemaLite -Value $null -Schema $schema
+    if ($errs.Count -ne 0) { throw "expected zero errors, got: $($errs -join '; ')" }
+}
+
+Test-Case "JsonSchemaLite: top-level null against type string is INVALID (error message, not an exception)" {
+    $schema = '{"type":"string"}' | ConvertFrom-Json
+    $errs = Test-JsonSchemaLite -Value $null -Schema $schema
+    if ($errs.Count -eq 0) { throw 'expected a type-mismatch error, got none' }
+    if ($errs[0] -notmatch 'expected string') { throw "expected an 'expected string' message, got: $($errs[0])" }
+}
+
+Test-Case "JsonSchemaLite: nested null property (anyOf [string, null], value null) is VALID" {
+    $schema = '{"type":"object","properties":{"a":{"anyOf":[{"type":"string"},{"type":"null"}]}},"required":["a"],"additionalProperties":false}' | ConvertFrom-Json
+    $value = '{"a":null}' | ConvertFrom-Json
+    $errs = Test-JsonSchemaLite -Value $value -Schema $schema
+    if ($errs.Count -ne 0) { throw "expected zero errors, got: $($errs -join '; ')" }
+}
+
+Test-Case "JsonSchemaLite: nested null property against a non-nullable string type is INVALID (no exception)" {
+    $schema = '{"type":"object","properties":{"a":{"type":"string"}},"required":["a"],"additionalProperties":false}' | ConvertFrom-Json
+    $value = '{"a":null}' | ConvertFrom-Json
+    $errs = Test-JsonSchemaLite -Value $value -Schema $schema
+    if ($errs.Count -eq 0) { throw 'expected a type-mismatch error for the null property, got none' }
+    if ($errs[0] -notmatch '\$\.a expected string') { throw "expected a '`$.a expected string' message, got: $($errs[0])" }
+}
+
 Test-Case "schemas directory exists" {
     if (-not (Test-Path -LiteralPath $schemaDir -PathType Container)) { throw "not found: $schemaDir" }
 }
