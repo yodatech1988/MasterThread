@@ -60,10 +60,13 @@ store; that connector needs the interactive claude.ai login a headless run never
 `--allowedTools ArtifactData` grants a tool that does nothing (verified against `code.claude.com`'s
 `headless` and `artifacts` reference pages). So "writing `prs`/`health` rows" at this rung means:
 
-1. The wrapper (`Invoke-ReadOnlyAgent.ps1`, `--output-format json`) writes one report file per run
-   to `%APPDATA%\AEGIS\reports\<agent>.<yyyyMMdd-HHmmss>.json`:
-   `{agent, checkedAt, command, exitCode, permissionDenials, findings[]}` — a plain file write by
-   the wrapper process, not a tool call the agent itself makes.
+1. The wrapper (`Invoke-ReadOnlyAgent.ps1 -Report`, plan task F3, merged PR #176) writes one report
+   file per run to `%APPDATA%\AEGIS\reports\<agent>.<yyyyMMdd-HHmmss>.json`:
+   `{envelope, checkedAt, command}` — the CLI's own `--output-format json` result envelope, embedded
+   verbatim and unparsed, plus the wrapper's own `checkedAt` (UTC clock at write time) and `command`
+   (the exact invocation; the prompt is deliberately not stored). A plain file write by the wrapper
+   process, not a tool call the agent itself makes. A nonzero CLI exit writes no report at all — a
+   missing report is itself the finding, per "What every headless run must emit" below.
 2. The PM's heartbeat tick (`pm_role.md` "The heartbeat", step 5) reads unread files each tick,
    writes them into Fleet Status `prs`/`health` with `writtenBy: "<pm session> from <report
    file>"`, and archives the file.
