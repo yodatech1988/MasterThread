@@ -13,6 +13,7 @@ param()
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $scriptPath = Join-Path (Split-Path -Parent $here) 'headless\Ask-Fable.ps1'
+$invokeReadOnlyAgentScriptPath = Join-Path (Split-Path -Parent $here) 'headless\Invoke-ReadOnlyAgent.ps1'
 
 $testsPassed = 0
 $testsFailed = 0
@@ -134,6 +135,147 @@ try {
         $sid = [Guid]::NewGuid().ToString()
         & $scriptPath -SessionId $sid -Question 'irrelevant' -WorkingDirectory $safeWorkDir -StateDir $stateDir -BudgetsPath $budgetsFile -DryRun 2>&1 | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "expected exit 0 for a safe working directory, got $LASTEXITCODE" }
+    }
+
+    # --- gh198: --session-id/--resume/--fallback-model/--fork-session reach the real argv ----------
+    # Direct DryRun assertions against Invoke-ReadOnlyAgent.ps1 itself -- the flags appear on the
+    # argv line Start-Process would launch, not merely in this script's own bookkeeping.
+    Test-Case "gh198: -SessionId alone (no -Resume) produces --session-id, never --resume" {
+        $out = & $invokeReadOnlyAgentScriptPath -AgentName 'fable-seat' -Prompt 'x' -Restricted -SessionId 'abc123' -DryRun *>&1 | Out-String -Width 4096
+        if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE. Output: $out" }
+        if ($out -notmatch '--session-id abc123') { throw "expected --session-id abc123. Output: $out" }
+        if ($out -match '--resume') { throw "must not also carry --resume. Output: $out" }
+    }
+
+    Test-Case "gh198: -SessionId with -Resume produces --resume, never --session-id (mutual exclusion, fails closed structurally)" {
+        $out = & $invokeReadOnlyAgentScriptPath -AgentName 'fable-seat' -Prompt 'x' -Restricted -SessionId 'abc123' -Resume -DryRun *>&1 | Out-String -Width 4096
+        if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE. Output: $out" }
+        if ($out -notmatch '--resume abc123') { throw "expected --resume abc123. Output: $out" }
+        if ($out -match '--session-id') { throw "the built argv must NEVER carry both --session-id and --resume on one call -- found --session-id alongside --resume. Output: $out" }
+    }
+
+    Test-Case "gh198: -Resume without -SessionId is refused (exit 2), nothing launched -- there is no id to resume" {
+        & $invokeReadOnlyAgentScriptPath -AgentName 'fable-seat' -Prompt 'x' -Restricted -Resume -DryRun 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 2) { throw "expected exit 2, got $LASTEXITCODE" }
+    }
+
+    Test-Case "gh198: -ForkSession combines with -SessionId (--session-id AND --fork-session, never --resume)" {
+        $out = & $invokeReadOnlyAgentScriptPath -AgentName 'fable-seat' -Prompt 'x' -Restricted -SessionId 'abc123' -ForkSession -DryRun *>&1 | Out-String -Width 4096
+        if ($out -notmatch '--session-id abc123') { throw "expected --session-id abc123. Output: $out" }
+        if ($out -notmatch '--fork-session') { throw "expected --fork-session. Output: $out" }
+        if ($out -match '--resume') { throw "must not also carry --resume. Output: $out" }
+    }
+
+    Test-Case "gh198: -FallbackModel '' omits --fallback-model entirely" {
+        $out = & $invokeReadOnlyAgentScriptPath -AgentName 'fable-seat' -Prompt 'x' -Restricted -FallbackModel '' -DryRun *>&1 | Out-String -Width 4096
+        if ($out -match '--fallback-model') { throw "empty -FallbackModel must omit the flag. Output: $out" }
+    }
+
+    Test-Case "gh198: -FallbackModel 'opus' produces --fallback-model opus" {
+        $out = & $invokeReadOnlyAgentScriptPath -AgentName 'fable-seat' -Prompt 'x' -Restricted -FallbackModel 'opus' -DryRun *>&1 | Out-String -Width 4096
+        if ($out -notmatch '--fallback-model opus') { throw "expected --fallback-model opus. Output: $out" }
+    }
+
+    Test-Case "gh198: a caller passing none of the four new parameters gets byte-identical argv to before this change" {
+        $out = & $invokeReadOnlyAgentScriptPath -AgentName 'fable-seat' -Prompt 'x' -Restricted -DryRun *>&1 | Out-String -Width 4096
+        $expected = 'DRYRUN ARGS: --print --agent fable-seat --settings "' + (Join-Path (Split-Path -Parent $invokeReadOnlyAgentScriptPath) 'readonly.settings.json') + '" --restricted --permission-mode dontAsk --permission-prompts none --strict-mcp-config --max-budget-usd 1 --output-format stream-json --verbose (prompt on stdin)'
+        $argsLine = (($out -split "`r?`n") | Where-Object { $_ -match '^DRYRUN ARGS:' } | Select-Object -First 1).Trim()
+        if ($argsLine -ne $expected) { throw "expected byte-identical argv line for a caller passing none of the new parameters.`nExpected: $expected`nActual:   $argsLine" }
+    }
+
+    # --- gh198: Ask-Fable.ps1's own $innerArgs actually carries the flags through, end to end -------
+    # Uses the -InvokeReadOnlyAgentPath test seam to point at a throwaway capture fixture (written
+    # here, never committed) that records exactly which parameters it was invoked with, instead of
+    # the real Invoke-ReadOnlyAgent.ps1 -- so these assertions spend no budget and need no `claude`
+    # on PATH, while still proving Ask-Fable.ps1's own wiring, not just Invoke-ReadOnlyAgent.ps1's.
+    $captureScript = Join-Path $fixtureRoot 'capture-invoke-readonly-agent.ps1'
+    @'
+[CmdletBinding()]
+param(
+    [string]$AgentName, [string]$Prompt, [double]$MaxBudgetUsd, [int]$TimeoutSec,
+    [switch]$Report, [string]$ReportDir, [switch]$Restricted, [string]$Tools, [string]$Model,
+    [string]$SessionId, [switch]$Resume, [string]$FallbackModel, [switch]$ForkSession,
+    [string]$ClaudePath, [string]$RosterMetaPath
+)
+$captured = [ordered]@{
+    SessionIdGiven      = $PSBoundParameters.ContainsKey('SessionId')
+    SessionId           = $SessionId
+    ResumeGiven         = $PSBoundParameters.ContainsKey('Resume')
+    Resume              = [bool]$Resume
+    FallbackModelGiven  = $PSBoundParameters.ContainsKey('FallbackModel')
+    FallbackModel       = $FallbackModel
+    ForkSessionGiven    = $PSBoundParameters.ContainsKey('ForkSession')
+    ForkSession         = [bool]$ForkSession
+}
+($captured | ConvertTo-Json -Compress) | Set-Content -LiteralPath $env:AEGIS_TEST_CAPTURE_PATH -Encoding utf8
+exit 0
+'@ | Set-Content -Path $captureScript -Encoding utf8
+
+    Test-Case "gh198 end-to-end: a cold Ask-Fable call passes -SessionId, not -Resume, to Invoke-ReadOnlyAgent.ps1" {
+        $sid = [Guid]::NewGuid().ToString()
+        $capturePath = Join-Path $fixtureRoot ("capture-" + [Guid]::NewGuid().ToString('N') + '.json')
+        $oldCapture = $env:AEGIS_TEST_CAPTURE_PATH
+        try {
+            $env:AEGIS_TEST_CAPTURE_PATH = $capturePath
+            & $scriptPath -SessionId $sid -Question 'irrelevant' -WorkingDirectory $safeWorkDir -StateDir $stateDir -BudgetsPath $budgetsFile -InvokeReadOnlyAgentPath $captureScript 2>&1 | Out-Null
+        } finally {
+            $env:AEGIS_TEST_CAPTURE_PATH = $oldCapture
+        }
+        if (-not (Test-Path $capturePath)) { throw "capture file was not written" }
+        $captured = Get-Content -LiteralPath $capturePath -Raw | ConvertFrom-Json
+        if (-not $captured.SessionIdGiven -or $captured.SessionId -ne $sid) { throw "expected -SessionId $sid to reach Invoke-ReadOnlyAgent.ps1. Captured: $($captured | ConvertTo-Json -Compress)" }
+        if ($captured.ResumeGiven) { throw "a cold call must not pass -Resume. Captured: $($captured | ConvertTo-Json -Compress)" }
+    }
+
+    Test-Case "gh198 end-to-end: a resumed Ask-Fable call (known-open session) passes -Resume to Invoke-ReadOnlyAgent.ps1" {
+        $sid = [Guid]::NewGuid().ToString()
+        $stateFile = Join-Path $stateDir "$sid.json"
+        '{"openedUtc":"2026-01-01T00:00:00Z","lastUsedUtc":"2026-01-01T00:00:00Z"}' | Set-Content -Path $stateFile -Encoding utf8
+        $capturePath = Join-Path $fixtureRoot ("capture-" + [Guid]::NewGuid().ToString('N') + '.json')
+        $oldCapture = $env:AEGIS_TEST_CAPTURE_PATH
+        try {
+            $env:AEGIS_TEST_CAPTURE_PATH = $capturePath
+            & $scriptPath -SessionId $sid -Question 'irrelevant' -WorkingDirectory $safeWorkDir -StateDir $stateDir -BudgetsPath $budgetsFile -InvokeReadOnlyAgentPath $captureScript 2>&1 | Out-Null
+        } finally {
+            $env:AEGIS_TEST_CAPTURE_PATH = $oldCapture
+        }
+        $captured = Get-Content -LiteralPath $capturePath -Raw | ConvertFrom-Json
+        if (-not $captured.ResumeGiven -or -not $captured.Resume) { throw "expected -Resume to reach Invoke-ReadOnlyAgent.ps1 for a known-open session. Captured: $($captured | ConvertTo-Json -Compress)" }
+        if (-not $captured.SessionIdGiven -or $captured.SessionId -ne $sid) { throw "-SessionId must still be passed (it is the id -Resume resumes). Captured: $($captured | ConvertTo-Json -Compress)" }
+    }
+
+    Test-Case "gh198 end-to-end: a -Fork call passes -ForkSession, never -Resume, and does not update persistent cold-start state" {
+        $sid = [Guid]::NewGuid().ToString()
+        $stateFile = Join-Path $stateDir "$sid.json"
+        '{"openedUtc":"2026-01-01T00:00:00Z","lastUsedUtc":"2026-01-01T00:00:00Z"}' | Set-Content -Path $stateFile -Encoding utf8
+        $beforeContent = Get-Content -LiteralPath $stateFile -Raw
+        $capturePath = Join-Path $fixtureRoot ("capture-" + [Guid]::NewGuid().ToString('N') + '.json')
+        $oldCapture = $env:AEGIS_TEST_CAPTURE_PATH
+        try {
+            $env:AEGIS_TEST_CAPTURE_PATH = $capturePath
+            & $scriptPath -SessionId $sid -Question 'irrelevant' -Fork -WorkingDirectory $safeWorkDir -StateDir $stateDir -BudgetsPath $budgetsFile -InvokeReadOnlyAgentPath $captureScript 2>&1 | Out-Null
+        } finally {
+            $env:AEGIS_TEST_CAPTURE_PATH = $oldCapture
+        }
+        $captured = Get-Content -LiteralPath $capturePath -Raw | ConvertFrom-Json
+        if (-not $captured.ForkSessionGiven -or -not $captured.ForkSession) { throw "expected -ForkSession to reach Invoke-ReadOnlyAgent.ps1 under -Fork. Captured: $($captured | ConvertTo-Json -Compress)" }
+        if ($captured.ResumeGiven) { throw "a -Fork call must never pass -Resume. Captured: $($captured | ConvertTo-Json -Compress)" }
+        $afterContent = Get-Content -LiteralPath $stateFile -Raw
+        if ($afterContent -ne $beforeContent) { throw "a -Fork call must not update the persistent cold-start/turn state file" }
+    }
+
+    Test-Case "gh198 end-to-end: -FallbackModel '' (the documented opt-out) omits -FallbackModel from innerArgs" {
+        $sid = [Guid]::NewGuid().ToString()
+        $capturePath = Join-Path $fixtureRoot ("capture-" + [Guid]::NewGuid().ToString('N') + '.json')
+        $oldCapture = $env:AEGIS_TEST_CAPTURE_PATH
+        try {
+            $env:AEGIS_TEST_CAPTURE_PATH = $capturePath
+            & $scriptPath -SessionId $sid -Question 'irrelevant' -FallbackModel '' -WorkingDirectory $safeWorkDir -StateDir $stateDir -BudgetsPath $budgetsFile -InvokeReadOnlyAgentPath $captureScript 2>&1 | Out-Null
+        } finally {
+            $env:AEGIS_TEST_CAPTURE_PATH = $oldCapture
+        }
+        $captured = Get-Content -LiteralPath $capturePath -Raw | ConvertFrom-Json
+        if ($captured.FallbackModelGiven) { throw "-FallbackModel '' must not be passed through to Invoke-ReadOnlyAgent.ps1 at all. Captured: $($captured | ConvertTo-Json -Compress)" }
     }
 } finally {
     Remove-Item -Recurse -Force $fixtureRoot -ErrorAction SilentlyContinue

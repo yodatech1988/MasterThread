@@ -204,6 +204,33 @@
     Default: ..\..\claude-agents next to this script (the real repo layout). Missing/unresolvable
     falls back to the old --agent path with a warning, rather than refusing the run.
 
+.PARAMETER SessionId
+    2026-09-22 addition (gh198, F12 follow-up per issue #198/#205). Passed as --session-id <id> --
+    opens (or re-opens under a specific id) a session for continuity across calls. Refused (exit 2)
+    together with -Resume on the same call: the CLI only accepts one session-identity flag per
+    invocation, and this script enforces that itself rather than letting the CLI's own error be the
+    only signal. Optional -- a caller that never passes -SessionId (and never passes -Resume) gets
+    byte-identical $claudeArgs to before this parameter existed. Same cmd.exe-safety character-set
+    checks as -AgentName apply (refused with exit 2 if it contains a double quote, %, !, a line
+    break, or ends in a backslash, or does not start with an alphanumeric character).
+
+.PARAMETER Resume
+    2026-09-22 addition (gh198). Passed as --resume <id>, using the value of -SessionId as the id to
+    resume -- -SessionId is therefore REQUIRED when -Resume is passed (refused, exit 2, otherwise:
+    there is no id to resume). Never combined with a plain --session-id open on the same call (see
+    -SessionId above). Off by default; unused, this parameter changes nothing.
+
+.PARAMETER FallbackModel
+    2026-09-22 addition (gh198). Passed as --fallback-model <m> when non-empty. Optional -- a caller
+    that never passes it (or passes '') gets byte-identical $claudeArgs to before this parameter
+    existed (no --fallback-model flag at all). Same cmd.exe-safety character-set checks as -Model
+    apply.
+
+.PARAMETER ForkSession
+    2026-09-22 addition (gh198). Passed as --fork-session. Off by default; unused, this parameter
+    changes nothing. May be combined with -SessionId (a forked line still opens/uses a session id)
+    but, like -SessionId alone, is refused together with -Resume on the same call.
+
 .PARAMETER DryRun
     Test seam (tools/README.md: "Test seam is mandatory"). Resolves -Restricted (explicit or via
     the roster_meta.json default-on lookup), builds the full $claudeArgs the run would use, prints
@@ -332,6 +359,10 @@ param(
     [string]$JsonSchemaPath,
     [string]$RosterMetaPath,
     [string]$Model,
+    [string]$SessionId,
+    [switch]$Resume,
+    [string]$FallbackModel,
+    [switch]$ForkSession,
     [switch]$Report,
     [string]$ReportDir,
     [string]$ClaudePath,
@@ -374,6 +405,21 @@ if ($AgentName -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]*\z') {
 }
 if ($Model -and $Model -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._\[\]-]*\z') {
     Exit-UnsafeArg 'Model' "'$Model' must match ^[A-Za-z0-9][A-Za-z0-9._\[\]-]*$ (it is passed to cmd.exe unquoted and must not start with '-')"
+}
+# gh198: -SessionId and -FallbackModel are placed straight after --session-id/--resume/--fallback-model
+# the same way -AgentName/-Model are, so the same unquoted-argv safety rule applies.
+if ($SessionId -and $SessionId -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]*\z') {
+    Exit-UnsafeArg 'SessionId' "'$SessionId' must match ^[A-Za-z0-9][A-Za-z0-9._-]*$ (it is passed to cmd.exe unquoted and must not start with '-')"
+}
+if ($FallbackModel -and $FallbackModel -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._\[\]-]*\z') {
+    Exit-UnsafeArg 'FallbackModel' "'$FallbackModel' must match ^[A-Za-z0-9][A-Za-z0-9._\[\]-]*$ (it is passed to cmd.exe unquoted and must not start with '-')"
+}
+# gh198: the CLI only accepts one session-identity flag per invocation. Enforced here, not left to
+# the CLI's own error, so a misuse is refused before anything is launched (exit 2, this script's
+# existing convention for a pre-launch argument refusal).
+if ($Resume -and -not $SessionId) {
+    Write-Host "Invoke-ReadOnlyAgent: -Resume requires -SessionId (the id to resume). Nothing was launched." -ForegroundColor Red
+    exit 2
 }
 foreach ($quotedName in @('SettingsPath', 'JsonSchemaPath', 'Tools', 'AllowedTools')) {
     $quotedValue = Get-Variable -Name $quotedName -ValueOnly
@@ -746,6 +792,22 @@ if ($reportMode) {
 
 if ($Model) {
     $claudeArgs += @('--model', $Model)
+}
+
+# gh198 (F12 follow-up, issue #198/#205): thread the four session-identity flags onto the real
+# argv. Never both --session-id and --resume on one call (enforced above, before launch). A caller
+# that never sets any of these four parameters gets byte-identical $claudeArgs to before this change.
+if ($SessionId -and -not $Resume) {
+    $claudeArgs += @('--session-id', $SessionId)
+}
+if ($Resume) {
+    $claudeArgs += @('--resume', $SessionId)
+}
+if ($FallbackModel) {
+    $claudeArgs += @('--fallback-model', $FallbackModel)
+}
+if ($ForkSession) {
+    $claudeArgs += '--fork-session'
 }
 
 # Added 2026-09-18, second defect found proving -AllowedTools: --allowedTools is variadic, so a
