@@ -284,6 +284,13 @@ exit 0
         # Invoke-ReadOnlyAgent.ps1's report already stores 'envelope' as a parsed OBJECT (not a JSON
         # string) -- re-parsing a PSCustomObject threw "Invalid JSON primitive" on every real run,
         # so a schema check could never pass, only ever error out before this fix.
+        #
+        # Agent under test is 'pr-state-sweep', not 'worktree-sweep' (2026-09-22, phase 1 of the
+        # allowedTools roster overlay): Invoke-ReadOnlyAgent.ps1 now refuses (exit 7) to launch any
+        # Bash-holding, non-restricted agent with no roster 'allowedTools' list, and Invoke-Subagent.ps1
+        # has no -AllowedTools passthrough of its own to give one -- pr-state-sweep is the only agent
+        # roster_meta.json carries a list for as of phase 1, so it is the only one this full-path
+        # regression test can still exercise live without expanding this PR into phase 2 scope.
         $priorTestSeam = $env:AEGIS_TEST_SEAM
         $env:AEGIS_TEST_SEAM = '1'
         $fakeDir = Join-Path $fixtureDir 'fake-claude-e2e'
@@ -292,14 +299,13 @@ exit 0
         try {
             $envelope = Get-Content -LiteralPath $fixtureEnvelopePath -Raw | ConvertFrom-Json
             $resultObj = [ordered]@{
-                agent = 'worktree-sweep'
-                repo = 'yodatech1988/MasterThread'
-                worktrees = @()
-                worktreesRemovedByThisAgent = 0
+                agent = 'pr-state-sweep'
+                repos = @()
+                flags = [ordered]@{ rule4Violations = @(); noCiRun = @() }
                 findings = @()
                 couldNotCheck = @()
             }
-            $envelope.result = ($resultObj | ConvertTo-Json -Compress)
+            $envelope.result = ($resultObj | ConvertTo-Json -Compress -Depth 10)
             $envelope.permission_denials = @()
             $utf8 = [System.Text.UTF8Encoding]::new($false)
             [System.IO.File]::WriteAllText((Join-Path $fakeDir 'out.txt'), ($envelope | ConvertTo-Json -Depth 20 -Compress), $utf8)
@@ -308,10 +314,10 @@ exit 0
 
             $realSchemasDir = Join-Path $repoRoot 'tools\headless\schemas'
             $realBudgets = Join-Path $repoRoot 'tools\headless\budgets.json'
-            $out = & $scriptPath -AgentName 'worktree-sweep' -Prompt 'irrelevant' -BudgetsPath $realBudgets -AgentsDir (Join-Path $repoRoot 'claude-agents') -SchemasDir $realSchemasDir -ClaudePath $fakeCmd -ReportDir $reportDir -RunLive *>&1 | Out-String -Width 8192
+            $out = & $scriptPath -AgentName 'pr-state-sweep' -Prompt 'irrelevant' -BudgetsPath $realBudgets -AgentsDir (Join-Path $repoRoot 'claude-agents') -SchemasDir $realSchemasDir -ClaudePath $fakeCmd -ReportDir $reportDir -RunLive *>&1 | Out-String -Width 8192
             if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE. Output: $out" }
             if ($out -notmatch 'schema check PASSED') { throw "expected the schema check to pass against the fake envelope. Output: $out" }
-            $reportFiles = Get-ChildItem -LiteralPath $reportDir -Filter 'worktree-sweep.*.json' -ErrorAction SilentlyContinue
+            $reportFiles = Get-ChildItem -LiteralPath $reportDir -Filter 'pr-state-sweep.*.json' -ErrorAction SilentlyContinue
             if (-not $reportFiles) { throw "expected a report file to have been written to $reportDir" }
         } finally {
             $env:AEGIS_TEST_SEAM = $priorTestSeam

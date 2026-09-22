@@ -7,7 +7,7 @@
   "local-transcript-secret-scanner": {"role": "R", "headless": "local-only", "readonly": "instruction", "dormant": false},
   "retirement-card-drafter": {"role": "D", "headless": "yes", "readonly": "tools", "dormant": false, "group": "other"},
   "knowledge-extractor": {"role": "R", "headless": "yes", "readonly": "tools", "dormant": false},
-  "pr-state-sweep": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
+  "pr-state-sweep": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false, "allowedTools": ["Bash(gh pr list:*)", "Bash(gh pr view:*)", "Bash(gh run list:*)"]},
   "plan-status-check": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
   "worktree-sweep": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
   "origin-reader": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},

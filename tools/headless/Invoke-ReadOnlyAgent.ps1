@@ -50,6 +50,19 @@
     the caller does (same division of responsibility as -Tools, per this script's own long-standing
     rule that it "does not itself decide what an agent is allowed to do").
 
+    2026-09-22 addition (phase 1 of the per-agent --allowedTools overlay
+    headless_agent_permissions.md's "Three-layer ordering" section names as a tracked follow-up):
+    when this run is NOT restricted, -Tools includes Bash or PowerShell, and -AllowedTools was NOT
+    passed on the command line, this script now looks up the named agent's own "allowedTools"
+    array in roster_meta.json (-RosterMetaPath) and uses it as if it had been passed here --
+    joined the same comma-separated way a caller would hand-write it. Explicit -AllowedTools on
+    the command line always wins over this lookup and skips it entirely. If the lookup finds
+    nothing (roster missing/unparsable, agent not listed, or no non-empty "allowedTools" array for
+    it), the run is refused rather than launched with a bare "Bash" grant and no fine-grained
+    narrowing -- see -Restricted's own fail-closed convention and .NOTES exit code 7. A caller
+    whose -Tools does not include Bash/PowerShell at all is unaffected by any of this (same as
+    before this addition), and so is a caller that already passes -AllowedTools explicitly.
+
 .PARAMETER Restricted
     Added for plan task F2 (docs/FABLE_AGENT_SUBAGENT_PLAN.md:616). Passes --restricted, which
     (per Claude Code's own docs, quoted in that plan's F3 finding) "removes the built-in tools
@@ -218,7 +231,17 @@
     lookup found "readonly" was not "tools") and no -Tools was supplied -- there is no safe
     default tool set, so this fails closed rather than passing an empty/absent --tools to `claude`.
     A non-zero exit here is always paired with an error written to the report output -- never a
-    silent fallthrough.
+    silent fallthrough. 8 = (added 2026-09-22, phase 1 of the per-agent --allowedTools roster
+    overlay) the run resolved to NOT restricted, its -Tools includes Bash or PowerShell, no
+    -AllowedTools was passed explicitly, and the roster_meta.json lookup for the named agent's own
+    "allowedTools" array found nothing usable (roster missing/unparsable, agent not listed, or no
+    non-empty array) -- fails closed rather than launching a Bash/PowerShell-holding agent with no
+    fine-grained narrowing at all. Only an agent whose roster_meta.json entry carries a real
+    "allowedTools" list (as of this change, only `pr-state-sweep`) can run headless through this
+    path without either -AllowedTools or -Restricted; every other Bash/PowerShell-holding
+    "readonly": "instruction" agent hits this exit until its own roster entry gets a list (tracked
+    as phase 2, out of scope for this change -- see the PR that added this exit code for the
+    caller-visible impact of that sequencing).
 
     Report mode (-Report / -ReportDir, plan task F3) adds two codes, and in report mode they are
     exactly the "no report file was written" signal: 6 = the CLI exited non-zero, or its stdout was
@@ -411,6 +434,11 @@ if ($JsonSchemaPath -and -not (Test-Path -LiteralPath $JsonSchemaPath -PathType 
 # for agents classified "readonly": "tools".
 $restrictedExplicit = $PSBoundParameters.ContainsKey('Restricted')
 $effectiveRestricted = $false
+# Initialized here (rather than left undefined) so the F2b allowedTools-roster lookup below can
+# tell "already loaded by this block" apart from "never attempted" and reuse the same parsed
+# object instead of reading roster_meta.json a second time, in the (common) case where
+# -Restricted was not passed explicitly and this block already loaded it.
+$rosterRaw = $null
 
 if ($restrictedExplicit) {
     $effectiveRestricted = [bool]$Restricted
@@ -519,6 +547,77 @@ if ($effectiveRestricted) {
         Write-Host "Invoke-ReadOnlyAgent: -Tools is required when the run is not -Restricted (no safe default -- see this parameter's own long-standing rule). '$AgentName' resolved to NOT restricted (readonly.settings.json readonly != 'tools', or -Restricted:`$false was passed) but no -Tools was supplied." -ForegroundColor Red
         exit 5
     }
+
+    # --- F2b: per-agent --allowedTools roster lookup + fail-closed gate ------------------------
+    # headless_agent_permissions.md's "Three-layer ordering" section names this overlay a "tracked
+    # follow-up, not done here" for layer-2 agents (the ones that keep Bash instead of running
+    # --restricted). This is that follow-up, phase 1: scoped to whichever agent(s)
+    # claude-agents/roster_meta.json actually carries a non-empty "allowedTools" list for (as of
+    # this change, only pr-state-sweep -- see that entry's own list and the PROVEN
+    # zero-permission-denial evidence cited in headless_agent_permissions.md's Bash-usage table).
+    #
+    # Explicit -AllowedTools on the command line always wins -- same "caller's stated intent is
+    # authoritative" rule -Restricted already follows above (F2). The roster lookup below only
+    # runs when the caller did NOT pass -AllowedTools at all.
+    $allowedToolsExplicit = $PSBoundParameters.ContainsKey('AllowedTools')
+    if (-not $allowedToolsExplicit) {
+        # Only agents whose -Tools actually includes a tool-running builtin need an allow-list at
+        # all -- an agent scoped to e.g. "Read,Grep" has nothing for --allowedTools to narrow, and
+        # must not be refused for lacking one (byte-identical behaviour to before this change).
+        $toolTokens = $Tools -split ',' | ForEach-Object { $_.Trim() }
+        $needsAllowedTools = ($toolTokens -contains 'Bash') -or ($toolTokens -contains 'PowerShell')
+
+        if ($needsAllowedTools) {
+            # Reuse the roster already loaded above by F2's -Restricted default-on lookup when
+            # that ran ($restrictedExplicit was $false); otherwise (an explicit -Restricted or
+            # -Restricted:$false was passed, so F2's lookup was skipped entirely) load it here.
+            # Fails closed the same way F2 does: a missing/unparsable roster is treated as "no
+            # allowedTools list found" (exit 7 below), never as permission to run wide-open
+            # Bash/PowerShell unchecked.
+            $rosterLookupOk = $true
+            if (-not $rosterRaw) {
+                if (-not (Test-Path $RosterMetaPath)) {
+                    $rosterLookupOk = $false
+                } else {
+                    try {
+                        $rosterRaw = Get-Content $RosterMetaPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+                    } catch {
+                        $rosterLookupOk = $false
+                    }
+                }
+            }
+
+            $agentAllowedTools = $null
+            if ($rosterLookupOk -and $rosterRaw) {
+                # Set-StrictMode-safe property access (tools/README.md convention), same pattern
+                # as F2's own lookup above.
+                $allowedToolsAgentProp = $rosterRaw.PSObject.Properties[$AgentName]
+                if ($allowedToolsAgentProp) {
+                    $allowedToolsProp = $allowedToolsAgentProp.Value.PSObject.Properties['allowedTools']
+                    if ($allowedToolsProp -and $allowedToolsProp.Value -is [array] -and $allowedToolsProp.Value.Count -gt 0) {
+                        $agentAllowedTools = @($allowedToolsProp.Value | ForEach-Object { [string]$_ })
+                    }
+                }
+            }
+
+            if (-not $agentAllowedTools) {
+                Write-Host "Invoke-ReadOnlyAgent: refusing to launch '$AgentName' -- it resolved to NOT restricted and its -Tools ('$Tools') includes Bash/PowerShell, but roster_meta.json at $RosterMetaPath has no non-empty 'allowedTools' list for it (and no -AllowedTools was passed on the command line). Failing closed per this script's own convention -- a Bash/PowerShell-holding agent needs a scoped allow-list, not an implicit blank check. Pass -AllowedTools explicitly, or add an 'allowedTools' array to this agent's roster_meta.json entry. Nothing was launched." -ForegroundColor Red
+                exit 7
+            }
+
+            # Joined the same way a caller would hand-write -AllowedTools (comma-separated); the
+            # cmd.exe-safety checks below re-validate this roster-derived value before it reaches
+            # the command line, the same as any other value that ends up in $claudeArgs.
+            $AllowedTools = $agentAllowedTools -join ','
+            if ($AllowedTools -match '["%!\r\n]') {
+                Exit-UnsafeArg 'AllowedTools' "the roster_meta.json 'allowedTools' value for '$AgentName' contains a double quote, %, !, or a line break, which cmd.exe would interpret even inside quotes"
+            }
+            if ($AllowedTools.EndsWith('\')) {
+                Exit-UnsafeArg 'AllowedTools' "the roster_meta.json 'allowedTools' value for '$AgentName' ends in a backslash, which would escape its closing quote and swallow the arguments after it"
+            }
+        }
+    }
+
     $claudeArgs += @('--tools', (ConvertTo-QuotedArg $Tools))
     # Added 2026-09-18: --allowedTools is the only flag that accepts fine-grained Bash(cmd)
     # specifiers (verified against `claude --help`; --tools above is whole-category only). Omitted
