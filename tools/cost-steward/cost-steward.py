@@ -78,7 +78,32 @@ def scan(reg):
                  + w5m * p[3] + u.get("cache_read_input_tokens", 0) * p[4]) / 1e6
     if not last:
         return None
-    ctx = last.get("input_tokens", 0) + last.get("cache_read_input_tokens", 0) + last.get("cache_creation_input_tokens", 0)
+    # Subagent transcripts live under <sessionId>/ and are billed to this session too.
+    sub_cost = 0.0
+    for sp in glob.glob(os.path.join(os.path.dirname(paths[0]), reg["sessionId"], "**", "*.jsonl"), recursive=True):
+        sseen = {}
+        try:
+            for line in open(sp, encoding="utf8", errors="replace"):
+                try:
+                    d = json.loads(line)
+                except ValueError:
+                    continue
+                m = d.get("message")
+                if d.get("type") == "assistant" and isinstance(m, dict) and m.get("usage"):
+                    sseen[m.get("id") or len(sseen)] = (m.get("model"), m["usage"])
+        except OSError:
+            continue
+        for mdl, u in sseen.values():
+            sp_p = price(mdl)
+            if not sp_p:
+                continue
+            cc = u.get("cache_creation") or {}
+            w1h = cc.get("ephemeral_1h_input_tokens", u.get("cache_creation_input_tokens", 0))
+            w5m = cc.get("ephemeral_5m_input_tokens", 0)
+            sub_cost += (u.get("input_tokens", 0) * sp_p[0] + u.get("output_tokens", 0) * sp_p[1] + w1h * sp_p[2]
+                         + w5m * sp_p[3] + u.get("cache_read_input_tokens", 0) * sp_p[4]) / 1e6
+    cost += sub_cost
+    ctx =last.get("input_tokens", 0) + last.get("cache_read_input_tokens", 0) + last.get("cache_creation_input_tokens", 0)
     p = price(model) or (0, 0, 0, 0, 0)
     idle = None
     if last_t:
