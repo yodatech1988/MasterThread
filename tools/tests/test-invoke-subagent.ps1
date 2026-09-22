@@ -308,7 +308,7 @@ exit 0
                 couldNotCheck = @()
             }
             $envelope.result = ($resultObj | ConvertTo-Json -Compress -Depth 10)
-            # 2026-09-23 (coordinator finding): the real CLI puts the schema-validated payload in
+            # 2026-09-22 (coordinator finding): the real CLI puts the schema-validated payload in
             # envelope.structured_output (an object), not envelope.result (its own JSON-text
             # echo) -- added here so this fixture matches the real shape and this test still
             # exercises the DEFAULT (structured_output-reading) path, not the legacy fallback.
@@ -340,7 +340,7 @@ exit 0
         # (fixtures\headless\envelope-prose-result-issue212.json) reproduces that shape offline
         # against a fake CLI, so the exit-8 path stays covered without spending live budget.
         #
-        # 2026-09-23 update: the default schema check no longer reads envelope.result at all (see
+        # 2026-09-22 update: the default schema check no longer reads envelope.result at all (see
         # the structured_output tests below) -- this fixture also has no structured_output field,
         # so under the DEFAULT path it now correctly fails with exit 9, not 8 (a different, more
         # specific finding: "the CLI never gave us a validated answer", not "the answer we got was
@@ -391,7 +391,7 @@ exit 0
         }
     }
 
-    Test-Case "regression (coordinator finding, 2026-09-23): subtype 'success' but envelope.structured_output absent fails closed with exit 9, not a silent pass, even when envelope.result happens to parse as schema-valid JSON" {
+    Test-Case "regression (coordinator finding, 2026-09-22): subtype 'success' but envelope.structured_output absent fails closed with exit 9, not a silent pass, even when envelope.result happens to parse as schema-valid JSON" {
         # Platform docs (code.claude.com/docs/en/headless.md 'Get structured output') say the
         # --json-schema-validated payload lands in envelope.structured_output, not envelope.result;
         # the Agent SDK troubleshooting page says subtype 'success' with no structured_output must
