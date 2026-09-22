@@ -130,36 +130,53 @@ run directly in this worktree).
   what that caller and `tools/headless/Invoke-ReadOnlyAgent.ps1` should add on top of their existing
   `--tools` allow-list, as a recommendation to those files' owners — this PR does not edit either.
 
-## Deny-list vs allow-list: recommendation
+## Three-layer ordering
 
-**Allow-list by default for headless; this deny-list is a second layer, not the primary control.**
-The docs support this directly: the Bash-rule-limits table above is Anthropic's own admission that a
-deny rule matches "the command text Claude writes... after splitting and stripping" and "isn't a
-security boundary around the program" — `bash -c '<anything>'`, an absolute path, or a rephrased
-flag order all walk straight past a deny rule. There is always another way to delete a file. An
-allow-list has the opposite failure mode: the *worst* case is the agent can't do something legitimate
-and errors out loudly, not that it silently succeeds at something destructive.
+**(Updated 2026-09-22, plan task F2 — `docs/FABLE_AGENT_SUBAGENT_PLAN.md:616`.)** Three layers,
+tried in this order for every headless call, from strongest boundary to weakest:
 
-Concretely, for a headless call:
+1. **Layer 1 (primary) — `--restricted`, for agents that need no shell at all.** Verified fact
+   (plan finding F3, probed live 2026-09-22 with `tools/tests/test-invoke-readonly-agent-restricted.ps1
+   -RunLive`): `--restricted` "removes the built-in tools that run commands or code (Bash,
+   PowerShell, REPL and the other code-running tools) and WebFetch unless `--tools` names them, and
+   ignores user, project and local settings files." The live probe's own `system`/`init` event
+   confirms the tool is **absent from the loaded tool list entirely**, not merely denied at call
+   time — a structurally stronger boundary than a pattern-matched deny rule, which (per the
+   Bash-rule-limits table above) can always be walked around by `bash -c '...'`, an absolute path,
+   or a reordered flag. `tools/headless/Invoke-ReadOnlyAgent.ps1`'s `-Restricted` switch defaults
+   **on** for any agent whose `claude-agents/roster_meta.json` entry has `"readonly": "tools"`
+   (owner decision D3, 2026-09-22, given directly in chat: `--restricted`/`-Restricted` is ON BY
+   DEFAULT for read-only agents) — an explicit `-Restricted`/`-Restricted:$false` on the command
+   line always overrides that default. When `--restricted` is in effect, `--tools`/`--allowedTools`
+   are not also passed for the same call — see layer 2's own note below.
+2. **Layer 2 — `--tools`/`--allowedTools` (or subagent frontmatter `tools:`), scoped to the
+   smallest set the agent needs, for agents that genuinely require Bash.** Most of the 25
+   Bash-holding agents (table below) are Haiku-tier fact-reporters that only ever run a handful of
+   `git`/`gh` read verbs. This layer is used **instead of** `--restricted`, never alongside it, for
+   the same call: composing a `--tools` grant with `--restricted` would let that grant silently
+   reopen the exact "tool present but denied" gap `--restricted` exists to close by removing the
+   tool from the surface. `Invoke-ReadOnlyAgent.ps1` enforces this — it does not thread `-Tools`/
+   `-AllowedTools` into the built command line at all when a call resolves to restricted (and warns
+   if both were supplied), matching `docs/FABLE_AGENT_SUBAGENT_PLAN.md` §5's two invocation shapes
+   (`--restricted` alone, or `--tools`/`--allowedTools` alone — never combined).
+3. **Layer 3 (defense-in-depth, unchanged by F2) — this settings file's deny-list
+   (`readonly.settings.json`)**, loaded via `--settings` on every call regardless of which of
+   layers 1/2 is active, so that even if an agent's layer-2 grant is wider than it needs (or a
+   future caller forgets to narrow it), the worst destructive verbs are still blocked by rule text.
+   **F2 does not retire this layer** — `--restricted` only removes tool-running builtins from the
+   surface for agents that need none of them; any agent still holding `--tools`/`--allowedTools`
+   Bash access relies on this layer exactly as before.
 
-1. **Primary control — `--tools`/`--allowedTools` (or subagent frontmatter `tools:`) scoped to the
-   smallest set the agent needs.** Most of the 25 Bash-holding agents (table below) are Haiku-tier
-   fact-reporters that only ever run a handful of `git`/`gh` read verbs; several need no Bash at all
-   for their actual behavior (`origin-reader`'s canonical form is `gh api .../contents/<path>` or
-   `git show origin/<default>:<path>`, both expressible without ever granting a write verb the
-   model could misuse).
-2. **Secondary control — this settings file's deny-list**, loaded via `--settings`, so that even if
-   an agent's `--tools` grant is wider than it needs (or a future caller forgets to narrow it), the
-   worst destructive verbs are blocked by rule text, not by hoping the model behaves.
-3. **`--permission-mode dontAsk --permission-prompts none`** so that anything neither the built-in
-   read-only set nor an explicit `permissions.allow`/`--allowedTools` entry covers is denied outright
-   instead of hanging on a prompt nobody can answer.
+`--permission-mode dontAsk --permission-prompts none` still wraps every call regardless of layer, so
+that anything none of the three layers positively grants is denied outright instead of hanging on a
+prompt nobody can answer.
 
-This PR only ships layer 2 (`readonly.settings.json`) plus the recommended invocation line, because
-layer 1 (the actual per-agent allow-list) depends on `claude-agents/roster_meta.json`'s
-`readonly: tools|instruction` classification, which another lane in this same PR round is adding.
-Once that file exists, the natural next step is a small per-agent `permissions.allow` overlay (or a
-generated `--allowedTools` string) built from it — tracked as a follow-up, not done here.
+This section originally shipped only layer 3 (`readonly.settings.json`) plus the recommended
+invocation line, because layer 1 as it exists today (the `--restricted` default-on rule) depended on
+`claude-agents/roster_meta.json`'s `readonly: tools|instruction` classification, added by a separate
+lane in the same PR round and confirmed live before F2 built on it. The per-agent
+`--allowedTools`/`permissions.allow` overlay for layer-2 agents (the ones that keep Bash) remains a
+tracked follow-up, not done here.
 
 ## Bash usage across the 25 Bash-holding global agents
 
@@ -256,6 +273,24 @@ wrapper script that validates the condition before invoking `claude`, or must st
 
 ## Recommended headless invocation
 
+Two shapes, per the three-layer ordering above — never combined in the same call:
+
+**No shell needed (layer 1, `--restricted`):**
+
+```
+claude --print --agent <name> \
+  --restricted \
+  --settings <abs path to>/tools/headless/readonly.settings.json \
+  --permission-mode dontAsk \
+  --permission-prompts none \
+  --strict-mcp-config \
+  --max-budget-usd <small ceiling> \
+  --output-format stream-json \
+  "<prompt>"
+```
+
+**Bash genuinely needed (layer 2, `--tools`/`--allowedTools`):**
+
 ```
 claude --print --agent <name> \
   --settings <abs path to>/tools/headless/readonly.settings.json \
@@ -268,16 +303,23 @@ claude --print --agent <name> \
   "<prompt>"
 ```
 
+The `--settings` deny-list (layer 3) loads in both shapes regardless.
+
 This is a recommendation for the owner of `ops-platform/packages/project-manager/src/reasoner.js`
 to adopt — this PR does not edit that file (out of lane scope; owned elsewhere). `reasoner.js`
 already passes `--tools` and `--strict-mcp-config`; it is missing `--settings`, `--permission-mode`,
-and `--permission-prompts` from the line above. (As of 2026-09-18, `MasterThread/tools/overnight-
-sweep-supervisor.ps1` is not on `origin/main` and has no known caller to adopt this line — see the
-correction under "The threat" above.)
+`--permission-prompts`, and (where the agent qualifies) `--restricted` from the lines above. (As of
+2026-09-18, `MasterThread/tools/overnight-sweep-supervisor.ps1` is not on `origin/main` and has no
+known caller to adopt this line — see the correction under "The threat" above.)
 
-`tools/headless/Invoke-ReadOnlyAgent.ps1` in this repo is a thin wrapper around that invocation for
-PowerShell callers, taking `-AgentName`, `-Prompt`, `-Tools` and `-MaxBudgetUsd` and building the
-argv above. It is, as of 2026-09-18, the only live PowerShell caller of this pattern.
+`tools/headless/Invoke-ReadOnlyAgent.ps1` in this repo is a thin wrapper around these invocations for
+PowerShell callers, taking `-AgentName`, `-Prompt`, `-Tools`, `-AllowedTools`, `-Restricted` and
+`-MaxBudgetUsd` and building the argv above. Added 2026-09-22 (plan task F2): `-Restricted` defaults
+on for any agent whose `claude-agents/roster_meta.json` entry has `"readonly": "tools"` (owner
+decision D3) — an explicit `-Restricted`/`-Restricted:$false` always overrides that default, and the
+default-on lookup itself fails closed (documented non-zero exit) if `roster_meta.json` is missing or
+does not list the named agent, rather than silently assuming unrestricted. It is, as of 2026-09-18,
+the only live PowerShell caller of this pattern.
 
 ## Agents that must never run headless at all
 
