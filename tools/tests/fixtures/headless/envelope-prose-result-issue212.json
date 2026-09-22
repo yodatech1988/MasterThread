@@ -1,0 +1,19 @@
+{
+  "duration_api_ms": 44961,
+  "stop_reason": "end_turn",
+  "session_id": "2b056237-2fc9-40d8-8fa6-19178a73cb6b",
+  "total_cost_usd": 0.0715453,
+  "usage": {
+    "input_tokens": 42,
+    "cache_creation_input_tokens": 21798,
+    "cache_read_input_tokens": 75673,
+    "output_tokens": 4068
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "subtype": "success",
+  "is_error": false,
+  "num_turns": 10,
+  "type": "result",
+  "result": "Now let me compile the results into a table with the check state details:\n\n## **yodatech1988/MasterThread — Open PR Sweep**\n\n| # | Title | Branch | Check State | Age | Flags |\n|---|---|---|---|---|---|\n| **209** | ladder: L1 report shape is F3's {envelope, checkedAt, command} (closes #184) | agent/masterthread/ladder-l1-report-shape-184 | ⚠️ **FAILURE** (pr-review.yml) | ~2 min | rule-4 violation |\n\n---\n\n## Flags\n\n### Rule-4 Violation (session_plan_standard.md rule 4)\nFour open agent/* PRs in the same repo.\n"
+}

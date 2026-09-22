@@ -18,6 +18,7 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $scriptPath = Join-Path (Split-Path -Parent $here) 'headless\Invoke-Subagent.ps1'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $here)
 $fixtureEnvelopePath = Join-Path $here 'fixtures\headless\envelope-with-denial.json'
+$fixtureProseResultPath = Join-Path $here 'fixtures\headless\envelope-prose-result-issue212.json'
 
 $testsPassed = 0
 $testsFailed = 0
@@ -319,6 +320,36 @@ exit 0
             if ($out -notmatch 'schema check PASSED') { throw "expected the schema check to pass against the fake envelope. Output: $out" }
             $reportFiles = Get-ChildItem -LiteralPath $reportDir -Filter 'pr-state-sweep.*.json' -ErrorAction SilentlyContinue
             if (-not $reportFiles) { throw "expected a report file to have been written to $reportDir" }
+        } finally {
+            $env:AEGIS_TEST_SEAM = $priorTestSeam
+        }
+    }
+
+    Test-Case "regression (issue #212): a prose (non-JSON) final message fails the schema check with exit 8, not a silent pass" {
+        # Captured from a real live run (%APPDATA%\AEGIS\reports\pr-state-sweep.20260922-172129.json)
+        # where the old '## Output' section told pr-state-sweep to produce a markdown table plus a
+        # 'Flags' section, so under --json-schema the final message came back as prose ("Now let me
+        # compile the results into a table...") instead of the schema JSON object, and
+        # Invoke-Subagent.ps1 exited 8 because envelope.result was not valid JSON. This fixture
+        # (fixtures\headless\envelope-prose-result-issue212.json) reproduces that shape offline
+        # against a fake CLI, so the exit-8 path stays covered without spending live budget.
+        $priorTestSeam = $env:AEGIS_TEST_SEAM
+        $env:AEGIS_TEST_SEAM = '1'
+        $fakeDir = Join-Path $fixtureDir 'fake-claude-issue212'
+        New-Item -ItemType Directory -Path $fakeDir -Force | Out-Null
+        $reportDir = Join-Path $fixtureDir 'reports-issue212'
+        try {
+            $envelope = Get-Content -LiteralPath $fixtureProseResultPath -Raw | ConvertFrom-Json
+            $utf8 = [System.Text.UTF8Encoding]::new($false)
+            [System.IO.File]::WriteAllText((Join-Path $fakeDir 'out.txt'), ($envelope | ConvertTo-Json -Depth 20 -Compress), $utf8)
+            $fakeCmd = Join-Path $fakeDir 'fake-claude.cmd'
+            [System.IO.File]::WriteAllText($fakeCmd, "@echo off`r`nif exist `"%~dp0out.txt`" type `"%~dp0out.txt`"`r`nexit /b 0`r`n", [System.Text.Encoding]::ASCII)
+
+            $realSchemasDir = Join-Path $repoRoot 'tools\headless\schemas'
+            $realBudgets = Join-Path $repoRoot 'tools\headless\budgets.json'
+            $out = & $scriptPath -AgentName 'pr-state-sweep' -Prompt 'irrelevant' -BudgetsPath $realBudgets -AgentsDir (Join-Path $repoRoot 'claude-agents') -SchemasDir $realSchemasDir -ClaudePath $fakeCmd -ReportDir $reportDir -RunLive *>&1 | Out-String -Width 8192
+            if ($LASTEXITCODE -ne 8) { throw "expected exit 8 (schema check failure), got $LASTEXITCODE. Output: $out" }
+            if ($out -notmatch 'envelope.result is not valid JSON') { throw "expected the 'not valid JSON' diagnostic. Output: $out" }
         } finally {
             $env:AEGIS_TEST_SEAM = $priorTestSeam
         }
