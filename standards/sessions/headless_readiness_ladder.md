@@ -79,8 +79,9 @@ independent readers — not two people reading the same text, one reading, one *
 
 ### L3 — Drafters
 
-Drafter-shaped agents — today `denial-card-drafter` (MasterThread PR #110, gatekeeper-passed, open
-at time of writing) and any future drafter — opening PRs against a fixed, narrow path set. (The
+Drafter-shaped agents — today `denial-card-drafter` (MasterThread PR #110, gatekeeper-passed,
+merged 2026-09-18T01:58Z, on `origin/main`, never yet run headless) and any future drafter —
+opening PRs against a fixed, narrow path set. (The
 other three §8 agents in #110 are reporters/advisors and belong to L1/L2, not here.) ops-platform's `packages/project-manager` (`pm-agent`) is **dormant until L1 exits**
 (zero-cost-first, `orchestrator_role.md`: a heavier mechanism is built only after the cheap one has
 been tried) — its README should say so; that edit belongs to ops-platform, out of this PR's scope.
