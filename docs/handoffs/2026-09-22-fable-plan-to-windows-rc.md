@@ -155,8 +155,12 @@ summary:
   all** — no access from this container to the messaging/session-notification system that would
   carry it. Recording it exactly as UNCONFIRMED, per the instruction, rather than upgrading it to
   either "delivered" or "ignore it."
-  - **Execution authority — RESOLVED. Owner ruling, 2026-09-22.** This replaces the placeholder
-    this drafting pass left open; the text below is the owner's decision, not this pass's default:
+  - **Execution authority — relayed, pending card `fable-handoff-exec-authority-confirm-2026-09-22`.**
+    This replaces the placeholder this drafting pass left open. The text below was relayed to this
+    pass as an owner ruling of 2026-09-22. No Decision Queue card records it, so it is **not** a
+    confirmed grant of authority. It is marked the same way as the plan's §9 marks D2-D6. Until
+    the owner answers that card, a session reading this handoff holds no execution authority
+    because of it:
 
     > The incoming session holds **full execution authority as the active seat**, but **may not
     > start work until it has understood the entire scope**. Owner's words: *"I don't want it
@@ -177,8 +181,9 @@ summary:
 
     *Provenance note (follow-up PR to #169, 2026-09-22):* this ruling is recorded above as the
     drafting pass received it. The Decision Queue store, read directly on 2026-09-22, has no card
-    for it, so its confirmation is on card `fable-handoff-exec-authority-confirm-2026-09-22`. This
-    note does not change the ruling.
+    for it, so its confirmation is on card `fable-handoff-exec-authority-confirm-2026-09-22`. Until
+    that card is answered, the quoted text is a relayed claim (CLAUDE.md "Verify, don't trust"), not
+    a ruling this handoff can hand on (PR #175 review round 2, safety).
 
 - **Entry gate: no build task dispatches until #170 merges.** Verified against the plan document
   itself, `docs/FABLE_AGENT_SUBAGENT_PLAN.md` §7 "Entry gate", condition 1: "`headless_readiness_ladder.md`
@@ -209,9 +214,11 @@ session/Fleet Status system rather than citing this handoff as confirmation.
 
 ## 5. Next step per lane (verify-then-act order)
 
-Execution authority is settled — see the owner ruling in §3 — but it is gated: nothing below may be
-started until the incoming session has read the named documents from origin, verified live state,
-and reported its understanding back in its own words. Each item is written so a fresh session
+Execution authority is **not settled**. The ruling in §3 was relayed and is pending card
+`fable-handoff-exec-authority-confirm-2026-09-22`. Even once the owner confirms it, it is gated:
+nothing below that changes state may start until the incoming session has read the named
+documents from origin, verified live state, and reported its understanding back in its own words.
+Read and report work may go ahead. Build and merge work may not, while the card is open. Each item is written so a fresh session
 doesn't have to re-derive it.
 
 1. **Chase the F1b cross-check first.** Find out whether the independent check of "agent-level
@@ -238,9 +245,10 @@ doesn't have to re-derive it.
 
 ## 6. Pending owner decisions
 
-1. ~~Does this handoff carry execution authority?~~ **Resolved by owner ruling, 2026-09-22 — see
-   §3.** Full execution authority as the active seat, gated on understanding the entire scope
-   first; the ~00:16Z ZERO TASK EXECUTION order is lifted and void.
+1. **Does this handoff carry execution authority?** Still open. A 2026-09-22 owner ruling was
+   relayed ("full execution authority as the active seat, gated on understanding the entire scope
+   first; the ~00:16Z ZERO TASK EXECUTION order is lifted and void"; see §3), but no card records
+   it. Pending card `fable-handoff-exec-authority-confirm-2026-09-22`.
 2. ~~Route-C click on #170~~ — **done.** Merged 2026-09-22T00:52Z under the owner's account
    (`yodatech1988`); nothing further needed on this item.
 3. **F1 (the 88-file effort-pin task)** — owner previously approved cutting it *if* the independent
@@ -274,5 +282,7 @@ requires re-running the probe rather than just locating a prior report):**
 
 Every prompt above is scoped read/report/relay as written, and none of them is a licence to merge a
 route-C PR or to dispatch a build task the plan's entry gate still blocks. What has changed since
-this pass drafted them is only §3's execution-authority ruling: the seat may act once it has cleared
-the understand-the-whole-scope gate, within the limits §3 leaves standing.
+this pass drafted them is only §3's relayed execution-authority ruling. It is pending card
+`fable-handoff-exec-authority-confirm-2026-09-22`. If the owner confirms it, the seat may act once
+it has cleared the understand-the-whole-scope gate, within the limits §3 leaves standing. Until
+then, the prompts stay read, report and relay only.
