@@ -1,0 +1,194 @@
+{
+  "title": "review-verdict v1 (diff-reviewer)",
+  "description": "Plan task F13. One PR review as data: verdict, capped findings with file:line + severity + one-line ask, per-category checks with what was searched, and a recommendation. Rendered by the seat into a PR comment (owner decision E11), never a card, never a GitHub review.",
+  "type": "object",
+  "properties": {
+    "agent": {
+      "const": "diff-reviewer"
+    },
+    "contract": {
+      "const": "review-verdict/v1"
+    },
+    "repo": {
+      "type": "string",
+      "description": "owner/name exactly as reviewed"
+    },
+    "pullRequest": {
+      "type": "integer"
+    },
+    "headSha": {
+      "type": "string",
+      "description": "the full head commit SHA that was reviewed (gh pr view --json headRefOid). The renderer refuses to post if this differs from the live head."
+    },
+    "verdict": {
+      "enum": [
+        "APPROVE",
+        "CHANGES_REQUESTED",
+        "ESCALATE"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "description": "one sentence giving the reason for the verdict; the renderer truncates past 200 characters"
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "one line: what the seat should do next"
+    },
+    "findings": {
+      "type": "array",
+      "description": "one entry per concrete problem, worst first; roll duplicates of the same pattern into one entry with the first file:line",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "crash-pattern",
+              "secret",
+              "removed-reappearance",
+              "ci-no-op",
+              "claim-mismatch",
+              "live-prod",
+              "credential",
+              "money",
+              "death-path",
+              "contract-break",
+              "other"
+            ]
+          },
+          "severity": {
+            "enum": [
+              "blocker",
+              "major",
+              "minor",
+              "nit"
+            ]
+          },
+          "file": {
+            "type": "string",
+            "description": "repo-relative path"
+          },
+          "line": {
+            "anyOf": [
+              { "type": "integer" },
+              { "type": "null" }
+            ],
+            "description": "1-based line in the PR head, or null when the finding is file-level"
+          },
+          "ask": {
+            "type": "string",
+            "description": "one imperative line, what the author must change; the renderer truncates past 120 characters"
+          }
+        },
+        "required": [
+          "kind",
+          "severity",
+          "file",
+          "line",
+          "ask"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "checks": {
+      "type": "array",
+      "description": "one entry per category the agent definition requires it to check",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "crash-pattern",
+              "secret",
+              "removed-reappearance",
+              "ci-no-op",
+              "claim-mismatch",
+              "live-prod",
+              "credential",
+              "money",
+              "death-path",
+              "contract-break",
+              "other"
+            ]
+          },
+          "result": {
+            "enum": [
+              "PASS",
+              "FAIL",
+              "NOT_APPLICABLE"
+            ]
+          },
+          "searched": {
+            "type": "string",
+            "description": "what was actually read or grepped, so a PASS is a claim with evidence and never 'looks fine'"
+          }
+        },
+        "required": [
+          "kind",
+          "result",
+          "searched"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "couldNotCheck": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "escalate": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "to": {
+              "enum": [
+                "live-reviewer",
+                "owner"
+              ]
+            },
+            "reason": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "to",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ],
+      "description": "non-null exactly when verdict is ESCALATE (the renderer enforces the pairing; the subset cannot)"
+    }
+  },
+  "required": [
+    "agent",
+    "contract",
+    "repo",
+    "pullRequest",
+    "headSha",
+    "verdict",
+    "summary",
+    "recommendation",
+    "findings",
+    "checks",
+    "couldNotCheck",
+    "escalate"
+  ],
+  "additionalProperties": false
+}
