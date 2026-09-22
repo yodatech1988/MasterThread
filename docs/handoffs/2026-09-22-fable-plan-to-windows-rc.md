@@ -47,6 +47,16 @@ labels, mergeable_state, changed files) and `git ls-remote origin` (branch head 
 
 ### #170 — headless readiness ladder status flip to IN FORCE (Route C, owner-merge)
 
+> **RESOLVED — update 2026-09-21 (local time; 2026-09-22 UTC), follow-up PR to #169.** Everything in
+> this subsection below the update was true when written and is kept as the record. Re-checked live
+> with `gh pr view 170`: **MERGED 2026-09-22T00:52:01Z** under the owner's account
+> (`yodatech1988`), final head `357a9dc`, **exactly one file changed**
+> (`standards/sessions/headless_readiness_ladder.md`, +15/-10) — the six `.pyc` binaries were
+> dropped before merge, which is the "exactly one file" condition this section set. The ladder on
+> `origin/main` now reads **IN FORCE as of 2026-09-22, by owner decision**. PR #171 also merged,
+> at 2026-09-22T00:59:54Z — **seven minutes after #170, not before it**, so the `.pyc` risk was
+> closed by the repair on #170's own branch, and #171 now stops it recurring on future PRs.
+
 - Branch `agent/MasterThread/ladder-in-force` → `main`. `state: open`, `draft: false`,
   `mergeable_state: clean`, label **`merge:owner`** (confirmed present).
 - Intent (from the PR body and the file itself): flip `standards/sessions/headless_readiness_ladder.md`
@@ -57,7 +67,8 @@ labels, mergeable_state, changed files) and `git ls-remote origin` (branch head 
   ("`standards/sessions/*` and `policies/*` in any repo... stay route C") — the `merge:owner` label
   is correct and this PR must not be self-merged by any session, confirmed against the standard
   itself, not just relayed.
-- **NOT SAFE TO MERGE RIGHT NOW — confirmed live, not relayed.** `GET .../pulls/170` reports
+- ~~**NOT SAFE TO MERGE RIGHT NOW — confirmed live, not relayed.**~~ *(resolved, see the update
+  above)* `GET .../pulls/170` reports
   `changed_files: 7`, `+15/-10`. Listing the files (`GET .../pulls/170/files`) shows exactly one
   intended file (`standards/sessions/headless_readiness_ladder.md`, +15/-10, matching the PR's own
   total) plus **six committed `.pyc` binaries**, byte-for-byte the six the orchestrator named:
@@ -170,6 +181,9 @@ summary:
   existence." Confirmed live: the ladder file on `origin/main` still says `proposed`, so this gate is
   still closed as of this handoff, independent of the `.pyc`-contamination problem above (both
   reasons currently block dispatch, not just one).
+  **Update (follow-up PR to #169): condition 1 is now satisfied** — #170 merged and the ladder reads
+  IN FORCE on `origin/main`. See the plan's §7 for the current state of all five conditions and §9
+  for the owner WAITs (F5, F11) and the F8 deferral that still hold.
 - **Group B never unblocks without its own Decision Queue card.** Verified against the plan
   document's own Group B header (`docs/FABLE_AGENT_SUBAGENT_PLAN.md` line ~587-592): "F5 registers
   the first-ever unattended scheduled run, which is the definition of L1... It requires the ladder's
@@ -203,12 +217,9 @@ doesn't have to re-derive it.
    confirmation**; what is still missing is the cross-check's own verdict. This is read/report work
    — check §3's execution-authority ruling and the entry gate before dispatching any build task off
    the back of it.
-2. **Verify #170's repair status before anyone merges it.** Run `git diff --stat origin/main
-   origin/agent/MasterThread/ladder-in-force` (this session has `gh`/git credentials this container
-   didn't). If it still reports 7 files (or anything other than exactly 1), the six `.pyc` files are
-   still there — do not let the owner click merge. If a fix has landed, confirm the diff is exactly
-   `standards/sessions/headless_readiness_ladder.md`, and confirm #171 has merged (or merge it) so
-   the defect can't recur before flagging #170 as owner-mergeable.
+2. ~~Verify #170's repair status before anyone merges it.~~ **DONE.** #170 merged
+   2026-09-22T00:52Z with exactly the one intended file changed; #171 merged at 00:59Z (after #170,
+   not before), so future `.pyc` commits are now ignored. No further action on this item.
 3. **#171 is clean and has no dependency other than order-of-operations** — safe to move first,
    verified this round (`mergeable_state: clean`, 1 file changed, no labels, doesn't touch route-C
    territory). Merging it doesn't require Route C review the way #170 does.
@@ -224,8 +235,8 @@ doesn't have to re-derive it.
 1. ~~Does this handoff carry execution authority?~~ **Resolved by owner ruling, 2026-09-22 — see
    §3.** Full execution authority as the active seat, gated on understanding the entire scope
    first; the ~00:16Z ZERO TASK EXECUTION order is lifted and void.
-2. **Route-C click on #170** — once (and only once) the `.pyc` contamination is confirmed fixed by
-   the incoming session's own live check, this is the owner's `merge:owner` click, not any session's.
+2. ~~Route-C click on #170~~ — **done.** Merged 2026-09-22T00:52Z under the owner's account
+   (`yodatech1988`); nothing further needed on this item.
 3. **F1 (the 88-file effort-pin task)** — owner previously approved cutting it *if* the independent
    cross-check confirms the null effect. That confirmation was not visible from this container as of
    this handoff; the incoming session's first job (§5.1) is to find out whether it has landed.

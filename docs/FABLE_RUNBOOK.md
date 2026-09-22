@@ -4,9 +4,10 @@ Status: **DRAFT, 2026-09-21.** Companion to `docs/FABLE_AGENT_SUBAGENT_PLAN.md`,
 reasoning, the measurements and the build plan. This file is the operating procedure only, written
 to be read on a phone.
 
-**Nothing in this runbook is live yet.** The wrappers it calls (F12) are not built, and the entry
-gate in the plan's §7 blocks every build task except the two measurements. Read this as the
-procedure the build is aiming at, not as instructions that work today. Each step says what it needs.
+**Nothing in this runbook is live yet.** The wrappers it calls (F12) are not built. The plan's §7
+entry gate is now mostly satisfied (conditions 1, 2, 4, 5 as of 2026-09-22), but F5 and F11 are on
+owner WAIT and F8 is deferred (plan §9). Read this as the procedure the build is aiming at, not as
+instructions that work today. Each step says what it needs.
 
 ---
 
@@ -17,6 +18,7 @@ procedure the build is aiming at, not as instructions that work today. Each step
 | **Seat** | One Sonnet 5 / low Claude Code session. Routes and dispatches. Derives nothing. | Phone or desk |
 | **Board** | Decision Queue + Fleet Status. Read state, tap approvals. | Phone (paired device) |
 | **Continuity** | The Fable seat. What changed, what we decided, what's next. | Phone or desk |
+| **Tracker** | Live F-task/round/agent progress board for this plan's own build-out (plan §2, F14). Read-only for you; only the seat writes it. | Phone (paired device) |
 
 Everything else is an agent. You never run a lane yourself.
 
@@ -60,7 +62,8 @@ is exactly what a `low` seat is bad at.
 **6. Agents run headless** and file schema-checked JSON. They never write a card, never merge, never
 schedule anything.
 
-**7. Seat ingests the reports**, writes Fleet Status rows, files the next cards. Back to step 4.
+**7. Seat ingests the reports**, writes Fleet Status rows, updates the F-task tracker (one row per
+F-task id, status only — no logs, code or secrets), files the next cards. Back to step 4.
 
 ---
 
@@ -68,6 +71,8 @@ schedule anything.
 
 - **The seat never upgrades itself.** A hard task dispatches a callee; it does not raise the seat's
   model or effort.
+- **Only the seat writes the F-task tracker** — same rule as Fleet Status and the Decision Queue.
+  An agent files a report; it never writes a tracker row, and neither does the Fable seat.
 - **The seat never judges production.** Row-1 work goes to an Opus callee or to an owner click-file.
 - **Operations never depend on the continuity seat.** If it is unreachable the round still runs off
   the durable record — repo, Fleet Status, cards. A wrapper that blocks a lane because continuity is
@@ -86,9 +91,8 @@ schedule anything.
 that class from a phone; you cannot *execute* it.
 
 This bites in one specific place: **registering the scheduled run (F5) is itself a click-file**, so
-the step that moves the fleet to L1 is desk-only. Plan §9 decision 5 recommends accepting that —
-rung changes are rare and deliberate and already need an owner card — rather than building a second
-approval path.
+the step that moves the fleet to L1 is desk-only. **Owner decision D5 (2026-09-22): accepted** —
+rung changes stay desk-only; no second approval path is built (plan §9).
 
 Also worth knowing: the approval-device gate is **"not real security"** in its own words — a
 `localStorage` id against a shared pairing list. It guards against a wrong-device tap. It is not
@@ -117,3 +121,7 @@ hard-to-reverse action.
 The expensive thing is not the model — it is paying for a system prompt twice. Batch the sweeps into
 one hourly burst, keep the continuity seat warm, and let Haiku subagents stay stateless. Measured
 figures and their caveats are in the plan's §1b.
+
+Every number here is an **API-list-price-equivalent dollar figure**, read from the CLI's own
+`total_cost_usd`/`modelUsage[*].costBasis: "list"` fields, even though the call itself is billed
+against the Claude Code subscription, not metered API usage. See plan §11.
