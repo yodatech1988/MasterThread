@@ -60,6 +60,7 @@ Scheduler state) and has no path to running anywhere else.
 | `review-tier-recommender` | haiku | **A** | yes | Recommends model/effort for a PR review, filling the gap `claude-review.yml` leaves open | Token audit A1 |
 | `automerge-preflight` | haiku | **A** | yes | Checks a PR against `claude-review.yml`'s real automerge gates before it's pushed | Token audit A1/A2; `claude-review.yml` |
 | `secrets-handling-auditor` | sonnet | **A** | yes | Audits a repo's secret-handling PRACTICE (storage, injection, gitignore) against org policy | `_security-public/policies/security/secrets_handling.md` |
+| `local-transcript-secret-scanner` | sonnet | R | local-only | Scans local archived transcripts for secret-shaped content before a tier1 copy moves to a private repo; reports file:line + type, never the value | `SESSION_HANDOFF_2026-09-21-github-2d-pm-to-yoda-97.md:26`; `_security-public/policies/security/secrets_handling.md` |
 | `incident-response-drafter` | sonnet | **D** | yes | Drafts a postmortem from the real P0-P3 severity table and response steps; proposes only | `_security-public/policies/security/incident_response.md` |
 | `agent-automation-gatekeeper` | sonnet | **A** | yes | Reviews a *new* proposed agent against the org's automation policy before it's added | `_security-public/policies/security/agents_and_automation.md` |
 | `data-classification-tagger` | haiku | **A** | yes | Tags data with the real C0-C3 classes, not a generic public/internal/confidential scheme | `_security-public/policies/data/classification.md` |
@@ -87,6 +88,8 @@ running in a different lane; this PR only adds the files and their rows.
 | `register-verifier` | haiku | R | yes | Checks `workstreams` register rows against live `gh`/`git` state; flags disagreement, empty `next` on staffed rows, stale `verified`, and the `dispatchable-and-idle` count the PM heartbeat must drive to 0 | `pm_role.md` "The workstream register", "The control loop"; PM-process advisory §8 |
 | `denial-card-drafter` | haiku | **D** | yes | Drafts a complete Decision Queue action card in the "Permission-denial cards" shape from a classifier denial's raw facts; never files it | `decision_queue_standard.md` "Permission-denial cards"; PM-process advisory §8 |
 | `click-file-builder` | sonnet | **D** | yes | Drafts an owner-run click-file pair (typed-YES gate, -WhatIf, retired guard, interactive-only gate); same-folder zz-UNDO; never runs anything it wrote | `skills/owner-click/SKILL.md` |
+| `retirement-card-drafter` | haiku | **D** | yes | Drafts one Decision Queue action card per obsolete item, archive-never-delete; never files, never touches the item | `decision_queue_standard.md`; `SESSION_HANDOFF_2026-09-21-github-2d-pm-to-yoda-97.md:15` |
+| `knowledge-extractor` | haiku | R | yes | Extracts source-cited facts from one tier1-labeled archive slice into a ledger, under a per-run cost cap; hard-refuses tier2/tier3 without an approved card. Re-review required once the owner decides tiered reading (open decision); tier 1 only until then. | `SESSION_HANDOFF_2026-09-21-github-2d-pm-to-yoda-97.md:15,26,32`; `FINAL_REVIEW_scope_plan_2026-09-21.md` §D item 11 |
 | `standard-buildstate-checker` | haiku | R | yes | Sweeps `standards/`(+`policies/`) on `origin/<default>` for named mechanisms (scripts, tools, collections, agents, cross-repo paths) and reports which don't exist or lack a build-state marker | `pm_role.md` "Scaling and rotation" build-state rule; PM-process advisory §8 |
 
 "Dormant" = Discord/Patreon automation stays paused per the standing owner decision
@@ -201,6 +204,7 @@ below.
 | Agent | Model | Role | Headless | Purpose |
 |---|---|---|---|---|
 | `claude-session-archive-status` | haiku | R | local-only | Wraps `Invoke-Archive.ps1`'s real status output; never triggers a run |
+| `archive-completeness-verifier` | haiku | R | yes | Per-file (path/size/SHA256) diff of a live tree against its archive copy; replaces file-count-only claims. Needed for `FINAL_REVIEW_scope_plan_2026-09-21.md` C7 |
 | `github-org-repo-inventory` | haiku | R | yes | `gh repo list yodatech1988` fact table — name/visibility/last-push/archived |
 | `discord-bot-key-age-reporter` | haiku | R | needs-local-keys | Real DPAPI key-file ages for the two named Discord bot keys; the second key's actual path differs from the assumed one — found and corrected during build |
 | `ovh-vps-usage-reporter` | haiku | R | needs-local-keys | Wraps `OvhApiKey.ps1 GET /vps` (scope `/vps/*`, no `DELETE`), fact-only |

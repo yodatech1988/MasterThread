@@ -1,4 +1,8 @@
 {
+  "archive-completeness-verifier": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
+  "local-transcript-secret-scanner": {"role": "R", "headless": "local-only", "readonly": "instruction", "dormant": false},
+  "retirement-card-drafter": {"role": "D", "headless": "yes", "readonly": "tools", "dormant": false, "group": "other"},
+  "knowledge-extractor": {"role": "R", "headless": "yes", "readonly": "tools", "dormant": false},
   "pr-state-sweep": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
   "plan-status-check": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
   "worktree-sweep": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
