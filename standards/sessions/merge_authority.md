@@ -156,9 +156,9 @@ manual queue.
    no label has not been looked at.
 3. **Order.** Within route B: PRs that unblock other PRs first (a runner or CI fix that changes what
    every other check means goes to the very front), then by the PM's priority tier, then oldest
-   first. Stacked PRs land as one top-branch→main PR, verified with `git merge-base --is-ancestor`;
-   dependencies are declared as `Depends-on: owner/repo#n` lines in the PR body and each must
-   resolve to `MERGED` live before the dependent PR is considered.
+   first. Dependent PRs each target the default branch and declare `Depends-on:` lines; the
+   `depends-on` check must be green before the dependent PR is considered (see "Dependent PRs: the
+   depends-on check" below).
 4. **Review.** Per `orchestrator_role.md` "Review before merge": files, diff against
    `origin/<default>`, checks. A green check is evidence only for what it actually runs; a red one
    must be attributed to content or to a named infrastructure cause.
@@ -215,6 +215,54 @@ required status checks are expected") though both passed.
 Sequence a set of parallel PRs in such a repo accordingly. Precedent: website #35 then #36,
 2026-09-18.
 
+## Dependent PRs: the depends-on check
+
+Owner order 2026-09-22: *"These need better blocking mechanisms, or to be built as stacks so I
+cannot merge something unless the one beneath it is done."* In one round #175 merged before #169,
+and #176 and #186 merged into side branches, where no check or review on `main` could see them.
+The owner merges from GitHub mobile, so ordering has to be enforced by the button, not by a note in
+a PR body.
+
+**Rules for authors (every lane, every repo that carries the workflow):**
+
+1. **Every PR targets the default branch.** Never open a PR into another PR's branch. Branch
+   protection and every required check gate the default branch only, so anything merged into a side
+   branch skips them all.
+2. **A PR that needs another PR merged first says so,** one line per dependency in its body:
+   `Depends-on: #169`, `Depends-on: yodatech1988/ops-platform#42` or a PR URL. Several refs may
+   share one line. `Depends-on: none` is allowed. Lines in fenced code blocks are ignored.
+3. **Building on unmerged work:** branch from the dependency's branch, still target the default
+   branch, and declare the dependency. The diff shows the dependency's commits until it lands.
+   After it lands, the lane that authored the dependent PR rebases it onto the default branch (see
+   "Repos with strict up-to-date protection" for who updates a branch).
+
+**The check.** `.github/workflows/depends-on.yml` runs `tools/check_depends_on.py` on every PR
+open, edit, push and reopen. The `depends-on` check **fails** when the PR's base is not the default
+branch, or when any declared dependency is still open, closed unmerged, merged into a side branch,
+merged at a commit not on its default branch, an issue rather than a PR, unreadable with the
+workflow's read-only token, or unparseable. The failure message lists each blocker by number and
+title. It **passes** when every dependency is merged into its default branch, or when there are
+none. When the last dependency lands, a scheduled re-check (every 15 minutes, best effort) re-runs
+the failed check so it turns green without anyone touching the PR. Editing the PR body, or "Re-run
+jobs" on the check, re-evaluates it at once.
+
+**Merge authority never merges with a failing or missing `depends-on` check,** on any route, and the
+verdict comment's `depends-on:` line records the check's result. A red `depends-on` is never
+attributed to infrastructure and waved through. Fix the dependency or the body, then re-run.
+
+**Making it a real block is an owner-only step.** Until `depends-on` is a *required* status check
+on the default branch's protection, it is a red X the merge button ignores. Adding it is a branch
+protection change, so it is the owner's own click (route C, "Enforcement" phase 2). A session
+never applies it. MasterThread's `main` protection already has "include administrators" on, so once
+the check is required it binds the owner's account too. This check can be required safely: it runs
+on GitHub's own runners, has been seen to pass there, and does not depend on a self-hosted runner.
+Other repos get the workflow and the requirement one at a time, each after its own check has been
+seen to pass.
+
+Limits: branch protection cannot stop a merge *into* an unprotected side branch. The check turns
+such a PR red and names the problem, but only rule 1 prevents it. A PR can edit the workflow or
+script it is checked by, which is one more reason `.github/workflows/*` is route C.
+
 ## The owner route
 
 Route C PRs collect under the `merge:owner` label; that label *is* the owner's queue, visible in any
@@ -239,7 +287,8 @@ confirmation**; the tool change is a follow-up lane, not part of this document's
 ## Enforcement
 
 Be honest about what is enforced today: **nothing but core's automerge gates.** The rest is a
-convention, and conventions are what failed.
+convention, and conventions are what failed. The `depends-on` check ("Dependent PRs" above) becomes
+the second enforced gate once the owner marks it required. Until then it is detection only.
 
 **Phase 1 — this document (convention + detection).** Labels, verdict comments, the seat procedure,
 and a recurring read-only **merge audit**: list every PR merged in the last window across the org
