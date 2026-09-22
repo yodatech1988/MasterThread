@@ -108,7 +108,14 @@
     parameter existed. The path itself must be an existing file; same cmd.exe-safety checks as
     -SettingsPath apply to the PATH value (refused with exit 2, nothing launched, if the path
     contains a double quote, %, !, a line break, or ends in a backslash) -- those checks do not
-    re-run against the file's contents. This parameter only threads the flag through -- it does not
+    re-run against the file's contents. 2026-09-22 follow-up fix (QA, PR #197 comments, second
+    round): those PATH-only checks left real schema CONTENT unguarded -- a `"` or a line break in
+    the schema itself (ordinary for hand-written JSON Schema) reached cmd.exe by way of claude.cmd
+    and was mangled, since cmd.exe does not honour ConvertTo-QuotedArg's backslash-escaped quote and
+    cannot carry a literal newline in a single command line at all. Fixed by having the executable
+    resolution below prefer the native claude.exe (found next to claude.cmd) over claude.cmd itself
+    whenever this parameter's content needs to survive intact -- see that resolution block's own
+    comment for the verified mechanics. This parameter only threads the flag through -- it does not
     itself validate the agent's returned JSON against the schema; see
     tools/headless/Invoke-Subagent.ps1 and JsonSchemaLite.ps1 for that (F12's own wrapper, layered
     on top of this script).
@@ -574,6 +581,52 @@ if ($ClaudePath) {
         exit 2
     }
     $claudeExe = $claudeCmd.Source
+
+    # 2026-09-22 fix (F12 QA follow-up, PR #197): resolved 'claude.cmd' is a batch file, so Windows
+    # launches it through cmd.exe, which re-tokenizes the WHOLE joined command-line string built
+    # below and does not honour a backslash-escaped quote (`\"`) the way ConvertTo-QuotedArg (above)
+    # assumes -- see that function's own comment, and the extensive cmd.exe-hazard refusal checks
+    # this script already has for -SettingsPath/-Tools/-AllowedTools/-JsonSchemaPath. Those checks
+    # only cover the PATH strings, never a file's CONTENT (JsonSchemaPath's own doc comment already
+    # says so), and --json-schema is the one flag whose value is arbitrary file content rather than a
+    # short operator-chosen string. Confirmed live 2026-09-22 (CLI 2.1.278): a --json-schema value
+    # containing a `"` and a newline -- ordinary for real, human-readable JSON Schema -- reaches
+    # cmd.exe as `"{\"type\":...`; cmd.exe closes the quoted region at that embedded `\"` (it does
+    # not treat the backslash as an escape), after which the rest of the schema runs as unquoted
+    # shell text, and the literal newline breaks the single-line command string outright. Neither
+    # survives, and `claude --json-schema` has no file-path or stdin input mode to route around it
+    # (verified against `claude --help` and by a real invocation: passing a path errors "not valid
+    # JSON", and a JSON-Schema-without-newlines round-trips fine over stdin/argv when nothing
+    # reinterprets the argument -- see this PR's test coverage).
+    #
+    # claude.cmd's own body is a one-line forward to the real Windows PE binary at
+    # node_modules\@anthropic-ai\claude-code\bin\claude.exe, in the same folder Get-Command resolved
+    # above. Launching that binary directly skips cmd.exe's re-tokenizing pass entirely --
+    # CreateProcess hands it the joined command-line string as-is, and the CLI's own argv parsing
+    # follows the standard Windows CommandLineToArgvW convention, where `\"` IS honoured as an
+    # escaped embedded quote and a literal newline inside a quoted argument survives -- exactly what
+    # ConvertTo-QuotedArg already produces, and exactly what this script's own quoting comments say a
+    # normal Windows command line expects. Verified live (2026-09-22): the same quoted --json-schema
+    # value that cmd.exe mangles reached the CLI's schema validator intact once claude.exe was
+    # launched directly instead of claude.cmd.
+    #
+    # Preferred whenever the sibling .exe is found, for every run (not only -JsonSchemaPath ones) --
+    # it is strictly safer for every other quoted argument on this command line too, and changes
+    # nothing about which flags are passed. Falls back to the resolved claude.cmd/bare-claude
+    # unchanged (byte-identical launch to before this fix) if the sibling .exe is not where
+    # claude.cmd's own body names it (a future npm layout change, or a non-Windows host) -- with a
+    # loud warning when -JsonSchemaPath is in play, since that fallback path is the one this fix
+    # exists to avoid. -ClaudePath (the test seam) is untouched: it already launches whatever file a
+    # test points it at directly, never through this resolution block.
+    if ($claudeExe -match '\.cmd$') {
+        $claudeExeDir = Split-Path -Parent $claudeExe
+        $nativeExe = Join-Path $claudeExeDir 'node_modules\@anthropic-ai\claude-code\bin\claude.exe'
+        if (Test-Path -LiteralPath $nativeExe -PathType Leaf) {
+            $claudeExe = (Resolve-Path -LiteralPath $nativeExe).ProviderPath
+        } elseif ($JsonSchemaPath) {
+            Write-Warning "Invoke-ReadOnlyAgent: expected the native claude.exe next to claude.cmd at $nativeExe but did not find it; falling back to claude.cmd. -JsonSchemaPath's value is run through cmd.exe on that path and can be mangled if the schema contains a double quote or a line break (see this script's executable-resolution comment)."
+        }
+    }
 }
 
 Write-Verbose "$claudeExe $($claudeArgs -join ' ')$(if ($promptFile) { ' (prompt on stdin)' })"
