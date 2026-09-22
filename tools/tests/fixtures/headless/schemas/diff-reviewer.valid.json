@@ -1,0 +1,62 @@
+{
+  "agent": "diff-reviewer",
+  "contract": "review-verdict/v1",
+  "repo": "yodatech1988/MasterThread",
+  "pullRequest": 209,
+  "headSha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+  "verdict": "CHANGES_REQUESTED",
+  "summary": "One blocker: --json-schema is silently unenforced when launched with --agent, so the downstream schema check is a no-op.",
+  "recommendation": "Land the #212 fix (append-system-prompt-file launch form) before merging, or drop the --json-schema claim from the PR body.",
+  "findings": [
+    {
+      "kind": "contract-break",
+      "severity": "blocker",
+      "file": "tools/headless/Invoke-ReadOnlyAgent.ps1",
+      "line": 672,
+      "ask": "Launch schema-constrained runs via --append-system-prompt-file instead of --agent so --json-schema is actually enforced."
+    },
+    {
+      "kind": "claim-mismatch",
+      "severity": "major",
+      "file": "tools/headless/Invoke-Subagent.ps1",
+      "line": 284,
+      "ask": "Read envelope.structured_output instead of parsing envelope.result as JSON; result is not guaranteed to carry the schema object."
+    },
+    {
+      "kind": "ci-no-op",
+      "severity": "minor",
+      "file": "tools/tests/test-invoke-subagent.ps1",
+      "line": 41,
+      "ask": "Add a fake-CLI case where the envelope has prose-only result and no structured_output, asserting exit 8."
+    }
+  ],
+  "checks": [
+    {
+      "kind": "crash-pattern",
+      "result": "PASS",
+      "searched": "gh pr diff 209 for null derefs, unguarded array access, and unclosed resources on error paths; none found."
+    },
+    {
+      "kind": "secret",
+      "result": "PASS",
+      "searched": "grepped the diff for password=, key=, token=, -----BEGIN, and literal DPAPI store values; only path references to %APPDATA%\\AEGIS\\*.clixml, no literal secrets."
+    },
+    {
+      "kind": "ci-no-op",
+      "result": "FAIL",
+      "searched": "checked test-invoke-subagent.ps1: its fake-CLI case asserts exit 0 without covering the structured_output-absent path, so the green run does not prove the fix."
+    },
+    {
+      "kind": "claim-mismatch",
+      "result": "PASS",
+      "searched": "cross-checked the PR body's 'reads structured_output correctly' claim against Invoke-Subagent.ps1 line 284; confirmed the diff changes the parse target from result to envelope.structured_output."
+    }
+  ],
+  "couldNotCheck": [
+    {
+      "subject": "live acceptance run against a real diff-reviewer launch",
+      "reason": "no allowedTools roster entry exists yet for diff-reviewer Bash(gh pr diff:*), so the live case could not be executed for this review."
+    }
+  ],
+  "escalate": null
+}

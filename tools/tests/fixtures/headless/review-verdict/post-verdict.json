@@ -1,0 +1,28 @@
+{
+  "agent": "diff-reviewer",
+  "contract": "review-verdict/v1",
+  "repo": "yodatech1988/MasterThread",
+  "pullRequest": 1,
+  "headSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "verdict": "CHANGES_REQUESTED",
+  "summary": "One blocker finding used only to drive the -Post/live-head-check test cases (T7, T10-T12).",
+  "recommendation": "Fix the one blocker before merge.",
+  "findings": [
+    {
+      "kind": "crash-pattern",
+      "severity": "blocker",
+      "file": "tools/headless/example.ps1",
+      "line": 10,
+      "ask": "Guard the null deref on the error path."
+    }
+  ],
+  "checks": [
+    {
+      "kind": "crash-pattern",
+      "result": "FAIL",
+      "searched": "read tools/headless/example.ps1 for null derefs on the error path; found one."
+    }
+  ],
+  "couldNotCheck": [],
+  "escalate": null
+}

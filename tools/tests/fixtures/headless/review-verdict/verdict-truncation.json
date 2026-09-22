@@ -1,0 +1,83 @@
+{
+  "agent": "diff-reviewer",
+  "contract": "review-verdict/v1",
+  "repo": "yodatech1988/MasterThread",
+  "pullRequest": 209,
+  "headSha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+  "verdict": "CHANGES_REQUESTED",
+  "summary": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS.",
+  "recommendation": "Land the #212 fix before merging this PR, or drop the --json-schema claim from the PR body until it does.",
+  "findings": [
+    {
+      "kind": "other",
+      "severity": "blocker",
+      "file": "tools/headless/zzz.ps1",
+      "line": 3,
+      "ask": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA."
+    },
+    {
+      "kind": "contract-break",
+      "severity": "blocker",
+      "file": "tools/headless/Invoke-ReadOnlyAgent.ps1",
+      "line": 672,
+      "ask": "Turn the fallback warning into Exit-UnsafeArg when -JsonSchemaPath is set so a silently-unenforced schema never looks like a passing run."
+    },
+    {
+      "kind": "secret",
+      "severity": "major",
+      "file": "tools/headless/budgets.json",
+      "line": 12,
+      "ask": "Remove the hardcoded token ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 from this file before merging."
+    },
+    {
+      "kind": "claim-mismatch",
+      "severity": "major",
+      "file": "tools/headless/Invoke-Subagent.ps1",
+      "line": 284,
+      "ask": "Read envelope.structured_output instead of parsing envelope.result as JSON."
+    },
+    {
+      "kind": "ci-no-op",
+      "severity": "minor",
+      "file": "tools/tests/test-invoke-subagent.ps1",
+      "line": null,
+      "ask": "Add a fake-CLI case where the envelope has prose-only result and no structured_output, asserting exit 8."
+    },
+    {
+      "kind": "other",
+      "severity": "minor",
+      "file": "tools/tests/test-x.ps1",
+      "line": 41,
+      "ask": "A second minor finding used only to push the total finding count to six so the cap-of-five and the \"1 more in the report\" line both get exercised by this DryRun run."
+    }
+  ],
+  "checks": [
+    {
+      "kind": "crash-pattern",
+      "result": "PASS",
+      "searched": "gh pr diff 209 for null derefs and unguarded array access; none found."
+    },
+    {
+      "kind": "secret",
+      "result": "FAIL",
+      "searched": "grepped the diff for ghp_/gho_/AKIA/-----BEGIN; found one literal token, see findings."
+    },
+    {
+      "kind": "ci-no-op",
+      "result": "FAIL",
+      "searched": "checked test-invoke-subagent.ps1: no case covers the structured_output-absent path."
+    },
+    {
+      "kind": "contract-break",
+      "result": "FAIL",
+      "searched": "confirmed --json-schema is silently unenforced under an --agent launch on CLI 2.1.280."
+    }
+  ],
+  "couldNotCheck": [
+    {
+      "subject": "live acceptance run against a real diff-reviewer launch",
+      "reason": "no allowedTools roster entry exists yet for diff-reviewer Bash(gh pr diff:*)."
+    }
+  ],
+  "escalate": null
+}

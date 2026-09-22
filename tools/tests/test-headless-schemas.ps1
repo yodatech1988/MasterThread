@@ -194,8 +194,12 @@ function New-Mutations([string]$FixtureText) {
     $m['wrong type (findings is a string, not an array)'] = $o
 
     $o = $FixtureText | ConvertFrom-Json
-    $o | Add-Member -NotePropertyName 'verdict' -NotePropertyValue 'looks fine'
-    $m['extra root key (verdict)'] = $o
+    # F13: the review-verdict schemas already have a root `verdict` property (required, enum), so
+    # Add-Member on 'verdict' without -Force would throw "member already exists" for those two
+    # fixtures instead of producing the intended "extra key" mutation. Use a property name no F4 or
+    # F13 fixture defines instead -- additionalProperties:false rejects it exactly the same way.
+    $o | Add-Member -NotePropertyName '__mutation_extra_key__' -NotePropertyValue 'looks fine'
+    $m['extra root key (__mutation_extra_key__)'] = $o
 
     $o = $FixtureText | ConvertFrom-Json
     $o.findings = @([pscustomobject]@{ kind = 'not-a-real-kind'; subject = 'x'; detail = 'y' })
@@ -288,7 +292,13 @@ Test-Case "schema set == the L1 reporter agents named in headless_readiness_ladd
     $named = @([regex]::Matches($inParens.Groups[1].Value, '`([^`]+)`') | ForEach-Object { $_.Groups[1].Value })
     $agents = @($named | Where-Object { $_ -notmatch '\.(py|ps1)$' } | Sort-Object)
     if ($agents.Count -lt 1) { throw 'no agents parsed from the L1 row' }
-    $diff = Compare-Object -ReferenceObject $agents -DifferenceObject @($schemaNames | Sort-Object)
+    # F13 (DESIGN_f13-review-verdict_2026-09-22.md section 5A): the review-verdict schema pair is
+    # not an L1 reporter (diff-reviewer is a phase-2 headless agent; live-reviewer is never
+    # headless per the ladder), so it is unioned onto the expected set as a literal here rather
+    # than edited into the ladder's L1 row -- keeps this a route-B change with no standards edit.
+    $reviewVerdictAgents = @('diff-reviewer', 'live-reviewer')
+    $expectedAgents = @(($agents + $reviewVerdictAgents) | Sort-Object -Unique)
+    $diff = Compare-Object -ReferenceObject $expectedAgents -DifferenceObject @($schemaNames | Sort-Object)
     if ($diff) { throw "mismatch (<= ladder only, => schema only): $(($diff | ForEach-Object { "$($_.SideIndicator)$($_.InputObject)" }) -join ', ')" }
 }
 
