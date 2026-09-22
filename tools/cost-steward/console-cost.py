@@ -75,13 +75,16 @@ doc = {
     "breakdown": {"roundsUsd": round(rounds_usd, 2), "unroundedRunsUsd": round(runs_usd, 2),
                    "liveSessionsNotInAnyRoundUsd": round(live_usd, 2),
                    "liveSessionsNotInAnyRound": [{"name": n, "usd": round(c, 2)} for n, c in live]},
-    "basis": "API-equivalent at claude.com list prices, subagents included. Rounds carry their own spentUSD (runs charged inside a round are not re-added). Live sessions a round has named are counted only through their rounds and the open overhead bucket; their spend outside any round window is not counted. Estimate, not a bill; subscription marginal cost is $0.",
+    "basis": "API-equivalent at claude.com list prices, subagents included. Rounds carry their own spentUSD (runs charged inside a round are not re-added). A live session some round has named is counted through those rounds plus its remainder above what they charged it, shown as '<name> (outside rounds)'; a session no round has named contributes its whole meter spend. Estimate, not a bill; subscription marginal cost is $0.",
 }
 # Machine-wide day what-if from the F8 ledger (tools/cost-monitor on origin/main, read-only), a second
 # scope beside the project total: every transcript in this project folder today, all sessions, all models.
 def machine_day():
     import re, subprocess
-    cm = os.path.join(HERE, "cost-monitor")
+    # scratch outside the repo checkout: writing under tools/ leaves untracked files that trip the
+    # session-stop git check (seat finding on PR #219)
+    import tempfile
+    cm = os.path.join(tempfile.gettempdir(), "console-cost", "cost-monitor")
     os.makedirs(cm, exist_ok=True)
     repo = "C:/Users/yoda_/GitHub/MasterThread"
     # refresh the ref first: origin/main is only as fresh as the last fetch (found 18:25Z: a stale ref
@@ -144,5 +147,5 @@ try:
     doc["machineDayWhatIf"] = machine_day()
 except Exception as e:  # never let the second scope break the first
     doc["machineDayWhatIf"] = {"error": f"{type(e).__name__}: {e}"[:200]}
-json.dump(doc, open(out, "w"), indent=1)
+json.dump(doc, open(out, "w", encoding="utf-8"), indent=1)
 print(f"total ${total:.2f}  rounds ${rounds_usd:.2f}  unrounded runs ${runs_usd:.2f}  live-unrounded ${live_usd:.2f} {[n for n,_ in live]}  today ${today_usd:.2f}")
