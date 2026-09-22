@@ -443,10 +443,7 @@ owner's call. The `permissions.ask` rule used here isn't an `autoMode` key, but 
 scope for the same reason: one file covers every session.
 
 **Verdict read-back and command-chaining safeguards (Incident 2).** yodatech1988/MasterThread#182
-incident 2 (Quality Audit seat yoda-30, 2026-09-22) found that the merge seat reported posting a
-`MERGE-VERDICT` comment on #173, but the comment never posted because the `gh pr comment` call
-failed inside a chained shell block (`&&`), unnoticed by the seat. The seat then merged without a
-visible verdict record. Outcome was correct (fix verified on origin/main), but the process failed.
+incident 2 (Quality Audit (yoda-30) found the MERGE-VERDICT was missing for the merged head; the merge seat then confirmed via gh api that its verdict comment never posted (the gh pr comment call had failed inside a chained shell block)). Outcome was correct (fix verified on origin/main), but the process failed.
 Remediation: (1) Run each `gh` command on its own in a separate shell call — never chain `gh` calls
 with `&&`, `||`, `;`, or similar, because a silently failed call inside a chain goes unnoticed.
 (2) After posting a `MERGE-VERDICT` comment, read it back via `gh api repos/<owner>/<repo>/issues/comments/<id>`
