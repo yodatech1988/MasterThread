@@ -198,7 +198,7 @@ with the capability reasons already in `session_plan_standard.md`.
 | `tools/pm-heartbeat/` | Built (PR #108); watchdog task **registered** — owner card `action-register-pm-heartbeat-watchdog-2026-09-18` resolved `Done` 2026-09-18, and Windows scheduled task `AEGIS-PmHeartbeat-Watchdog` confirmed present and ticking every 15 minutes on 2026-09-21 (see entry gate condition 5) |
 | `tools/cost-monitor/` | PR #159 **open, draft** (re-checked 2026-09-21) |
 | `standards/sessions/headless_readiness_ladder.md` | **IN FORCE as of 2026-09-22** (PR #170 merged 2026-09-22T00:52Z; confirmed on `origin/main`). Formally the fleet is still at **L0**: no rung is recorded as climbed until L1's 7-day exit criterion is met and its climbing card is filed. **But an owner-approved L1 pilot is already running (next row)**, so "L0" means "no rung formally reached", not "nothing runs unattended" |
-| Windows scheduled task `AEGIS-L1Pilot` | **An owner-approved L1 pilot, running since 2026-09-19.** Decision card `approve-l1-pilot-scheduled-task-2026-09-18` was resolved by the owner on 2026-09-18T11:56Z ("Approve the pilot"). Action card `action-register-l1-pilot-2026-09-18` was claimed by the owner on 2026-09-19T13:31Z and verified live by the merge seat on 2026-09-19T13:57Z. Both were read directly from the Decision Queue store on 2026-09-22. The task runs `pr-state-sweep` and `gate-execution-auditor` read-only every 4 hours through `Invoke-ReadOnlyAgent.ps1` and writes to `%APPDATA%\AEGIS\reports\`. Re-checked with `Get-ScheduledTask` at 2026-09-21 21:44 local: state `Ready`, last run 21:31, result 0. Its description says it is "self-refreshing from origin/main", so **every merge to `main` becomes code this task runs on the owner's PC at its next tick**. The owner was told this on the registration card. The ladder's build-state row on `origin/main` ("L1 scheduled task … **Not built**") predates the pilot and is stale. Correcting it is a route-C edit and not part of this plan. Whether the relayed F5 WAIT (§9) also covers this pilot is on card `fable-l1-pilot-vs-f5-wait-2026-09-22`. |
+| Windows scheduled task `AEGIS-L1Pilot` | **An owner-approved L1 pilot, running since 2026-09-19.** Decision card `approve-l1-pilot-scheduled-task-2026-09-18` was resolved by the owner on 2026-09-18T11:56Z ("Approve the pilot"). Action card `action-register-l1-pilot-2026-09-18` was claimed by the owner on 2026-09-19T13:31Z and verified live by the merge seat on 2026-09-19T13:57Z. Both were read directly from the Decision Queue store on 2026-09-22. The task runs `pr-state-sweep` and `gate-execution-auditor` read-only every 4 hours through `Invoke-ReadOnlyAgent.ps1` and writes to `%APPDATA%\AEGIS\reports\`. Re-checked with `Get-ScheduledTask` at 2026-09-21 21:44 local: state `Ready`, last run 21:31, result 0. Its description says it is "self-refreshing from origin/main", so **every merge to `main` becomes code this task runs on the owner's PC at its next tick**. The owner was told this on the registration card. The ladder's build-state row on `origin/main` ("L1 scheduled task … **Not built**") predates the pilot and is stale. Correcting it is a route-C edit and not part of this plan. Whether the relayed F5 WAIT (§9) also covers this pilot is on card `fable-l1-pilot-vs-f5-wait-2026-09-22`. Whether the pilot should run a pinned, reviewed ref instead of `origin/main` is on card `fable-l1-pilot-pinned-ref-2026-09-22`. |
 | `skills/round-start`, `dispatch-lane`, `land-pr`, `round-closeout`, `owner-click` | Built |
 | Decision Queue, Fleet Status, `merge_authority.md` routes A/B/C | Built |
 
@@ -613,8 +613,25 @@ and `--allowedTools "Bash(echo:*)"`:
 - `whoami` also ran, although no allow rule named it.
 
 So **the allow-list is not the only way a command gets in.** The CLI also auto-allows commands it
-classifies as read-only. Writes are still denied, so the line holds as a read-only boundary. It is
-not an exact verb list, and F4/F12 must not describe it as one. The `<exact list>` is a placeholder,
+classifies as read-only, and nothing documents that classifier's exact list. The fix round
+(2026-09-22, same CLI, same flags) probed the egress and outside-the-working-directory cases:
+
+- With `--allowedTools "Bash(echo:*)"`: `curl -s … https://example.com`, `gh api /zen` and
+  `git ls-remote https://github.com/…` were each **denied** and recorded in `permission_denials`.
+  So were `cat` and `ls` on an absolute path outside the working directory. `whoami` ran again.
+- With `--allowedTools "Bash(curl:*)"`, which explicitly allows curl, `curl` was still **denied**:
+  `readonly.settings.json`'s `Bash(curl *)` deny rule overrides the allow. The deny list is a
+  working backstop for the commands it names.
+
+That is evidence for the commands probed, not a proof for every command. The claim this plan makes is
+narrower: on these flags, writes, the probed network reads and the probed out-of-directory reads are
+denied. Commands the classifier auto-allows are **not** enumerated. The deny list does not name
+`gh api` GET, so a row-7 agent whose allow-list includes `gh api` can read any endpoint its token
+reaches. Pin `gh` verbs narrowly. F4/F12 must not describe the line as an exact verb list, and F12's
+regression check must cover: a write (denied), a network read by `curl`/`wget`/`gh api`/`git
+ls-remote` to a host or endpoint outside the agent's pinned list (denied), a read outside the working
+directory by the file tools and by `Bash` (denied), and one explicitly allowed command that the deny
+list names (denied, proving the deny list is still the backstop). The `<exact list>` is a placeholder,
 not a pattern: F4 pins each row-7 agent's verbs from that agent's documented commands, and F12
 passes exactly that list. Nothing is widened with a wildcard.
 
@@ -646,8 +663,13 @@ claude -p --resume <stable uuid> \
 Why each layer is there. Without `--strict-mcp-config` and `--restricted`, a headless resume would
 load the user, project and local settings allowlists and every configured MCP server, including
 write-capable connectors (mail, drive, store, accounting). Prose saying "don't" is an instruction,
-not a boundary. With these flags, an unattended Fable call can read files in its working directory
-and nothing else. The flags are per process, not per session, so they must be passed on **every**
+not a boundary. With these flags, an unattended Fable call has only `Read`, `Grep` and `Glob`, and `--restricted`
+confines those to its working directory. The fix round probed that with Haiku standing in
+(2026-09-22): `Read` and `Grep` on an absolute path in a sibling directory were both **denied** with
+"--restricted confines the file tools to the working directory". `Glob` was not probed separately,
+and reads through a symlink or junction inside the working directory were not tested. Choose the
+seat's working directory accordingly: never a folder that contains `%APPDATA%\AEGIS` or a key
+file. The flags are per process, not per session, so they must be passed on **every**
 call. F12's `Ask-Fable` must **enforce** them, refusing to run if any is missing, not merely default
 them. The resume pair above was probed with Haiku standing in (§2): context carried and the tool
 surface was `Glob`, `Grep`, `Read` only.
@@ -673,7 +695,8 @@ and the Sonnet seat's unattended resumes share one context. Two kinds of carry-o
   callee or an owner card.
 
 F9 must restate both points in the callee standard. F12 must include a regression check that an
-unattended resume has no tool beyond `Read`, `Grep` and `Glob`.
+unattended resume has no tool beyond `Read`, `Grep` and `Glob`, and that each of the three is denied
+on an absolute path outside the working directory.
 
 **Operations must not depend on it** (§3): if this session is gone, the round still runs off the
 durable record. A wrapper that blocks a lane because the continuity seat is unreachable has
@@ -739,12 +762,12 @@ depends on. Sizes per `standards/sessions/task_sizing.md`. **Nothing below is di
 | F1a | Measure whether `--effort` changes Haiku behaviour or is silently dropped | agent / XS / Haiku+Sonnet / low | — | Two identical prompts at `low` and `max` on Haiku; compare `usage.output_tokens_details.thinking_tokens` from the JSON envelope. Report only. Settles row 7 above. |
 | F1b | Probe whether an unpinned subagent actually inherits its caller's effort | agent / XS / Haiku / low | — | **REPORTED 2026-09-22 (CLI 2.1.278) — negative on both paths; the measurement is recorded in §1a.** `--agent`/`--agents` and a real `.claude/agents/*.md` frontmatter file spawned via the Task tool were both tested: session effort dominated in both directions, and the agent-level pin moved nothing observable. |
 | F1 | **CONDEMNED — pending independent confirmation.** F1b (§1a) found no observable effect from an agent-level `effort:` pin, so this task buys nothing on current evidence. The owner approved cutting it *if* an independent cross-check confirms, and that cross-check was still running when this was written: do not dispatch it, and do not delete it until the confirmation lands. Original scope, kept for the record — pin `effort:` in every non-Haiku agent file; extend `roster_meta.json` with an `effort` field; make `generate_agents_md.py --check` fail on a missing pin and surface an Effort column in `docs/AGENTS.md` | agent / M / Sonnet / medium | F1a, F1b | One PR, `claude-agents/` + `tools/`. Advisors `low`, drafters `medium`, `live-reviewer` `high`. Mechanical: the judgment is already encoded in each file's existing model pin. `agents-roster-check.yml` gates it. |
-| F2 | Add `-Restricted` to `Invoke-ReadOnlyAgent.ps1`, defaulting **on** for agents whose `roster_meta.json` `readonly` is `tools`; keep `readonly.settings.json` as layer 3; document the three-layer ordering in `headless_agent_permissions.md` | agent / M / Sonnet / medium | F1 | Follows `tools/README.md` testing-seam conventions. Must add a regression test proving a `--restricted` run has no Bash tool (the probe in §1a is the test case). **Opened as PR #174** (open, re-checked 2026-09-21) — implements D3 (default-on keyed off `readonly: "tools"`, fails closed on an unresolvable roster lookup); F2 in this table is satisfied pending #174's merge, not re-dispatched. |
+| F2 | Add `-Restricted` to `Invoke-ReadOnlyAgent.ps1`, defaulting **on** for agents whose `roster_meta.json` `readonly` is `tools`; keep `readonly.settings.json` as layer 3; document the three-layer ordering in `headless_agent_permissions.md` | agent / M / Sonnet / medium | F1 | Follows `tools/README.md` testing-seam conventions. Must add a regression test proving a `--restricted` run has no Bash tool (the probe in §1a is the test case). **Opened as PR #174** (open, re-checked 2026-09-21) — implements D3 (default-on keyed off `readonly: "tools"`, fails closed on an unresolvable roster lookup); **F2 stays open until #174 is merged on `origin/main`.** Do not re-dispatch it, and do not treat it as done: F3 and F12 depend on F2 and must not be dispatched while the `-Restricted` default exists only on an open PR. |
 | F3 | Capture the CLI's own JSON envelope as the L1 report: wrapper adds `checkedAt` (clock at write time, never typed) + the exact command, and writes `{envelope, checkedAt, command}` to the drop folder | agent / M / Sonnet / medium | F2 | Replaces the hand-rolled shape in `headless_readiness_ladder.md`. `permission_denials`, `total_cost_usd` and `usage` come from the CLI, not from the agent's own prose. |
-| F12 | Seat-side wrappers so the seat never hand-assembles a flag line: one command per layer (`Ask-Fable`, `Invoke-Lane`, `Invoke-Subagent`), each taking 2-3 arguments and emitting the schema-checked envelope | agent / M / Sonnet / medium | F2, F4 | The §2 rule that a `low` seat must not compose ten-flag invocations. Must define the **cold-start path**: what happens when a pinned `--session-id` no longer resolves (expired, rebooted, never created). A seat at `low` will not improvise one, and a silently-cold resume costs ~$0.51 instead of ~$0.007 without failing. Must also, per §5: **enforce** the boundary flags on every call, refusing to run if one is missing; carry a wall-clock timeout-and-kill like `Invoke-ReadOnlyAgent.ps1`'s; set a concrete `--max-budget-usd` per line; return a Fable `stop_reason: "refusal"` to the seat as a refusal, never retried on another model; and include a regression check that an unattended resume has no tool beyond `Read`/`Grep`/`Glob`. |
+| F12 | Seat-side wrappers so the seat never hand-assembles a flag line: one command per layer (`Ask-Fable`, `Invoke-Lane`, `Invoke-Subagent`), each taking 2-3 arguments and emitting the schema-checked envelope | agent / M / Sonnet / medium | F2, F4 | The §2 rule that a `low` seat must not compose ten-flag invocations. Must define the **cold-start path**: what happens when a pinned `--session-id` no longer resolves (expired, rebooted, never created). A seat at `low` will not improvise one, and a silently-cold resume costs ~$0.51 instead of ~$0.007 without failing. Must also, per §5: **enforce** the boundary flags on every call, refusing to run if one is missing; carry a wall-clock timeout-and-kill like `Invoke-ReadOnlyAgent.ps1`'s; set a concrete `--max-budget-usd` per line; return a Fable `stop_reason: "refusal"` to the seat as a refusal, never retried on another model; and include the regression checks listed in §5 (tool surface, egress, outside-the-working-directory reads, deny-list backstop). The brief must also say, rule by rule, **which rules the wrapper enforces and which stay convention**: the boundary flags, the timeout-and-kill, the concrete budget and the refusal-as-stop are enforced by the wrapper (it refuses to run or exits non-zero); what a Fable answer may *recommend* is convention, checked only by the seat re-verifying against live state. |
 | F13 | A `review-verdict` schema plus a card renderer: an Opus/Fable review returns verdict + findings (`file:line`, severity, one-line ask) + recommendation, and the seat files it as a scannable Decision Queue card rather than relaying prose | agent / M / Sonnet / medium | F4, F12 | The mobile-review requirement: the reviewable unit is the card, not the diff. Follows `decision_queue_standard.md` "Writing a card to be scanned" (summary on top, links in `points`). Must cap findings per card — a card needing a scroll to judge has failed its purpose. |
 | F4 | One `--json-schema` per L1 reporter under `tools/headless/schemas/` | agent / M / Sonnet / low | F3 | Schema per agent, matching that agent's documented output section. Makes the L2 comparator's input machine-checkable instead of prose-parsed. |
-| F14 | Publish the F-task tracker artifact (db capability, `items` + `meta/summary` per §2's tracker subsection) and backfill F1a/F1b as `done` | seat (interactive; not a headless agent) / XS / Sonnet / low | F1a, F1b | Same shape as the reference tracker at https://claude.ai/artifact/9ahVNbZjAT1tjrm8NCFXc5. The seat publishes it directly — `Artifact`/`ArtifactData` are seat-held tools, not something a `claude -p` agent can be handed (§2 mobile rule 2). Must exist before the first F-task after F1a/F1b is dispatched. Written by the Sonnet seat per owner instruction 2026-09-22, not by a headless agent. |
+| F14 | Publish the F-task tracker artifact (db capability, `items` + `meta/summary` per §2's tracker subsection) and backfill F1a/F1b as `done` | seat (interactive; not a headless agent) / XS / Sonnet / low | F1a, F1b | Same shape as the reference tracker at https://claude.ai/artifact/9ahVNbZjAT1tjrm8NCFXc5. The seat publishes it directly — `Artifact`/`ArtifactData` are seat-held tools, not something a `claude -p` agent can be handed (§2 mobile rule 2). Must exist before the first F-task after F1a/F1b is dispatched. Written by the Sonnet seat per owner instruction 2026-09-22, not by a headless agent. The brief must say which tracker rules the page enforces and which stay convention: the page's write code enforces the field set and a length cap on `note` (one line); "status only, never code, logs, secrets or a diff" is convention, because no schema can tell a short secret from a short status. |
 
 ### Group B — schedule it (**this is the climb to L1, not a neutral build step**)
 
@@ -767,7 +790,7 @@ This plan supplies the tooling for that climb and explicitly does not authorise 
 | ID | Task | Who / size / model / effort | After | Brief |
 |---|---|---|---|---|
 | F9 | Draft `standards/sessions/fable_seat.md`: the continuity contract — memory is a claim not evidence, cache over a durable record, fork for speculation; plus what it may produce, never-builds and never-merges, `--fallback-model`, refusal handling, the resume contract, the retirement/cold-reopen trigger, and a position on `--autocompact` | agent / M / Sonnet / medium | F12 | **Route C** (`merge_authority.md`): `standards/sessions/*` is owner-merge. A session drafts it; the owner merges it. The drafter must not also be its reviewer. |
-| F10 | Correct `orchestrator_role.md`'s "Effort for background workers can't be set per call" to distinguish the `Agent` tool (model only) from `claude -p` (`--effort`), and add the row-0 Fable line to the model/effort table | agent / S / Sonnet / low | F1a | **Route C**, owner-merge. Smallest possible edit; it is a factual correction plus one row, not a rewrite. **Opened as PR #172** (open, re-checked 2026-09-21) — F10 in this table is satisfied pending owner merge, not re-dispatched. Row 1 stays Opus (D2); #172 does not touch it. |
+| F10 | Correct `orchestrator_role.md`'s "Effort for background workers can't be set per call" to distinguish the `Agent` tool (model only) from `claude -p` (`--effort`), and add the row-0 Fable line to the model/effort table | agent / S / Sonnet / low | F1a | **Route C**, owner-merge. Smallest possible edit; it is a factual correction plus one row, not a rewrite. **Opened as PR #172** (open, re-checked 2026-09-21) — **F10 stays open until the owner merges #172 on `origin/main`** (route C). Do not re-dispatch it, and do not treat it as done. Row 1 stays Opus (D2); #172 does not touch it. |
 | F11 | Decision Queue card: authorise the Fable seat, naming its cost envelope from F8's real numbers | PM / XS / — / — | F8, F9 | One card, `decision_queue_standard.md` shape, options + recommendedOption + rationale, never filed resolved. Not filed until its parent (F8) is real — per the standing rule that cards depend on their entry gate. **WAIT — owner instruction 2026-09-22: do not file until told, independent of F8/F9 clearing.** |
 
 ### Group D — the rungs above L1 (unchanged by this plan, listed so nothing is assumed done)
@@ -820,11 +843,13 @@ at its first step.
    gates the other F-tasks; F1 itself must not be dispatched while it is condemned.
 3. The `readonly` classification in `roster_meta.json` is confirmed on `origin/main` — F2 keys its
    default off that field, and the ladder already records it as unconfirmed.
-4. ~~PR #159 (cost-monitor) is merged, or F8 is explicitly deferred.~~ — **Satisfied 2026-09-22.**
-   The owner explicitly deferred F8 (owner decision 2026-09-22, relayed; see §9's provenance note). PR #159 remains open/draft
-   (re-checked 2026-09-21); this condition is met by the deferral, not by a merge. F8 itself stays
-   blocked and undispatched until #159 lands or the owner re-authorizes it — deferring the *gate
-   condition* is not the same as dispatching F8.
+4. PR #159 (cost-monitor) is merged, or F8 is explicitly deferred. — **PENDING owner
+   confirmation.** A deferral of F8 was relayed in the follow-up's build brief (§9), but no card
+   records it, so it is not yet a decision of record and this condition is **not** met. It is met
+   when the owner answers card `fable-confirm-f8-deferral-2026-09-22` with the deferral, or when
+   PR #159 merges (open/draft, re-checked 2026-09-21). Even then F8 itself stays blocked and
+   undispatched until #159 lands or the owner re-authorizes it; deferring the *gate condition* is
+   not the same as dispatching F8.
 5. ~~The PM heartbeat watchdog is registered~~ — **Satisfied.** Owner card
    `action-register-pm-heartbeat-watchdog-2026-09-18` is `resolved` (`Done`, 2026-09-18T03:45Z,
    read directly from the Decision Queue store), and the Windows scheduled task
@@ -833,9 +858,11 @@ at its first step.
    heartbeat, not the task being missing). F7 (heartbeat ingest) may be dispatched once its own
    dependencies (F3, F5) are met.
 
-**Conditions 1, 2, 4 and 5 are now satisfied.** Condition 3 (the `readonly` classification
-confirmed on `origin/main`) is not re-verified by this follow-up and stays as written. What else
-blocks a given F-task is that task's own dependency column in §6, plus the owner WAITs in §9.
+**The gate is still closed.** Conditions 1, 2 and 5 are satisfied. Condition 4 is pending the
+owner's answer on card `fable-confirm-f8-deferral-2026-09-22`. Condition 3 (the `readonly`
+classification confirmed on `origin/main`) is not re-verified by this follow-up and stays as written.
+Once the gate opens, what else blocks a given F-task is that task's own dependency column in §6, plus
+the relayed owner WAITs in §9.
 
 ---
 
@@ -896,7 +923,7 @@ blocks a given F-task is that task's own dependency column in §6, plus the owne
 
 ---
 
-## 9. Open decisions (each would be its own Decision Queue card; **none of items 1–6 filed**. Three cards were filed by the follow-up PR for questions it raised: see the end of §9)
+## 9. Open decisions (items 1–6 were drafted as questions and not filed as cards; the follow-up PR filed ten cards, listed at the end of §9)
 
 1. **Is the Fable seat authorised at all**, and at what monthly envelope? (F11; recommend
    deciding after F8 can measure it.)
@@ -928,8 +955,20 @@ blocks a given F-task is that task's own dependency column in §6, plus the owne
 > owner's decision. Read each item below as *relayed, pending the owner's own confirmation*, not as
 > a resolved decision of record. None of them authorises anything: every item either keeps
 > something as it is (D2, D5, D6, the WAITs) or describes work that has its own review (D3 in
-> PR #174, D4 when a field exists). The owner confirms or corrects them when he reviews this
-> route-C PR, or on a card if he prefers.
+> PR #174, D4 when a field exists).
+>
+> **What tracks each one** (the owner's review of a PR is not the confirmation channel; cards are):
+>
+> | Item | Tracked by |
+> |---|---|
+> | D2 | Not a queue item. `orchestrator_role.md` row 1 on `origin/main` already pins Opus 5 for this work, and `live-reviewer` pins `model: opus`. The relay changes nothing the standard does not already say. |
+> | D3 | The owner's own route-C click on PR #174 (`merge:owner`). Merging it is the confirmation; until then the default does not exist on `origin/main`. |
+> | D4 | Nothing to confirm yet: no `effort` field exists. The task that first adds the field files the card for it then. |
+> | D5 | Card `fable-confirm-d5-rung-changes-desk-only-2026-09-22` |
+> | D6 | Card `fable-confirm-d6-reports-stay-local-2026-09-22` |
+> | F5 WAIT | Card `fable-confirm-f5-wait-2026-09-22` |
+> | F11 WAIT | Card `fable-confirm-f11-wait-2026-09-22` |
+> | F8 deferral | Card `fable-confirm-f8-deferral-2026-09-22` (it also gates §7 condition 4) |
 
 - **D2 (item 2, row-1 model).** **Row 1 stays Opus 5.** No change to `live-reviewer`. The
   cache-economics argument for Fable in §1b/§9-item-2 remains an argument, not a mandate; the
@@ -937,7 +976,7 @@ blocks a given F-task is that task's own dependency column in §6, plus the owne
 - **D3 (item 3, `--restricted` default).** **`--restricted` is ON BY DEFAULT for every agent whose
   `roster_meta.json` `readonly` is `"tools"`.** Built in PR #174 (open, re-checked 2026-09-21):
   adds `-Restricted` to `Invoke-ReadOnlyAgent.ps1`, default-on keyed off that field, failing closed
-  if the roster lookup can't resolve. F2's brief in §6 is satisfied by #174 pending its merge.
+  if the roster lookup can't resolve. F2 in §6 stays open until #174 is merged on `origin/main`.
 - **D4 (item 4, Haiku effort field).** **Explicit `effort: null`** for Haiku agents, once the field
   exists — **not** omission. As of 2026-09-21 **no `effort` field exists** in any
   `claude-agents/*.md` frontmatter or in `roster_meta.json`, on `origin/main` or on PR #173's head
@@ -952,14 +991,18 @@ blocks a given F-task is that task's own dependency column in §6, plus the owne
   seam.
 - **F5 and F11 — WAIT.** Both stay undispatched by owner instruction 2026-09-22 (relayed),
   independent of their dependency columns clearing. F5 (register the batched scheduled run) and F11
-  (the Decision Queue card authorizing the Fable seat) do not proceed until the owner says go.
+  (the Decision Queue card authorizing the Fable seat) do not proceed until the owner says go. Both
+  WAITs are on their own confirmation cards (table above). A relayed WAIT is still honoured while its
+  card is open: holding is the fail-closed reading.
   Whether this WAIT also covers the already-running, owner-approved `AEGIS-L1Pilot` (§1c) is on card
   `fable-l1-pilot-vs-f5-wait-2026-09-22`. Until he answers, the pilot is left as it is.
-- **F8 — deferred.** Cross-reference for entry-gate condition 4: F8 itself is not dispatched; only
-  the *entry-gate condition* that named it is satisfied by the deferral.
+- **F8 — deferred (relayed).** Cross-reference for entry-gate condition 4: that condition stays
+  **pending** until the owner answers card `fable-confirm-f8-deferral-2026-09-22`. F8 itself is not
+  dispatched either way.
 - **Unchanged:** the Fable seat never builds (§3). Nothing above gives it a write lane.
 
-**Filed by the follow-up PR, open for the owner (Ops Decision Queue, `decisions` collection):**
+**Filed by the follow-up PR, open for the owner (Ops Decision Queue, `decisions` collection).**
+The five `fable-confirm-*` cards are in the table above. The other five:
 
 - `fable-l1-pilot-vs-f5-wait-2026-09-22`: does the relayed F5 WAIT also pause the running,
   owner-approved L1 pilot (§1c)?
@@ -967,6 +1010,10 @@ blocks a given F-task is that task's own dependency column in §6, plus the owne
   proposal, be adopted for non-row-1 reviews, or be dropped?
 - `fable-maxturns-budget-enforcement-2026-09-22`: should enforcing the `maxTurns` and budget caps
   (§5 invariant 2, §11) get its own F-task?
+- `fable-handoff-exec-authority-confirm-2026-09-22`: is the execution-authority ruling recorded in
+  `docs/handoffs/2026-09-22-fable-plan-to-windows-rc.md` §3 the owner's?
+- `fable-l1-pilot-pinned-ref-2026-09-22`: should `AEGIS-L1Pilot` run a pinned, reviewed ref instead of
+  re-fetching from `origin/main` (§1c)?
 
 ---
 
@@ -1007,10 +1054,14 @@ blocks a given F-task is that task's own dependency column in §6, plus the owne
   `AEGIS-L1Pilot` task state again; `Invoke-ReadOnlyAgent.ps1`'s `-TimeoutSec` kill on `origin/main`;
   the `--fallback-model`, `--restricted` and `--setting-sources` help text on 2.1.278; and four Haiku
   probes of the §5 boundary flags (row-7 allow, deny and auto-allow, and a restricted session-id and
-  resume pair).
+  resume pair). The second review-fix round added four more Haiku probes (§5): network reads on the
+  row-7 line, the deny list overriding an explicit curl allow, `cat`/`ls` outside the working
+  directory, and `Read`/`Grep` outside the working directory under `--restricted`.
 - **Deliberately absent**: any code, any edit to a standard, any dispatch, any date commitment, any
   dollar figure presented as a bill. The original plan filed no Decision Queue card. The follow-up PR
-  filed three, for questions it raised itself (listed at the end of §9), and resolved none.
+  filed ten (listed in §9): three for questions it raised, five to confirm relayed owner decisions,
+  one on the handoff's relayed execution-authority ruling, and one on the L1 pilot's self-refresh.
+  It resolved none.
 - The per-invocation cost table is arithmetic from a 25K-token preamble measured on **one** agent
   shape. A heavier agent (more tools, a longer definition, CLAUDE.md loaded) has a larger preamble
   and a proportionally larger floor.
@@ -1162,9 +1213,10 @@ Drafted rider for §3 and for F5/F6's briefs:
 No interval is chosen here: there is no data yet on how often any reporter's underlying state
 changes, and F5 is on owner WAIT (§9).
 
-### Tie to F8 (deferred) — what can land without it
+### Tie to F8 (deferral relayed) — what can land without it
 
-F8 (wiring `total_cost_usd`/`usage` into `tools/cost-monitor`) is owner-deferred (§9). None of the
+F8 (wiring `total_cost_usd`/`usage` into `tools/cost-monitor`) is blocked on PR #159, and its deferral
+is relayed, pending card `fable-confirm-f8-deferral-2026-09-22` (§9). None of the
 above needs F8:
 
 - The `costBasis` reading discipline needs no new metering — F3/F4 (Group A, undeferred) can adopt

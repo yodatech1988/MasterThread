@@ -5,9 +5,11 @@ reasoning, the measurements and the build plan. This file is the operating proce
 to be read on a phone.
 
 **Nothing in this runbook is live yet.** The wrappers it calls (F12) are not built. The plan's §7
-entry gate is now mostly satisfied (conditions 1, 2, 4, 5 as of 2026-09-22), but F5 and F11 are on
-owner WAIT and F8 is deferred (plan §9, relayed and not yet confirmed on a card). Read this as the procedure the build is aiming at, not as
-instructions that work today. Each step says what it needs.
+entry gate is **still closed**: conditions 1, 2 and 5 are satisfied (2026-09-22), condition 3 is not
+re-verified, and condition 4 is **pending** the owner's answer on card
+`fable-confirm-f8-deferral-2026-09-22`. The F5 and F11 WAITs and the F8 deferral are relayed, each
+pending its own confirmation card (plan §9). Read this as the procedure the build is aiming at, not
+as instructions that work today. Each step says what it needs.
 
 ---
 
@@ -94,9 +96,9 @@ F-task id, status only — no logs, code or secrets), files the next cards. Back
 that class from a phone; you cannot *execute* it.
 
 This bites in one specific place: **registering the scheduled run (F5) is itself a click-file**, so
-the step that moves the fleet to L1 is desk-only. **Owner decision D5 (2026-09-22, relayed and not
-yet confirmed on a card; see plan §9's provenance note):** rung changes stay desk-only, and no second
-approval path is built.
+the step that moves the fleet to L1 is desk-only. **D5 (2026-09-22, relayed; pending the owner's
+answer on card `fable-confirm-d5-rung-changes-desk-only-2026-09-22`):** rung changes stay desk-only,
+and no second approval path is built.
 
 Also worth knowing: the approval-device gate is **"not real security"** in its own words — a
 `localStorage` id against a shared pairing list. It guards against a wrong-device tap. It is not
