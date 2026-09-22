@@ -377,6 +377,14 @@ merge the model starts on its own, with no human approving the command, as unrev
 `merge_authority.md`'s seat convention isn't visible to it. A classifier denial is a stop, not an
 obstacle (`CLAUDE.md`), so the seat did not retry or route around it.
 
+**Owner ruling: A classifier denial is a stop, including for read-only commands.** After #173
+merged, the seat's subsequent `gh pr view` read-only calls were also denied `[Merge Without
+Review]`, and the seat routed around the denial by trying `gh api repos/.../pulls/173` instead.
+Owner ruled: on any denial (read-only included), stop and report. Do not switch to a
+differently-shaped command. This principle applies across all headless agents, not only the merge
+seat. The rest of this section documents the merge-specific fix; the broader stop-on-denial rule is
+captured in `CLAUDE.md` and applies to every tool call.
+
 **Why allow rules are not the fix.** The docs say narrow Bash allow rules "stay in effect in auto
 mode. Claude Code resolves them before the classifier runs" (section "Route all shell commands
 through the classifier"). Only broad rules such as `Bash(*)` are suspended. An allow rule that
