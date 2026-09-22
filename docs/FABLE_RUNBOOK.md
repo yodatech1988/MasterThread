@@ -4,19 +4,32 @@ Status: **DRAFT, 2026-09-21.** Companion to `docs/FABLE_AGENT_SUBAGENT_PLAN.md`,
 reasoning, the measurements and the build plan. This file is the operating procedure only, written
 to be read on a phone.
 
-**Nothing in this runbook is live yet.** The wrappers it calls (F12) are not built. The plan's §7
-entry gate is **still closed**: conditions 1, 2 and 5 are satisfied (2026-09-22), condition 3 is not
-re-verified, and condition 4 is now met by **F8 being actively built** (owner decision, 2026-09-22:
-the owner reopened F8 and assigned it to the ML Engineer instead of deferring it — card
-`fable-confirm-f8-deferral-2026-09-22` no longer reflects the decision). The F5 and F11 WAITs are
-still relayed, each pending its own confirmation (plan §9). Read this as the procedure the build is
-aiming at, not as instructions that work today. Each step says what it needs.
+**Most of what this runbook calls for has now merged, but not all of it.** The wrappers it calls
+(F12, PR #197, `ec5e0c7`) are **built and merged** — `Ask-Fable`, `Invoke-Lane` and `Invoke-Subagent`
+exist with `maxTurns`/budget enforcement. **They are not yet the resumed-Fable contract this runbook
+describes**: `Ask-Fable` does not thread `--session-id`/`--resume`/`--fallback-model`/`--fork-session`
+to the real `claude` call, so today the seat is single-turn per invocation, not the warm-resumed
+continuity seat §3 of the plan and step 2 below assume. Two duplicate follow-up issues track this
+(#198, #205). The plan's §7 entry gate has conditions 1, 2, 4 and 5 verified (2026-09-22, each
+against a merged PR or resolved card) and **condition 3 not verified** (the `readonly` classification
+in `roster_meta.json` on `origin/main` — not re-checked). The F5 and F11 WAITs are still relayed,
+each pending its own confirmation (plan §9), independent of the gate. Read the steps below against
+that state: the wrappers exist, continuity resume does not yet.
 
-**Wave-1 tracking (2026-09-22):** F2 (#174) and F3 (#176) are merged to `main` (commit `10786c2`,
-2026-09-22T02:18:32Z — #176 landed via #174's squash), and F10 (#172) is merged to `main`
-(2026-09-22T02:18:45Z). See the plan's §6 status table and issue #185. The #169 follow-up (#175) merged
-to `main` at 2026-09-22T02:32:43Z (`6e8f6ec`). None of the "needs F12" gates below have moved yet — those wrappers (F12) are still
-unbuilt regardless of F2/F3/F10 landing.
+**Wave tracking (2026-09-22):** F2 (#174), F3 (via #174/#176) and F10 (#172) merged to `main` at
+2026-09-22T02:18Z (commit `10786c2` for F2/F3, `092d278` for F10). F4 (#190) merged 02:46:38Z
+(`0a5ff4e`) — schemas only; per-agent verb pinning was #208's phase 1 (`pr-state-sweep` only), which
+**MERGED to main** 2026-09-22T17:26:04Z (squash `c1200827b4f3cfda49c20067a02ce357a53aea37`, route B),
+closing issue #204. #208's live acceptance case surfaced a pre-existing, unrelated gap, now issue
+#212: a live `pr-state-sweep` run returns prose instead of schema-valid JSON under `--json-schema`
+(exit 8). #159 (cost-monitor) merged 03:17:07Z (`2575bf1`). F12 (#197) merged 14:59:24Z (`ec5e0c7`) —
+see the caveat above. F14 (#203) merged 14:59:52Z (`928b77d`). F9's draft (#195) merged 16:38:18Z
+(`9c7e791`) at `docs/drafts/fable_seat_draft.md`; its relocation to `standards/sessions/fable_seat.md`
+is PR **#213** ("standards: fable_seat.md (F9) relocated from drafts, TODO(F12) resolved", route C),
+**OPEN, awaiting owner merge**. The ladder's L1 report shape (issue #184) has its fix in PR **#209**
+("ladder: L1 report shape is F3's {envelope, checkedAt, command} (closes #184)", route C), also
+**OPEN, awaiting owner merge**. F8 (#202) merged 16:29:20Z (`56b9a63`) — no longer "Blocked on
+#159," which merged first. See the plan's §6 status table and issue #185.
 
 ---
 
@@ -68,8 +81,13 @@ flag line.
 | Lane work: a repo, a worktree, a PR | `Invoke-Lane` | Sonnet / medium |
 | Sweeps, inventories, state checks | `Invoke-Subagent` (batched) | Haiku |
 
-All four need F12. Until it exists the seat would be composing ten-flag invocations by hand, which
-is exactly what a `low` seat is bad at.
+F12 (PR #197, `ec5e0c7`) is merged, so `Invoke-Lane` and `Invoke-Subagent` exist as wrappers today.
+`Ask-Fable` exists too, but **not yet as a resumed call**: it does not thread `--session-id`/
+`--resume`/`--fallback-model`/`--fork-session`, so a design call or continuity question through it
+is single-turn, not the warm-resumed contract the row above and plan §3 describe (#198, #205
+outstanding). Before F12, the seat would have composed ten-flag invocations by hand, which is
+exactly what a `low` seat is bad at; that composing is now wrapped, and the resume gap is what is
+left.
 
 **6. Agents run headless** and file schema-checked JSON. They never write a card, never merge, never
 schedule anything.
