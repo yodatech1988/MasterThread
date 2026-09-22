@@ -120,6 +120,31 @@ try {
         if ($LASTEXITCODE -ne 2) { throw "expected exit 2, got $LASTEXITCODE" }
     }
 
+    Test-Case "-JsonSchemaPath with the REAL pr-state-sweep.json (nested pre-escaped quotes): --json-schema is present and the built args are not byte-identical to the raw path string" {
+        # Cheap static/DryRun smoke check only -- the precise byte-for-byte round-trip assertion for
+        # this file lives in the mechanism suite below ("REAL pr-state-sweep.json round-trips..."),
+        # because a string-level substring check on the ESCAPED command-line text does not actually
+        # prove the fix works: round 1 of this fix (2026-09-22) looked correct at the string level
+        # (assertions just like this one passed) but still corrupted the schema live, because the
+        # command line is decoded by Windows' own argv rules before the CLI ever sees it -- see
+        # ConvertTo-QuotedArg's own comment for the decode rule and why only an actual round-trip
+        # through that decoding proves correctness.
+        $repoRoot = Split-Path -Parent $here
+        $realSchemaFile = Join-Path $repoRoot 'headless\schemas\pr-state-sweep.json'
+        if (-not (Test-Path -LiteralPath $realSchemaFile -PathType Leaf)) {
+            throw "real schema fixture not found at $realSchemaFile"
+        }
+        $realContent = Get-Content -Raw -LiteralPath $realSchemaFile
+        if ($realContent -notmatch [regex]::Escape('\"3h\"') -or $realContent -notmatch [regex]::Escape('\"2d\"')) {
+            throw "expected the real schema to contain the pre-escaped 3h/2d quote pattern this test relies on -- fixture assumption broke, update this test (and the mechanism-suite round-trip test) if pr-state-sweep.json's description text changed"
+        }
+
+        $out = & $scriptPath -AgentName 'worktree-sweep' -Prompt 'irrelevant' -Restricted -JsonSchemaPath $realSchemaFile -DryRun *>&1 | Out-String -Width 65536
+        if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE" }
+        if ($out -notmatch [regex]::Escape('--json-schema')) { throw "expected --json-schema in built args. Output: $out" }
+        if ($out -match [regex]::Escape($realSchemaFile)) { throw "did not expect the schema PATH itself in built args. Output: $out" }
+    }
+
     Test-Case "-JsonSchemaPath works alongside a non-restricted -Tools call too" {
         $out = & $scriptPath -AgentName 'diff-reviewer' -Prompt 'irrelevant' -Tools 'Bash' -JsonSchemaPath $schemaFile -DryRun *>&1 | Out-String -Width 4096
         if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE. Output: $out" }
@@ -197,6 +222,51 @@ class EchoArgs {
                 if ($schemaArg -cne $multilineSchemaContent) {
                     throw "schema arg the child received does not match the raw file content byte-for-byte.`n received: [$schemaArg]`n expected: [$multilineSchemaContent]"
                 }
+            }
+
+            Test-Case "mechanism: the REAL pr-state-sweep.json (nested pre-escaped quotes) round-trips byte-for-byte through actual argv decoding (-ClaudePath)" {
+                # This is the test that would have caught round 1 of the 2026-09-22 fix. Round 1
+                # (leave an already-odd backslash run untouched, escape only a bare/even run) passed
+                # every DryRun/string-level assertion in this file, but a live -Verbose run against
+                # this exact schema (this PR's own QA step 5) still failed with "JSON Parse error:
+                # Expected '}'" -- because the delivered argument is decoded by Windows' own
+                # backslash-before-quote argv rule, which CONSUMES a single escaping backslash
+                # (`\"`, N=1 -> 0 backslashes + a literal quote) rather than preserving it. Only an
+                # actual round-trip through that decoding (not a string comparison against the
+                # escaped command-line text) proves the fix. See ConvertTo-QuotedArg's own comment
+                # in Invoke-ReadOnlyAgent.ps1 for the (2k+1)-backslash formula this asserts.
+                $repoRoot = Split-Path -Parent $here
+                $realSchemaFile = Join-Path $repoRoot 'headless\schemas\pr-state-sweep.json'
+                if (-not (Test-Path -LiteralPath $realSchemaFile -PathType Leaf)) {
+                    throw "real schema fixture not found at $realSchemaFile"
+                }
+                $realContent = Get-Content -Raw -LiteralPath $realSchemaFile
+                if ($realContent -notmatch [regex]::Escape('\"3h\"')) {
+                    throw "expected the real schema to contain the pre-escaped 3h quote pattern this test relies on -- fixture assumption broke, update this test if pr-state-sweep.json's description text changed"
+                }
+
+                $priorSeam = $env:AEGIS_TEST_SEAM
+                $priorEchoOut = $env:ECHO_OUT
+                $echoOut = Join-Path $fixtureDir 'echoout-realschema.txt'
+                $env:AEGIS_TEST_SEAM = '1'
+                $env:ECHO_OUT = $echoOut
+                try {
+                    & $scriptPath -AgentName 'worktree-sweep' -Prompt 'irrelevant' -Restricted -JsonSchemaPath $realSchemaFile -ClaudePath $echoExe *>&1 | Out-Null
+                    if ($LASTEXITCODE -ne 0) { throw "expected exit 0, got $LASTEXITCODE" }
+                } finally {
+                    $env:AEGIS_TEST_SEAM = $priorSeam
+                    $env:ECHO_OUT = $priorEchoOut
+                }
+                $received = Get-EchoedArgs $echoOut
+                $idx = [array]::IndexOf($received, '--json-schema')
+                if ($idx -lt 0) { throw "--json-schema not found among received args: $($received -join ' | ')" }
+                $schemaArg = $received[$idx + 1]
+                if ($schemaArg -cne $realContent) {
+                    throw "schema arg the child received does not match pr-state-sweep.json's raw bytes -- this is exactly the corruption the fix exists to prevent.`n received: [$schemaArg]`n expected: [$realContent]"
+                }
+                # And confirm the reconstructed argument itself still parses as valid JSON, matching
+                # what the real claude.exe's own --json-schema parser must do with it.
+                $null = $schemaArg | ConvertFrom-Json -ErrorAction Stop
             }
 
             Test-Case "resolution: the real (non-ClaudePath, non-DryRun) code path prefers a sibling claude.exe over claude.cmd" {

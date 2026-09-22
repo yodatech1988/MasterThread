@@ -447,8 +447,54 @@ if ($restrictedExplicit) {
 # --version flag, and the whole invocation printed only the version string. Every value that could
 # contain a space must be wrapped in an embedded double quote so the resulting command-line string
 # carries it as one token, the same way a person would quote it by hand at a real prompt.
+#
+# 2026-09-22 fix (PR #197 live QA, two rounds): the original version blindly replaced EVERY `"`
+# with `\"`, regardless of whether it was already escaped. Real JSON Schema text passed via
+# -JsonSchemaPath (tools/headless/schemas/pr-state-sweep.json) legitimately contains already-
+# escaped quotes inside nested description strings -- source text like `\"3h\"` (one backslash then
+# a quote: a valid JSON-escaped quote character). The blind replace turned that into `\\"3h\\"`
+# (backslash-backslash-quote), corrupting the schema (CLI stderr: "Error: --json-schema is not
+# valid JSON: JSON Parse error: Invalid escape character 3").
+#
+# ROUND 1 of this fix (leave an already-odd backslash run untouched, only escape an even/bare run)
+# looked correct as a STRING transformation and passed every DryRun/static test, but a live
+# -Verbose run against the real pr-state-sweep.json (this PR's own QA step 5) still failed with
+# "JSON Parse error: Expected '}'". Root cause, found by writing a native argv-echoing test double
+# and round-tripping the real schema file through it: this command line is consumed by Windows'
+# own CreateProcess/argv decoding (standard "backslashes only special immediately before a quote"
+# rule, the same one .NET's own argument parser and CommandLineToArgvW use), NOT by a simple
+# find-and-replace reversal. That decode rule is: a run of N backslashes immediately before a `"`
+# produces floor(N/2) literal backslashes, and if N is ODD, one literal quote character in the
+# delivered argument (if N is even, the quote toggles/ends quoting instead -- never what we want
+# here, since the whole value sits inside one outer pair of quotes). So a SINGLE backslash before a
+# quote (`\"`, N=1) decodes to floor(1/2)=0 backslashes + a literal quote -- the backslash is
+# CONSUMED by the decoder, not preserved. Verified empirically: round-tripping the real schema
+# file's raw bytes through ConvertTo-QuotedArg (round-1 version) and then this exact decode rule
+# does NOT reproduce the original bytes -- every already-escaped `\"3h\"` loses its backslash.
+#
+# Correct fix: for a source backslash run of length k immediately before a `"` (k=0 for an
+# ordinary bare quote, k=1 for an already-JSON-escaped quote, k=2 for a literal escaped backslash
+# followed by a bare quote, and so on), emit (2k + 1) backslashes before the quote on the command
+# line. Per the decode rule above, floor((2k+1)/2) = k literal backslashes come back out, plus the
+# literal quote (odd count, so it is always data, never a delimiter) -- exactly reconstructing the
+# source's k backslashes and the quote itself, for any depth of pre-escaping:
+#   - `foo"bar`   (k=0) -> command line `foo\"bar`     -> decodes back to `foo"bar`   (bare quote)
+#   - `\"foo\"`    (k=1) -> command line `\\\"foo\\\"`  -> decodes back to `\"foo\"`   (pre-escaped
+#                                                          quote survives, not stripped)
+#   - `\\"foo\\"`  (k=2) -> command line `\\\\\"foo...` -> decodes back to `\\"foo\\"` (escaped
+#                                                          backslash + quote survives)
+# Verified live 2026-09-22: this formula, run through the same native-exe argv round-trip that
+# exposed round 1's defect, reproduces the real pr-state-sweep.json's raw bytes exactly, and the
+# real `claude` CLI accepted the resulting --json-schema value (see this PR's QA notes for the
+# live -Verbose run's exit code and output).
 function ConvertTo-QuotedArg([string]$Value) {
-    return '"' + ($Value -replace '"', '\"') + '"'
+    $evaluator = {
+        param($m)
+        $backslashCount = $m.Value.Length - 1
+        return ('\' * (2 * $backslashCount + 1)) + '"'
+    }
+    $escaped = [regex]::Replace($Value, '\\*"', $evaluator)
+    return '"' + $escaped + '"'
 }
 
 $claudeArgs = @(
