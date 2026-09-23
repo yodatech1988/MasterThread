@@ -253,11 +253,16 @@ attributed to infrastructure and waved through. Fix the dependency or the body, 
 **Making it a real block is an owner-only step.** Until `depends-on` is a *required* status check
 on the default branch's protection, it is a red X the merge button ignores. Adding it is a branch
 protection change, so it is the owner's own click (route C, "Enforcement" phase 2). A session
-never applies it. MasterThread's `main` protection already has "include administrators" on, so once
-the check is required it binds the owner's account too. This check can be required safely: it runs
-on GitHub's own runners, has been seen to pass there, and does not depend on a self-hosted runner.
-Other repos get the workflow and the requirement one at a time, each after its own check has been
-seen to pass.
+never applies it. **Correction 2026-09-23 (read live via `gh api
+repos/yodatech1988/MasterThread/branches/main/protection`):** MasterThread's `main` protection has
+`enforce_admins` **off** (`"enforce_admins":{"enabled":false}`), not on as this section previously
+claimed, and `required_status_checks.contexts` is empty — no context is required yet, so the
+protection currently enforces nothing beyond the (also currently unenforced) PR-review setting.
+Turning `enforce_admins` on is therefore a *second* owner click, separate from adding required
+contexts; requiring `depends-on` alone would not yet bind the owner's own merges unless
+`enforce_admins` is also turned on. This check can be required safely: it runs on GitHub's own
+runners, has been seen to pass there, and does not depend on a self-hosted runner. Other repos get
+the workflow and the requirement one at a time, each after its own check has been seen to pass.
 
 Limits: branch protection cannot stop a merge *into* an unprotected side branch. The check turns
 such a PR red and names the problem, but only rule 1 prevents it. A PR can edit the workflow or
