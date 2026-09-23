@@ -1,0 +1,5 @@
+domain,name,base_url,access_type,notes
+statute,GovInfo Bulk Data (USC),https://www.govinfo.gov/bulkdata/USCODE,bulk_download,USLM XML format; versioned by Congress; canonical source for indexing
+statute,GovInfo API,https://api.govinfo.gov,rest_api,requires free API key; useful for update/diff detection
+regulation,eCFR API,https://www.ecfr.gov/api,rest_api,near-real-time current CFR text; primary source for regs
+regulation,Federal Register API,https://www.federalregister.gov/api,rest_api,proposed + final rules and notices; needed for change tracking / re-index triggers
