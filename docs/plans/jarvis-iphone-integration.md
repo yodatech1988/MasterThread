@@ -2,6 +2,8 @@
 
 _Sep 23, 2026 · drafted with Claude Code_
 
+> **Superseded (2026-09-23):** this was drafted before discovering `yodatech1988/jarvis`, an existing, already-working assistant project with a stricter approval-gated write architecture, multi-user support already shipped, and an iPhone surface already scaffolded (HTTP + iOS Shortcuts, `docs/PLAN.md` Session 12). This document is kept for its comparison of invocation approaches, but the actual next steps live in that repo, not here — see the note at the end of this document.
+
 ## Goal and constraints
 
 "Jarvis instead of Siri" means: a voice/text assistant with real tool access (calendar, messages, home control, custom backend logic) that you reach for by default, with an invocation path that's as fast and low-friction as Siri's.
@@ -107,3 +109,15 @@ Each person needs to be a known identity to the backend, not just a device hitti
 - [ ] Confirm target device: does it have an Action Button (iPhone 15 Pro or later), or should invocation lean on widgets/Control Center instead?
 - [ ] Decide Phase 1 (Shortcuts bridge) in or out — useful as a quick backend smoke test, but skippable if you'd rather go straight to the app
 - [ ] Scope the first tool set for the Phase 2 MVP (calendar? reminders? something else?)
+
+## Where the real work is
+
+The actual project is `yodatech1988/jarvis` (private repo). It already has: a working assistant on Discord + terminal with tasks/reminders/notes/durable memory; a write-approval architecture (the model can only propose external writes — a human approves every one); and multi-user support shipped 2026-09-23.
+
+The iPhone surface is Session 12 in that repo's `docs/PLAN.md`: `src/surfaces/http.js` (message/pending/approve/reminders endpoints, token auth) is built, and an iOS Shortcut (`tools/ios-shortcut/Ask Jarvis.shortcut`) already exists. What's left, per that plan:
+
+1. Pick the transport (home-wifi-only is the zero-cost default; Tailscale or a Cloudflare Tunnel are upgrades if that's too limiting)
+2. Generate a real `JARVIS_HTTP_TOKEN`
+3. Live-test a full round trip from a real iPhone on the chosen transport, including one approval
+
+Continue there, not here.
