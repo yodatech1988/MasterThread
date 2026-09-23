@@ -69,6 +69,7 @@ Scheduler state) and has no path to running anywhere else.
 | `vuln-scan-active` | sonnet | R | local-only | Safe-NSE vulnerability confirmation only, gated on `ops-infra`'s maintenance-window check | Owner-scoped security testing round; never attempts exploitation |
 | `dependency-cve-scanner` | haiku | R | yes | `npm audit`/`pip-audit` against a repo's dependencies | Owner-scoped security testing round |
 | `security-auditor` | sonnet | A | yes | Whole-estate security review (ops-cycle 7.1): passive-only, read-only audit of edge/vault-dev/ops-ca and the GitHub pipeline against `ops-infra` `docs/CONTROLS.md` + ansible verify tests; findings only, never fixes; active tests only via its caller inside an owner window | `ops-infra` `docs/CONTROLS.md`, `security/README.md`; `merge_authority.md`; `policies/security/*` are unratified stubs, not cited as rules |
+| `ci-fixer` | sonnet | **D** | yes | L3 drafter (`headless_readiness_ladder.md`): given a repo + PR/run ID, reads the failing job's own log, finds root cause, and opens a minimal fix PR on a caller-provided branch, or reports the fix as owner-only with exact click steps; never merges, labels, re-runs, disables a check, or edits a test to pass | `headless_readiness_ladder.md` L3; `headless_agent_permissions.md`; `merge_authority.md` route C; `_security-public/policies/security/agents_and_automation.md` §1-3 |
 
 ## Legal research (global, `~/.claude/agents/`)
 
