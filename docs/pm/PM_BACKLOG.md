@@ -109,3 +109,19 @@ correct as of 01:00Z; the roster has moved since. Don't re-propose these two.
 **Totals:** 8 P1 rows (3 dispatchable now) + 12 P2 rows (5 dispatchable now, 1 retracted) + 8 P3 rows
 (5 dispatchable now, 1 is a card-not-a-lane) = **28 rows, 13 dispatchable right now** without
 breaching the one-open-PR-per-repo cap, spread across 11 different repos so they can run in parallel.
+
+---
+
+## Added post-snapshot, 2026-09-23 — owner-gated, card not a lane
+
+Filed by a worker session (masterthread-c0) that hit this live, per `p3-08`'s convention: an
+owner-permission blocker is a Decision Queue card, not a dev dispatch. No live PM session was
+reachable via `ListAgents` at filing time, so this is recorded here for PM pickup rather than
+handed to a PM directly.
+
+| id | repo | task | done-when | model/effort | size | mergeRoute | prerequisites | dispatchable-now | source |
+|---|---|---|---|---|---|---|---|---|---|
+| p1-12 | (new repos) | Create `yodatech1988/federal-statutes-regs-rag` and `yodatech1988/federal-caselaw-live-lookup` on GitHub, then land each repo's `SCOPE.md` (statutes/regs repo: owner-supplied `SCOPE.md` + `source-catalog.csv`; case-law repo: stub scope referencing the statutes/regs repo as its sibling per the "explicitly out of scope, tracked elsewhere" boundary) | Both repos exist and each has a merged/pushed `SCOPE.md` matching the boundary stated in the source document | Sonnet / low | XS | — (card) | **owner must create the two repos, or grant the GitHub App `Administration`/repo-creation permission on the `yodatech1988` account** | n/a — blocked on owner action, not a lane | This session, 2026-09-23: `mcp__github__create_repository` returned `403 Resource not accessible by integration` for both repos; `get_me` confirms `yodatech1988` is a personal account, not an org, which GitHub Apps generally cannot create repos under even with broader permissions |
+
+**Note:** once the repos exist, pushing the two scope documents is a trivial XS lane with no other
+blockers — the only owner action needed is the repo creation (or a permission grant) itself.
