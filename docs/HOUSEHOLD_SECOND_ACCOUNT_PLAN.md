@@ -1,7 +1,10 @@
 # Household: connecting a second Claude account (spouse)
 
-Written 2026-09-23 at the owner's request. Proposal only: nothing here is built, and every item under
-"Owner decisions" waits on Jeremy. Checked against ops-household `main` at `89deba2` (`docs/PLAN.md`,
+Written 2026-09-23 at the owner's request. **Status: parked in the big-picture plan (owner,
+2026-09-23: "make this a part of our big picture plans, but don't worry about building it this
+moment").** Nothing here is built or scheduled; the owner decisions below stay open until the work
+is picked up. Listed in `docs/ROADMAP.md` (Later) and `docs/WORKSTREAMS.md` (Household).
+Checked against ops-household `main` at `89deba2` (`docs/PLAN.md`,
 `docs/PHASE-5-SCOPE.md`, `docs/DATA-MODEL.md`, `docs/CONSENT-NOTE.md`).
 
 ## What was asked
