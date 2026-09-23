@@ -47,6 +47,21 @@ Reasoning: A caps out at a novelty demo — it can never feel like "my assistant
 
 The iOS client should be native Swift, not cross-platform (React Native/Flutter), because Action Button binding, Control Center widgets, and low-latency audio capture are most reliable through first-party APIs.
 
+## Multi-user support
+
+Each person needs to be a known identity to the backend, not just a device hitting an API — tool calls like "add to my calendar" or "read my messages" have to resolve to the right person's data, and conversation history/preferences shouldn't bleed between you and your wife.
+
+**Design:**
+
+- Each phone gets its own lightweight login (a per-user API token issued at setup — no need for a full OAuth system for a two-person household). The iOS app stores its token in the Keychain and sends it with every backend request.
+- The backend maps each token to a user record: name, linked accounts (her calendar vs. yours, her reminders vs. yours), and separate conversation history.
+- Tool definitions take the authenticated user as context automatically, so "my calendar" always resolves correctly without the user having to specify whose.
+- Shared tools (e.g. a household grocery list, home automation) are scoped to the household rather than a single user, so either phone can read/write them.
+
+**When to build it:** bake user identity into the backend from Phase 0 (the proof-of-concept), even with just one hardcoded user — retrofitting auth after tools already assume a single user is more rework than starting with it. Actually onboarding her phone (issuing her a token, linking her accounts) fits naturally into Phase 2, once the standalone app exists for her to install.
+
+**Onboarding flow (Phase 2):** she installs the app → enters a setup code you generate from your own app/backend (or scans a QR code) → app exchanges it for her personal token → she links her calendar/accounts on first launch.
+
 ## Phased build plan
 
 ### Phase 0 — backend proof of concept (few days)
