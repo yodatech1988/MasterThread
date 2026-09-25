@@ -140,6 +140,21 @@ section.panel.active{display:block;}
 .about-body code{background:var(--chip); padding:1px 6px; border-radius:5px; font-size:13px;}
 
 .fab-add{position:fixed; bottom:calc(18px + env(safe-area-inset-bottom,0px)); right:18px; z-index:6;}
+
+/* Shop */
+.shop-head{display:flex; flex-direction:column; gap:6px; margin-bottom:14px;}
+.shop-lists{display:flex; flex-wrap:wrap; gap:6px; font-size:12.5px; color:var(--ink-dim); margin-bottom:6px;}
+.shop-lists .tag{background:var(--chip);}
+.shop-status{font-size:12px; color:var(--ink-dim); min-height:16px;}
+.retailer-list{display:flex; flex-direction:column; gap:8px;}
+.retailer-row{background:var(--paper-raised); border:1px solid var(--line); border-radius:12px; padding:11px 12px; display:flex; flex-wrap:wrap; align-items:center; gap:10px;}
+.retailer-row .r-name{font-weight:600; font-size:14.5px; flex:1; min-width:120px;}
+.retailer-row .r-meta{font-size:12px; color:var(--ink-dim);}
+.retailer-row .r-error{font-size:12px; color:var(--tomato); flex-basis:100%;}
+.retailer-row .r-price{width:84px; font-family:inherit; font-size:13.5px; padding:6px 8px; border-radius:8px; border:1px solid var(--line); background:var(--paper); color:var(--ink);}
+.retailer-row .r-price::before{content:"$";}
+.retailer-row a.r-checkout{font-size:12.5px; font-weight:600; color:var(--accent); text-decoration:none;}
+.retailer-row .r-bulk-badge{font-size:10.5px; font-weight:700; text-transform:uppercase; background:var(--sage-bg); color:var(--sage); padding:2px 7px; border-radius:99px;}
 </style>
 
 <div class="app">
@@ -156,6 +171,7 @@ section.panel.active{display:block;}
       <button data-tab="recipes">Recipes</button>
       <button data-tab="plan">Meal Plan</button>
       <button data-tab="prefs">Preferences</button>
+      <button data-tab="shop">Shop</button>
       <button data-tab="about">About &amp; Access</button>
     </nav>
   </header>
@@ -202,6 +218,18 @@ section.panel.active{display:block;}
     <div class="people-list" id="peopleList"></div>
   </section>
 
+  <section class="panel" id="panel-shop">
+    <div class="section-head">
+      <h2>Shop</h2>
+      <button class="btn small" id="refreshCartsBtn">Refresh carts</button>
+    </div>
+    <div class="shop-head">
+      <div class="shop-lists" id="shopLists"></div>
+      <div class="shop-status" id="shopStatus"></div>
+    </div>
+    <div class="retailer-list" id="retailerList"></div>
+  </section>
+
   <section class="panel" id="panel-about">
     <div class="section-head"><h2>About &amp; Access</h2></div>
     <div class="about-body">
@@ -214,8 +242,11 @@ section.panel.active{display:block;}
       <h4>Data &amp; access model</h4>
       <p>The pantry, recipes, meal plan, and preferences are stored in this artifact's shared database, not in any one person's chat history. <strong>Anyone who can open this link can both read and write that data</strong> — there is currently no separate read-only role enforced here, so access to the link is the real access control. Share it only with people in the household. Nothing sensitive (no passwords, financial info, or full medical records) belongs in here — dietary notes only.</p>
 
+      <h4>Shopping</h4>
+      <p>The <strong>Shop</strong> tab builds this week's grocery list from what's low/out in the pantry plus anything the Meal Plan needs that isn't in stock, splits off shelf-stable staples to a Sam's Club bulk cart, and builds a comparison cart at each of the household's regular grocery retailers. It calls Instacart directly using whichever signed-in viewer clicks "Refresh carts" — their own Instacart connection, their own carts. Nobody's session completes checkout automatically: a person always finishes the purchase themselves in Instacart. Prices aren't visible to this page or to Claude — enter what you see in each Instacart cart into the price field here if you want it recorded for comparison.</p>
+
       <h4>For a connecting Claude session</h4>
-      <p>If you're a Claude session reading this on behalf of Jeremy or Natalie: this page's live data lives in the <code>pantry</code>, <code>recipes</code>, <code>people</code>, and <code>week</code> collections (read/write them with the artifact database tool available to you, using this page's URL). Before writing new data on someone's behalf — especially a new preference, restriction, or a bulk change — confirm with the person you're talking to what they actually want recorded and visible to the rest of the family, rather than inferring it from conversation and writing it silently. This is shared, durable, family-visible state, not a private note.</p>
+      <p>If you're a Claude session reading this on behalf of Jeremy or Natalie: this page's live data lives in the <code>pantry</code>, <code>recipes</code>, <code>people</code>, <code>week</code>, and <code>shopping</code> collections (read/write them with the artifact database tool available to you, using this page's URL). Before writing new data on someone's behalf — especially a new preference, restriction, or a bulk change — confirm with the person you're talking to what they actually want recorded and visible to the rest of the family, rather than inferring it from conversation and writing it silently. This is shared, durable, family-visible state, not a private note.</p>
     </div>
   </section>
 </div>
@@ -274,14 +305,39 @@ section.panel.active{display:block;}
     {id:"marshall", name:"Marshall (4)", restrictions:"", likes:"Easy to feed — generally accepts family staples. Add his specific go-to foods here as you learn what sticks.", dislikes:""},
   ];
 
+  // ---------- shopping constants ----------
+  const BULK_RETAILER = "Sam's Club";
+  const REGULAR_RETAILERS = [
+    "Kroger", "Meijer", "ALDI", "Giant Eagle", "Gordon Food Service Store",
+    "Target", "Marc's", "Fresh Thyme Market", "Village Market", "Save A Lot",
+    "Buehler's Fresh Foods", "Apples Market", "Carfagna's Market", "Discount Drug Mart",
+  ];
+  const BULK_CATEGORIES = ["Pantry", "Spices"];
+  const BULK_DENYLIST = ["bun", "bread"];
+  const QUERY_OVERRIDES = {
+    "milk": "milk",
+    "gluten-free hamburger buns": "gluten free hamburger buns",
+    "cheddar cheese": "cheddar cheese block",
+    "green beans": "green beans fresh",
+    "baby carrots": "baby carrots",
+    "lean ground beef (93/7)": "lean ground beef 93/7",
+    "olive oil": "olive oil",
+    "garlic-infused olive oil": "garlic infused olive oil",
+    "black pepper": "black pepper",
+  };
+  function queryFor(name){ return QUERY_OVERRIDES[name.toLowerCase()] || name; }
+  function slug(name){ return name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,""); }
+
   // ---------- state ----------
   let state = {
     pantry: DEFAULT_PANTRY.slice(),
     recipes: DEFAULT_RECIPES.slice(),
     week: defaultWeek(),
     people: DEFAULT_PEOPLE.slice(),
+    shopping: [],
   };
   let db = null;
+  let mcp = null;
   let writable = false;
   let pantryFilter = "All";
   const unsubs = [];
@@ -316,6 +372,37 @@ section.panel.active{display:block;}
     subscribeCollection("recipes", "recipes");
     subscribeCollection("people", "people");
     subscribeWeek();
+
+    try{ mcp = await window.claude.use("mcp"); }catch(e){ mcp = null; }
+    subscribeShopping();
+    renderShop();
+  }
+
+  // "Every morning" without a server-side cron: whoever opens the app
+  // first each day triggers the refresh, once, under their own
+  // Instacart connection. checkedStaleness guards against re-triggering
+  // on every later snapshot from the same page load.
+  let checkedStaleness = false;
+  const STALE_MS = 20 * 60 * 60 * 1000; // 20h
+  function subscribeShopping(){
+    try{
+      const unsub = db.collection("shopping").onSnapshot((docs)=>{
+        state.shopping = docs ? docs.map(d => ({...d.data, id: d.id})) : [];
+        renderShop();
+        if (!checkedStaleness && mcp){
+          checkedStaleness = true;
+          const newest = state.shopping.reduce((max, r) => {
+            const t = r.lastRefreshed ? Date.parse(r.lastRefreshed) : 0;
+            return t > max ? t : max;
+          }, 0);
+          const hasList = computeGroceryList().length > 0;
+          if (hasList && Date.now() - newest > STALE_MS){
+            refreshCarts();
+          }
+        }
+      });
+      unsubs.push(unsub);
+    }catch(e){ renderShop(); }
   }
 
   function subscribeCollection(colName, stateKey){
@@ -438,12 +525,171 @@ section.panel.active{display:block;}
     return p && p.qty > 0;
   }
 
+  // ---------- shopping ----------
+  function computeGroceryList(){
+    const items = [];
+    const seen = new Set();
+    state.pantry.forEach(p => {
+      const st = statusFor(p);
+      if (st === "out" || st === "low"){
+        const bulk = BULK_CATEGORIES.includes(p.category) &&
+          !BULK_DENYLIST.some(d => p.name.toLowerCase().includes(d));
+        items.push({name: p.name, bulk});
+        seen.add(p.name.toLowerCase());
+      }
+    });
+    state.week.forEach(day => {
+      ["breakfast","lunch","dinner"].forEach(meal => {
+        const rid = day[meal];
+        if (!rid) return;
+        const r = state.recipes.find(x => x.id === rid);
+        if (!r) return;
+        r.ingredients.forEach(ing => {
+          const key = ing.name.toLowerCase();
+          if (seen.has(key) || haveIngredient(ing.name)) return;
+          seen.add(key);
+          items.push({name: ing.name, bulk: false});
+        });
+      });
+    });
+    return items;
+  }
+
+  function findCheckoutUrl(payload){
+    if (!payload) return null;
+    if (typeof payload.checkout_url === "string") return payload.checkout_url;
+    const a = payload.artifacts;
+    if (a && typeof a.checkout_url === "string") return a.checkout_url;
+    if (a && a.cart && typeof a.cart.checkout_url === "string") return a.cart.checkout_url;
+    return null;
+  }
+
+  const MCP_ERROR_COPY = {
+    needs_reauth: "Reconnect Instacart in claude.ai Settings → Connectors.",
+    server_not_connected: "Add Instacart in claude.ai Settings → Connectors.",
+    consent_required: "Allow Instacart for this page, then try again.",
+    selection_required: "Choose an Instacart account for this page, then try again.",
+    blocked_by_policy: "Blocked by your organization's policy.",
+    not_granted: "This view can't reach connectors.",
+    capability_disabled: "Connectors aren't available in this view.",
+  };
+
+  async function refreshOneRetailer(retailerName, itemNames){
+    if (!itemNames.length) return;
+    const id = slug(retailerName);
+    try{
+      const res = await mcp.callTool("Instacart", "cart", {
+        retailer_name: retailerName,
+        clear_cart: true,
+        quick_add_search_queries: itemNames.map(n => ({query: queryFor(n), quantity: 1})),
+      }, {cache: false});
+      const payload = res.payload || {};
+      const cartItems = (payload.artifacts && payload.artifacts.cart && payload.artifacts.cart.items) || [];
+      await writeRetailerResult(id, retailerName, {
+        requested: itemNames.length,
+        found: cartItems.length,
+        summary: payload.summary || "",
+        itemNames: cartItems.map(i => i.name),
+        checkoutUrl: findCheckoutUrl(payload),
+        lastRefreshed: new Date().toISOString(),
+        error: null,
+      });
+    }catch(e){
+      const code = (e && e.code) || "unknown_error";
+      await writeRetailerResult(id, retailerName, {
+        requested: itemNames.length,
+        found: 0,
+        summary: "",
+        itemNames: [],
+        checkoutUrl: null,
+        lastRefreshed: new Date().toISOString(),
+        error: code,
+      });
+    }
+  }
+
+  async function writeRetailerResult(id, retailerName, patch){
+    if (!db) return;
+    const existing = state.shopping.find(s => s.id === id) || {};
+    await db.doc("shopping/"+id).set(Object.assign({}, patch, {
+      retailer: retailerName,
+      price: existing.price != null ? existing.price : null,
+    })).catch(()=>{});
+  }
+
+  async function setRetailerPrice(retailerName, price){
+    if (!db) return;
+    const id = slug(retailerName);
+    const existing = state.shopping.find(s => s.id === id) || {retailer: retailerName};
+    await db.doc("shopping/"+id).set(Object.assign({}, existing, {price})).catch(()=>{});
+  }
+
+  async function refreshCarts(){
+    if (!mcp){
+      document.getElementById("shopStatus").textContent = "Instacart isn't available in this view — open this page in claude.ai signed in as yourself.";
+      return;
+    }
+    const btn = document.getElementById("refreshCartsBtn");
+    btn.disabled = true;
+    document.getElementById("shopStatus").textContent = "Refreshing carts…";
+    const list = computeGroceryList();
+    const bulk = list.filter(i => i.bulk).map(i => i.name);
+    const regular = list.filter(i => !i.bulk).map(i => i.name);
+    const jobs = [refreshOneRetailer(BULK_RETAILER, bulk)];
+    REGULAR_RETAILERS.forEach(r => jobs.push(refreshOneRetailer(r, regular)));
+    await Promise.allSettled(jobs);
+    document.getElementById("shopStatus").textContent = "Last refreshed " + new Date().toLocaleString();
+    btn.disabled = false;
+  }
+
   // ---------- render ----------
   function renderAll(){
     renderPantry();
     renderRecipes();
     renderWeek();
     renderPeople();
+    renderShop();
+  }
+
+  function renderShop(){
+    const listsEl = document.getElementById("shopLists");
+    const retailerEl = document.getElementById("retailerList");
+    if (!listsEl || !retailerEl) return;
+
+    const list = computeGroceryList();
+    listsEl.innerHTML = list.length
+      ? list.map(i => '<span class="tag">' + escapeHtml(i.name) + (i.bulk ? " (bulk)" : "") + '</span>').join("")
+      : '<span>Nothing low, out, or missing for this week\'s plan right now.</span>';
+
+    const rows = [BULK_RETAILER, ...REGULAR_RETAILERS].map(name => {
+      const id = slug(name);
+      const r = state.shopping.find(s => s.id === id);
+      const isBulk = name === BULK_RETAILER;
+      let meta, errorHtml = "", checkoutHtml = "";
+      if (!r){
+        meta = "Not yet refreshed";
+      } else if (r.error){
+        meta = "Couldn't refresh";
+        errorHtml = '<div class="r-error">' + escapeHtml(MCP_ERROR_COPY[r.error] || ("Error: " + r.error)) + '</div>';
+      } else {
+        meta = r.found + "/" + r.requested + " items found" + (r.lastRefreshed ? " · " + new Date(r.lastRefreshed).toLocaleString() : "");
+        if (r.summary && r.found !== r.requested){
+          errorHtml = '<div class="r-error">' + escapeHtml(r.summary) + '</div>';
+        }
+        checkoutHtml = r.checkoutUrl
+          ? '<a class="r-checkout" href="' + escapeAttr(r.checkoutUrl) + '" target="_blank" rel="noopener">Checkout →</a>'
+          : '<span class="r-meta">Open Instacart to checkout</span>';
+      }
+      const price = (r && r.price != null) ? r.price : "";
+      return '<div class="retailer-row" data-retailer="' + escapeAttr(name) + '">' +
+        '<span class="r-name">' + escapeHtml(name) + (isBulk ? ' <span class="r-bulk-badge">Bulk</span>' : '') + '</span>' +
+        '<span class="r-meta">' + escapeHtml(meta) + '</span>' +
+        '<input class="r-price" type="number" min="0" step="0.01" placeholder="price" value="' + escapeAttr(price) + '">' +
+        checkoutHtml +
+        errorHtml +
+      '</div>';
+    }).join("");
+    retailerEl.innerHTML = rows;
   }
 
   function renderPantry(){
@@ -634,6 +880,18 @@ section.panel.active{display:block;}
     const field = e.target.dataset.field;
     if (!field) return;
     personUpdate(card.dataset.id, {[field]: e.target.value});
+  });
+
+  document.getElementById("refreshCartsBtn").addEventListener("click", refreshCarts);
+
+  let priceSaveTimers = {};
+  document.getElementById("retailerList").addEventListener("change",(e)=>{
+    const row = e.target.closest(".retailer-row");
+    if (!row || !e.target.classList.contains("r-price")) return;
+    const name = row.dataset.retailer;
+    const val = e.target.value === "" ? null : Number(e.target.value);
+    clearTimeout(priceSaveTimers[name]);
+    priceSaveTimers[name] = setTimeout(()=>{ setRetailerPrice(name, val); }, 300);
   });
 
   boot();
