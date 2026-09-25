@@ -108,11 +108,20 @@ actually built and corrected, before this tab existed.
    Instacart connection and writes the result (items found, a summary
    string, any checkout URL the payload happens to include) to this
    artifact's `shopping` collection, live for every viewer.
-4. A person reads real prices off each cart in Instacart itself (never
-   visible to the page or to Claude — the connector's `search_products` tool
-   states this explicitly) and can type them into the price field next to
-   each retailer row, which is shared, durable state like everything else
-   here.
+4. A person reads the real **cart total** off each retailer in Instacart
+   itself (never visible to the page or to Claude — the connector's
+   `search_products` tool states this explicitly) and types it into that
+   retailer's "Total $" field — one number per retailer, the whole cart,
+   not a per-item price. That's shared, durable state like everything else
+   here, and a $/item reference value is computed and shown once it's
+   entered.
+5. Because every regular retailer shops the identical item list, entered
+   totals ARE directly comparable — once typed in, the regular retailers
+   re-sort cheapest-first and the lowest gets a "Cheapest entered" badge.
+   Sam's Club shops a different (bulk-only) list, so it's excluded from
+   that ranking and always shown on its own. This is the one place actual
+   cost comparison happens: on human-entered numbers, never on anything
+   Claude or the page computed itself.
 
 **"As ingredients are added":** true reactivity (firing the instant a
 pantry item changes) isn't possible — nothing watches the artifact
