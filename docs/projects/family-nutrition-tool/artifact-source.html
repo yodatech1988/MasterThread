@@ -661,7 +661,26 @@ section.panel.active{display:block;}
       ? list.map(i => '<span class="tag">' + escapeHtml(i.name) + (i.bulk ? " (bulk)" : "") + '</span>').join("")
       : '<span>Nothing low, out, or missing for this week\'s plan right now.</span>';
 
-    const rows = [BULK_RETAILER, ...REGULAR_RETAILERS].map(name => {
+    // Regular retailers all shop the same item list, so their entered
+    // totals are directly comparable — rank cheapest-first once a person
+    // has typed in what Instacart actually showed them. Sam's Club shops a
+    // different (bulk) list, so it's excluded from the ranking and always
+    // shown first, on its own.
+    const withPrice = [];
+    const withoutPrice = [];
+    REGULAR_RETAILERS.forEach(name => {
+      const r = state.shopping.find(s => s.id === slug(name));
+      if (r && r.price != null) withPrice.push(name); else withoutPrice.push(name);
+    });
+    withPrice.sort((a, b) => {
+      const pa = state.shopping.find(s => s.id === slug(a)).price;
+      const pb = state.shopping.find(s => s.id === slug(b)).price;
+      return pa - pb;
+    });
+    const cheapest = withPrice[0] || null;
+    const orderedNames = [BULK_RETAILER, ...withPrice, ...withoutPrice];
+
+    const rows = orderedNames.map(name => {
       const id = slug(name);
       const r = state.shopping.find(s => s.id === id);
       const isBulk = name === BULK_RETAILER;
@@ -681,10 +700,15 @@ section.panel.active{display:block;}
           : '<span class="r-meta">Open Instacart to checkout</span>';
       }
       const price = (r && r.price != null) ? r.price : "";
+      const perItem = (r && r.price != null && r.found > 0)
+        ? '<span class="r-meta">($' + (r.price / r.found).toFixed(2) + '/item)</span>' : "";
+      const cheapestBadge = (!isBulk && name === cheapest)
+        ? ' <span class="r-bulk-badge" style="background:var(--amber-bg);color:var(--amber)">Cheapest entered</span>' : "";
       return '<div class="retailer-row" data-retailer="' + escapeAttr(name) + '">' +
-        '<span class="r-name">' + escapeHtml(name) + (isBulk ? ' <span class="r-bulk-badge">Bulk</span>' : '') + '</span>' +
+        '<span class="r-name">' + escapeHtml(name) + (isBulk ? ' <span class="r-bulk-badge">Bulk</span>' : '') + cheapestBadge + '</span>' +
         '<span class="r-meta">' + escapeHtml(meta) + '</span>' +
-        '<input class="r-price" type="number" min="0" step="0.01" placeholder="price" value="' + escapeAttr(price) + '">' +
+        '<label class="r-meta">Total $ <input class="r-price" type="number" min="0" step="0.01" placeholder="not entered" value="' + escapeAttr(price) + '"></label>' +
+        perItem +
         checkoutHtml +
         errorHtml +
       '</div>';
