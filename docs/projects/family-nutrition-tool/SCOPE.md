@@ -40,6 +40,17 @@ The **Preferences** tab in the live artifact is the source of truth for this
 — it's expected to change as health needs change, so it should always be
 read fresh rather than assumed from an earlier conversation.
 
+**2026-09-25 correction:** "Jeremy's Lightened-Up Cheeseburger" (recipe
+`r3`) already dropped garlic/onion for low-FODMAP, but still called for
+whole wheat hamburger buns — wheat bread is high-FODMAP (fructans) well
+above the low-FODMAP serving threshold, despite the recipe being
+explicitly labeled for Jeremy. Fixed live in the artifact db: the
+ingredient and matching pantry item (`p12`) now read "gluten-free
+hamburger buns," and the recipe is tagged `low-FODMAP`. Grocery carts
+already built for the week were updated to match. Not every store in the
+comparison set carries a gluten-free bun (ALDI and Gordon Food Service
+Store didn't have a match) — worth a manual check or a swap to a
+different retailer for that one item.
 ## 3. Architecture
 
 - Single HTML/CSS/JS page, no build step, no separate backend.
