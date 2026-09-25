@@ -106,12 +106,18 @@ each cart in Instacart and compares totals themselves; Claude cannot do
 this arithmetic for them.
 
 **Comparison retailers (delivery to the household's Mansfield, OH
-address):** Kroger, Meijer, ALDI, Giant Eagle, Gordon Food Service Store.
-Also available at this address if ever swapped in: Target, Marc's, Fresh
-Thyme Market. **Not available:** Walmart is not offered as an Instacart
-retailer for this address. Item availability varies by store — a store
-that doesn't carry an exact item (e.g. a specific pack size) is reported
-back rather than silently substituted into a materially different product.
+address):** Kroger, Meijer, ALDI, Giant Eagle, Gordon Food Service Store,
+Target, Marc's, Fresh Thyme Market, Village Market, Save A Lot, Buehler's
+Fresh Foods, Apples Market, Carfagna's Market, Discount Drug Mart — every
+grocery-relevant retailer Instacart offers for this address. **Not
+available:** Walmart is not offered as an Instacart retailer for this
+address. Item availability varies by store — a store that doesn't carry an
+exact item (e.g. a specific pack size) is reported back rather than
+silently substituted into a materially different product. In practice the
+search-match step has occasionally returned a wrong product for a specific
+query (e.g. a snack item for "gluten-free hamburger buns") rather than
+reporting no match — each cart is worth a quick eyeball against the
+intended list before trusting it, not just the total.
 
 **Hard rule: Claude adds to carts but never completes checkout, at any
 retailer.** A person always reviews each cart and finishes the purchase
