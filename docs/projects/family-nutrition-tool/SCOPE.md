@@ -62,10 +62,40 @@ there is no separate read-only role enforced today. Practical consequence:
 household. Nothing sensitive (passwords, financial info, full medical
 records) belongs in it — dietary notes only.
 
-## 5. Non-goals
+## 5. Instacart integration
+
+Shopping is chat-driven, not an in-app button — there is no "Shop" tab on
+the artifact itself. A person asks a Claude session (one with both this
+artifact's data and the Instacart connector available) to shop, and that
+session:
+
+1. Reads current state from the artifact's live `pantry`/`recipes`/`week`
+   collections (never assumes it from an earlier conversation, per the
+   access-model note above).
+2. Builds the item list for one of two distinct actions:
+   - **Restock** — every pantry item currently `Out` or `Low`.
+   - **Shop the plan** — ingredients required by the recipes assigned in
+     the current week's Meal Plan that aren't already in stock.
+   These are separate asks (e.g. "order what's low" vs. "shop for this
+   week's plan") and are never combined silently.
+3. Adds those items to an Instacart cart (`quick_add_search_queries`) and
+   returns the checkout link.
+
+**Hard rule: Claude adds to the cart but never completes checkout.** A
+person always reviews the cart and finishes the purchase themselves —
+this mirrors the existing "confirm before writing on someone's behalf"
+rule for pantry/preference data, applied to something with a real cost.
+
+This is a chat-time behavior, not code shipped anywhere — there's nothing
+to build or deploy for it, so it isn't reflected in `artifact-source.html`.
+This section is the durable record of how it's expected to work.
+
+## 6. Non-goals
 
 - Not a general recipe database or meal-planning SaaS product.
 - Not a substitute for actual medical/dietary guidance — restriction notes
   describe what to avoid, they don't diagnose or prescribe.
 - No standalone deployment/hosting is planned; it stays a Claude Artifact
   unless a real need for one emerges.
+- No in-app Instacart button/UI — shopping stays a chat-driven action (see
+  §5), and no session completes a checkout on a person's behalf.
