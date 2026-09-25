@@ -78,13 +78,35 @@ session:
      the current week's Meal Plan that aren't already in stock.
    These are separate asks (e.g. "order what's low" vs. "shop for this
    week's plan") and are never combined silently.
-3. Adds those items to an Instacart cart (`quick_add_search_queries`) and
-   returns the checkout link.
+3. Splits that item list in two:
+   - **Bulk-eligible items** — shelf-stable staples only (oils, spices,
+     rice, canned/frozen goods, paper goods — nothing that spoils before a
+     family of 3 uses it up) go to a **Sam's Club** cart.
+   - **Everything else** goes to a price-comparison pass across the
+     household's regular retailers (see below).
+4. For the non-bulk items, builds one Instacart cart per retailer with the
+   same item list, then hands back all the cart links together — it does
+   **not** pick a "best price" retailer itself.
 
-**Hard rule: Claude adds to the cart but never completes checkout.** A
-person always reviews the cart and finishes the purchase themselves —
-this mirrors the existing "confirm before writing on someone's behalf"
-rule for pantry/preference data, applied to something with a real cost.
+**Why comparison carts instead of a single pick: the Instacart tools never
+expose prices to the agent** — `search_products`'s own description states
+prices are shown to the person but not visible to the AI. A person opens
+each cart in Instacart and compares totals themselves; Claude cannot do
+this arithmetic for them.
+
+**Comparison retailers (delivery to the household's Mansfield, OH
+address):** Kroger, Meijer, ALDI, Giant Eagle, Gordon Food Service Store.
+Also available at this address if ever swapped in: Target, Marc's, Fresh
+Thyme Market. **Not available:** Walmart is not offered as an Instacart
+retailer for this address. Item availability varies by store — a store
+that doesn't carry an exact item (e.g. a specific pack size) is reported
+back rather than silently substituted into a materially different product.
+
+**Hard rule: Claude adds to carts but never completes checkout, at any
+retailer.** A person always reviews each cart and finishes the purchase
+themselves — this mirrors the existing "confirm before writing on
+someone's behalf" rule for pantry/preference data, applied to something
+with a real cost.
 
 This is a chat-time behavior, not code shipped anywhere — there's nothing
 to build or deploy for it, so it isn't reflected in `artifact-source.html`.
