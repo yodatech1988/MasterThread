@@ -215,6 +215,19 @@ below.
 | `ovh-vps-usage-reporter` | haiku | R | needs-local-keys | Wraps `OvhApiKey.ps1 GET /vps` (scope `/vps/*`, no `DELETE`), fact-only |
 | `workshop-mod-inventory` | haiku | R | yes | Lists real `module.json` files across `aegis-mods`/`aegis-poi`; found `aegis-poi` has no real modules yet, only test fixtures |
 
+## OVH hardware-management agents (`~/.claude/agents/`)
+
+Extends `ovh-vps-usage-reporter`'s single-endpoint scope to the fuller Tier-A/B hardware-management
+charter (`PM_INBOX/ovh-admin-agent/DESIGN_2026-09-25.md`). AEGIS-enclave only; the GWS mail host
+(40.160.39.222) is excluded credential-level first, Never-block second. `ops-ca` is reached through
+the same US `read`/`write` IAM profiles on `api.us.ovhcloud.com` as the other two AEGIS boxes — it
+is a member of the `aegis-hardware` resource group on the US account, not a separate CA-platform
+account.
+
+| Agent | Model | Role | Headless | Purpose | Grounded in |
+|---|---|---|---|---|---|
+| `ovh-config-preparer` | sonnet | **D** | needs-local-keys | Prepares (never executes) Tier-B OVH writes — DNS record, VPS property, conditional edge-firewall rule — as a `click-file-builder` click-file, `live-reviewer`-reviewed, owner-run only. No `write`-profile credential reachable at all | `DESIGN_2026-09-25.md` §3/§4/§5/§6; `GATEKEEPER_REVIEW.md`; gatekeeper PASS-WITH-CHANGES, applied |
+
 ## Adding a new one
 
 1. Ground it in a real standard, policy, or script — never invent process the agent then improvises.
