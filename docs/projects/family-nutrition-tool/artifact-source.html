@@ -1,0 +1,643 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Family Kitchen</title>
+<style>
+:root{
+  --paper:#faf6f0; --paper-raised:#ffffff; --ink:#2b2420; --ink-dim:#6b5f54;
+  --line:#e7ddd0; --accent:#c1622e; --accent-ink:#ffffff;
+  --sage:#5c7a5c; --sage-bg:#e6ece2; --tomato:#b0453a; --tomato-bg:#f6e5e1; --amber:#a3781f; --amber-bg:#f5ecd8;
+  --chip:#f1e9dd;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#211c18; --paper-raised:#2a241f; --ink:#f1e8dd; --ink-dim:#b3a596;
+    --line:#3c342c; --accent:#e0824c; --accent-ink:#221208;
+    --sage:#8fb48a; --sage-bg:#293428; --tomato:#e08277; --tomato-bg:#3a2624; --amber:#d9b25c; --amber-bg:#3a2f1a;
+    --chip:#332b23;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#211c18; --paper-raised:#2a241f; --ink:#f1e8dd; --ink-dim:#b3a596;
+  --line:#3c342c; --accent:#e0824c; --accent-ink:#221208;
+  --sage:#8fb48a; --sage-bg:#293428; --tomato:#e08277; --tomato-bg:#3a2624; --amber:#d9b25c; --amber-bg:#3a2f1a;
+  --chip:#332b23;
+}
+*{box-sizing:border-box}
+body{background:var(--paper); color:var(--ink); font-family:'Inter',system-ui,-apple-system,sans-serif; padding:0 16px; padding-block:0; font-variant-numeric:tabular-nums;}
+h1,h2,h3{font-family:'Fraunces',Georgia,serif; text-wrap:balance; margin:0;}
+button{font-family:inherit;}
+::selection{background:var(--accent); color:var(--accent-ink);}
+
+.app{max-width:760px; margin:0 auto; padding-bottom:96px;}
+header.top{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:var(--paper); padding:18px 0 10px; border-bottom:1px solid var(--line);}
+.brand{display:flex; align-items:baseline; gap:10px; justify-content:space-between;}
+.brand h1{font-size:26px; font-weight:600; letter-spacing:-0.01em;}
+.brand .sub{font-size:12px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.08em;}
+.sync{font-size:11px; color:var(--ink-dim); display:flex; align-items:center; gap:5px; white-space:nowrap;}
+.dot{width:7px; height:7px; border-radius:50%; background:var(--sage); flex:none;}
+.dot.off{background:var(--tomato);}
+
+nav.tabs{display:flex; gap:4px; margin-top:14px; overflow-x:auto;}
+nav.tabs button{background:none; border:none; color:var(--ink-dim); font-size:14px; font-weight:600; padding:8px 14px; border-radius:99px; cursor:pointer; white-space:nowrap;}
+nav.tabs button.active{background:var(--accent); color:var(--accent-ink);}
+nav.tabs button:not(.active):hover{background:var(--chip);}
+
+section.panel{display:none; padding-top:20px;}
+section.panel.active{display:block;}
+
+.section-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px;}
+.section-head h2{font-size:21px; font-weight:600;}
+.count-pill{font-size:12px; color:var(--ink-dim);}
+
+.btn{background:var(--accent); color:var(--accent-ink); border:none; padding:9px 16px; border-radius:10px; font-weight:600; font-size:14px; cursor:pointer;}
+.btn:hover{opacity:.9;}
+.btn.ghost{background:none; border:1px solid var(--line); color:var(--ink);}
+.btn.small{padding:6px 11px; font-size:13px; border-radius:8px;}
+.btn:disabled{opacity:.45; cursor:default;}
+
+/* Pantry */
+.filters{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;}
+.chip-btn{background:var(--chip); border:none; color:var(--ink-dim); font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:99px; cursor:pointer;}
+.chip-btn.active{background:var(--ink); color:var(--paper);}
+
+.pantry-list{display:flex; flex-direction:column; gap:8px;}
+.item-row{display:flex; align-items:center; gap:12px; background:var(--paper-raised); border:1px solid var(--line); border-radius:12px; padding:11px 12px;}
+.item-main{flex:1; min-width:0;}
+.item-name{font-weight:600; font-size:14.5px;}
+.item-meta{font-size:12px; color:var(--ink-dim); margin-top:2px;}
+.status-pill{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:4px 9px; border-radius:99px; flex:none;}
+.status-pill.ok{background:var(--sage-bg); color:var(--sage);}
+.status-pill.low{background:var(--amber-bg); color:var(--amber);}
+.status-pill.out{background:var(--tomato-bg); color:var(--tomato);}
+.qty-controls{display:flex; align-items:center; gap:6px; flex:none;}
+.qty-controls button{width:26px; height:26px; border-radius:7px; border:1px solid var(--line); background:var(--paper); color:var(--ink); font-size:15px; cursor:pointer; line-height:1;}
+.qty-controls span{min-width:22px; text-align:center; font-weight:700; font-size:14px;}
+.del-x{background:none; border:none; color:var(--ink-dim); font-size:16px; cursor:pointer; padding:2px 4px; flex:none;}
+.del-x:hover{color:var(--tomato);}
+
+.add-row{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;}
+.add-row input, .add-row select{font-family:inherit; font-size:14px; padding:9px 11px; border-radius:10px; border:1px solid var(--line); background:var(--paper-raised); color:var(--ink);}
+.add-row input[name=name]{flex:1; min-width:140px;}
+.add-row input[name=qty]{width:70px;}
+
+/* Recipes */
+.recipe-grid{display:grid; grid-template-columns:1fr; gap:10px;}
+@media(min-width:560px){.recipe-grid{grid-template-columns:1fr 1fr;}}
+.recipe-card{background:var(--paper-raised); border:1px solid var(--line); border-radius:14px; padding:14px; cursor:pointer; display:flex; flex-direction:column; gap:8px;}
+.recipe-card:hover{border-color:var(--accent);}
+.recipe-card h3{font-size:16.5px;}
+.tag-row{display:flex; gap:5px; flex-wrap:wrap;}
+.tag{font-size:11px; font-weight:600; background:var(--chip); color:var(--ink-dim); padding:3px 8px; border-radius:99px;}
+.recipe-foot{font-size:12px; color:var(--ink-dim); display:flex; gap:10px; margin-top:auto;}
+.have-badge{font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px;}
+.have-badge.full{background:var(--sage-bg); color:var(--sage);}
+.have-badge.partial{background:var(--amber-bg); color:var(--amber);}
+
+/* Recipe detail modal */
+.modal-backdrop{position:fixed; inset:0; background:rgba(20,15,10,.5); display:none; align-items:flex-end; justify-content:center; z-index:20; padding:0;}
+.modal-backdrop.open{display:flex;}
+@media(min-width:620px){.modal-backdrop{align-items:center; padding:20px;}}
+.modal{background:var(--paper); width:100%; max-width:560px; max-height:88vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:22px 20px calc(24px + env(safe-area-inset-bottom,0px));}
+@media(min-width:620px){.modal{border-radius:16px;}}
+.modal-close{float:right; background:none; border:none; font-size:20px; color:var(--ink-dim); cursor:pointer;}
+.modal h2{font-size:22px; margin-bottom:4px;}
+.modal .tag-row{margin-bottom:14px;}
+.modal h4{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-dim); margin:16px 0 8px;}
+.ing-list, .step-list{margin:0; padding-left:0; list-style:none; display:flex; flex-direction:column; gap:7px;}
+.ing-list li{display:flex; align-items:center; gap:8px; font-size:14.5px;}
+.ing-dot{width:7px; height:7px; border-radius:50%; flex:none;}
+.ing-dot.have{background:var(--sage);}
+.ing-dot.missing{background:var(--tomato);}
+.step-list{counter-reset:step;}
+.step-list li{counter-increment:step; display:flex; gap:10px; font-size:14.5px; line-height:1.5;}
+.step-list li::before{content:counter(step); background:var(--chip); color:var(--ink-dim); font-weight:700; font-size:12px; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none; margin-top:1px;}
+
+/* Meal plan */
+.week-grid{display:flex; flex-direction:column; gap:10px;}
+.day-card{background:var(--paper-raised); border:1px solid var(--line); border-radius:12px; padding:12px 14px;}
+.day-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
+.day-head .dname{font-weight:700; font-size:14.5px;}
+.day-head .ddate{font-size:11.5px; color:var(--ink-dim);}
+.meal-slots{display:grid; grid-template-columns:64px 1fr; gap:6px 10px; font-size:13.5px;}
+.meal-slots label{color:var(--ink-dim); font-weight:600; padding-top:6px;}
+.meal-slots select{font-family:inherit; font-size:13.5px; padding:6px 8px; border-radius:8px; border:1px solid var(--line); background:var(--paper); color:var(--ink); width:100%;}
+
+/* Preferences */
+.people-list{display:flex; flex-direction:column; gap:10px;}
+.person-card{background:var(--paper-raised); border:1px solid var(--line); border-radius:12px; padding:14px;}
+.person-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+.person-head input.pname{font-family:'Fraunces',serif; font-size:17px; font-weight:600; border:none; background:none; color:var(--ink); padding:0; width:60%;}
+.pref-row{display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap; align-items:center;}
+.pref-row .lbl{font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; width:100px; flex:none; padding-top:8px;}
+.pref-row textarea{flex:1; min-width:150px; font-family:inherit; font-size:13.5px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--paper); color:var(--ink); resize:vertical; min-height:36px;}
+
+.empty{text-align:center; padding:40px 20px; color:var(--ink-dim); font-size:14px;}
+
+/* About */
+.about-body{display:flex; flex-direction:column; gap:4px; max-width:62ch;}
+.about-body h4{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); margin:18px 0 6px;}
+.about-body h4:first-child{margin-top:0;}
+.about-body p{font-size:14.5px; line-height:1.6; color:var(--ink); margin:0 0 4px;}
+.about-body code{background:var(--chip); padding:1px 6px; border-radius:5px; font-size:13px;}
+
+.fab-add{position:fixed; bottom:calc(18px + env(safe-area-inset-bottom,0px)); right:18px; z-index:6;}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div>
+        <h1>Family Kitchen</h1>
+        <div class="sub">Pantry &middot; Recipes &middot; Meal Plan</div>
+      </div>
+      <div class="sync" id="syncStatus"><span class="dot off"></span><span>connecting…</span></div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="pantry" class="active">Pantry</button>
+      <button data-tab="recipes">Recipes</button>
+      <button data-tab="plan">Meal Plan</button>
+      <button data-tab="prefs">Preferences</button>
+      <button data-tab="about">About &amp; Access</button>
+    </nav>
+  </header>
+
+  <section class="panel active" id="panel-pantry">
+    <div class="section-head">
+      <h2>Pantry</h2>
+      <span class="count-pill" id="pantryCount"></span>
+    </div>
+    <div class="filters" id="pantryFilters"></div>
+    <div class="pantry-list" id="pantryList"></div>
+    <form class="add-row" id="addItemForm">
+      <input name="name" placeholder="Add an item…" autocomplete="off" required>
+      <select name="category">
+        <option>Pantry</option><option>Fridge</option><option>Freezer</option><option>Produce</option><option>Spices</option>
+      </select>
+      <input name="qty" type="number" min="0" step="1" value="1" placeholder="qty">
+      <input name="unit" placeholder="unit" style="width:76px" value="ct">
+      <button class="btn" type="submit">Add</button>
+    </form>
+  </section>
+
+  <section class="panel" id="panel-recipes">
+    <div class="section-head">
+      <h2>Recipes</h2>
+      <button class="btn small" id="newRecipeBtn">+ New recipe</button>
+    </div>
+    <div class="recipe-grid" id="recipeGrid"></div>
+  </section>
+
+  <section class="panel" id="panel-plan">
+    <div class="section-head">
+      <h2>This Week</h2>
+      <span class="count-pill" id="weekRange"></span>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+  </section>
+
+  <section class="panel" id="panel-prefs">
+    <div class="section-head">
+      <h2>Preferences</h2>
+      <button class="btn small" id="addPersonBtn">+ Add person</button>
+    </div>
+    <div class="people-list" id="peopleList"></div>
+  </section>
+
+  <section class="panel" id="panel-about">
+    <div class="section-head"><h2>About &amp; Access</h2></div>
+    <div class="about-body">
+      <h4>Scope of this project</h4>
+      <p>This is the Berger family's shared kitchen tool: <strong>Jeremy</strong>, <strong>Natalie</strong>, and <strong>Marshall (4)</strong>. It tracks what's in the pantry, the family's recipes, a weekly meal plan, and each person's dietary needs and preferences — so anyone planning a meal (a person or a connected Claude session) starts from the same real information instead of guessing.</p>
+
+      <h4>Who's eating what</h4>
+      <p>Jeremy is on a low-FODMAP elimination diet plus low-sodium/low-cholesterol for blood pressure and cholesterol. Natalie is an ovo-dairy pescatarian (eggs, dairy, fish — no meat or poultry). Marshall is 4 and generally easy to feed; his specific preferences are still being filled in. Full detail lives in the <strong>Preferences</strong> tab — treat it as the source of truth over anything remembered from an earlier conversation, since it changes as health needs change.</p>
+
+      <h4>Data &amp; access model</h4>
+      <p>The pantry, recipes, meal plan, and preferences are stored in this artifact's shared database, not in any one person's chat history. <strong>Anyone who can open this link can both read and write that data</strong> — there is currently no separate read-only role enforced here, so access to the link is the real access control. Share it only with people in the household. Nothing sensitive (no passwords, financial info, or full medical records) belongs in here — dietary notes only.</p>
+
+      <h4>For a connecting Claude session</h4>
+      <p>If you're a Claude session reading this on behalf of Jeremy or Natalie: this page's live data lives in the <code>pantry</code>, <code>recipes</code>, <code>people</code>, and <code>week</code> collections (read/write them with the artifact database tool available to you, using this page's URL). Before writing new data on someone's behalf — especially a new preference, restriction, or a bulk change — confirm with the person you're talking to what they actually want recorded and visible to the rest of the family, rather than inferring it from conversation and writing it silently. This is shared, durable, family-visible state, not a private note.</p>
+    </div>
+  </section>
+</div>
+
+<div class="modal-backdrop" id="recipeModalBackdrop">
+  <div class="modal" id="recipeModal"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/nanoid/5.0.7/nanoid.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap">
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- sample fallback state (used only if db unavailable) ----------
+  const uid = () => (window.nanoid && window.nanoid.nanoid) ? window.nanoid.nanoid(8) : Math.random().toString(36).slice(2,10);
+
+  const DEFAULT_PANTRY = [
+    {id:"p1", name:"Rice", category:"Pantry", qty:4, unit:"lb"},
+    {id:"p2", name:"Olive oil", category:"Pantry", qty:1, unit:"bottle"},
+    {id:"p3", name:"Garlic-infused olive oil", category:"Pantry", qty:1, unit:"bottle"},
+    {id:"p4", name:"Eggs", category:"Fridge", qty:6, unit:"ct"},
+    {id:"p5", name:"Milk", category:"Fridge", qty:0, unit:"qt"},
+    {id:"p6", name:"Cheddar cheese", category:"Fridge", qty:1, unit:"block"},
+    {id:"p7", name:"Salmon fillets", category:"Freezer", qty:4, unit:"ct"},
+    {id:"p8", name:"Green beans", category:"Produce", qty:1, unit:"lb"},
+    {id:"p9", name:"Bananas", category:"Produce", qty:5, unit:"ct"},
+    {id:"p10", name:"Baby carrots", category:"Produce", qty:1, unit:"bag"},
+    {id:"p11", name:"Black pepper", category:"Spices", qty:1, unit:"jar"},
+    {id:"p12", name:"Whole wheat buns", category:"Pantry", qty:0, unit:"pack"},
+  ];
+  const DEFAULT_RECIPES = [
+    {id:"r1", title:"Sheet-Pan Salmon, Rice & Green Beans", tags:["dinner","low-FODMAP","pescatarian","30 min"],
+      ingredients:[{name:"Salmon fillets",qty:"4"},{name:"Rice",qty:"2 cups"},{name:"Green beans",qty:"1 lb"},{name:"Garlic-infused olive oil",qty:"2 tbsp"},{name:"Black pepper",qty:"to taste"}],
+      steps:["Cook rice according to package directions.","Toss green beans with garlic-infused oil and pepper; roast at 425°F for 12 min.","Add salmon to the same sheet pan, roast 10-12 more minutes until it flakes easily.","Plate rice, beans, and salmon together.","For Marshall: serve plain rice and a plain piece of salmon, deboned and cut small."]},
+    {id:"r2", title:"Simple Egg Fried Rice", tags:["dinner","pescatarian","kid-friendly","uses leftovers"],
+      ingredients:[{name:"Rice",qty:"3 cups, cooked"},{name:"Eggs",qty:"2"},{name:"Garlic-infused olive oil",qty:"1 tbsp"},{name:"Black pepper",qty:"to taste"}],
+      steps:["Heat garlic-infused oil in a pan, scramble eggs, set aside.","Add cold rice to the same pan, breaking up clumps, stir-fry 4-5 min.","Fold eggs back in, season with pepper, serve.","Good as-is for Natalie and Marshall; add a side of plain salmon for Jeremy if he wants extra protein."]},
+    {id:"r3", title:"Jeremy's Lightened-Up Cheeseburger", tags:["dinner","dad's comfort food","low-sodium swap"],
+      ingredients:[{name:"Lean ground beef (93/7)",qty:"1 lb"},{name:"Whole wheat buns",qty:"2"},{name:"Cheddar cheese",qty:"2 thin slices"},{name:"Black pepper",qty:"to taste"}],
+      steps:["Form thin patties from lean beef, season with pepper only (skip added salt).","Grill or pan-sear over medium-high, ~3-4 min per side.","Top with a single thin slice of cheese to melt.","Serve open-face on one bun half to cut refined carbs, with a side salad instead of fries.","Note: this one's for Jeremy — for Natalie, swap in a black bean or egg patty; garlic/onion left out to stay low-FODMAP."]},
+  ];
+  function defaultWeek(){
+    const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const today = new Date();
+    const start = new Date(today); start.setDate(today.getDate()-today.getDay());
+    return days.map((d,i)=>{
+      const dt = new Date(start); dt.setDate(start.getDate()+i);
+      return {day:d, date:dt.toISOString().slice(0,10), breakfast:"", lunch:"", dinner: i===2?"r1":(i===4?"r2":(i===6?"r3":""))};
+    });
+  }
+  const DEFAULT_PEOPLE = [
+    {id:"jeremy", name:"Jeremy", restrictions:"Starting a low-FODMAP elimination diet to help pin down GI triggers (avoid garlic/onion — use garlic-infused oil instead — plus wheat, certain fruits/dairy in large amounts). Also eating low-sodium and low-cholesterol for blood pressure and cholesterol.", likes:"Cheeseburgers are his comfort food — worth keeping a lightened-up version in rotation rather than cutting entirely.", dislikes:""},
+    {id:"natalie", name:"Natalie", restrictions:"Ovo-dairy pescatarian — eats eggs, dairy, and fish/seafood; no meat or poultry.", likes:"", dislikes:""},
+    {id:"marshall", name:"Marshall (4)", restrictions:"", likes:"Easy to feed — generally accepts family staples. Add his specific go-to foods here as you learn what sticks.", dislikes:""},
+  ];
+
+  // ---------- state ----------
+  let state = {
+    pantry: DEFAULT_PANTRY.slice(),
+    recipes: DEFAULT_RECIPES.slice(),
+    week: defaultWeek(),
+    people: DEFAULT_PEOPLE.slice(),
+  };
+  let db = null;
+  let writable = false;
+  let pantryFilter = "All";
+  const unsubs = [];
+
+  function setSync(ok, label){
+    const el = document.getElementById("syncStatus");
+    el.innerHTML = '<span class="dot' + (ok?'':' off') + '"></span><span>' + label + '</span>';
+  }
+
+  // ---------- init capabilities ----------
+  async function boot(){
+    try{
+      if (window.claude && window.claude.use){
+        db = await window.claude.use("db");
+      }
+    }catch(e){ db = null; }
+
+    if (!db){
+      setSync(false, "local only (no sync)");
+      renderAll();
+      return;
+    }
+
+    setSync(true, "synced");
+
+    try{
+      const userCap = await window.claude.use("user");
+      writable = userCap ? (userCap.canEdit ? userCap.canEdit() : true) : true;
+    }catch(e){ writable = true; }
+
+    subscribeCollection("pantry", "pantry");
+    subscribeCollection("recipes", "recipes");
+    subscribeCollection("people", "people");
+    subscribeWeek();
+  }
+
+  function subscribeCollection(colName, stateKey){
+    try{
+      const unsub = db.collection(colName).onSnapshot((docs)=>{
+        if (docs && docs.length){
+          state[stateKey] = docs.map(d => ({...d.data, id: d.id}));
+        } else if (docs && docs.length === 0 && stateKey !== 'people'){
+          // empty means truly empty collection (already seeded or cleared) — keep as is
+          state[stateKey] = [];
+        }
+        renderAll();
+      });
+      unsubs.push(unsub);
+      // seed if empty, once
+      db.collection(colName).get?.().catch(()=>{});
+    }catch(e){ /* fall back to local sample */ renderAll(); }
+
+    // seed on first load if collection empty
+    seedIfEmpty(colName, stateKey);
+  }
+
+  async function seedIfEmpty(colName, stateKey){
+    try{
+      const existing = await db.collection(colName).get();
+      if ((!existing || existing.length === 0)){
+        const seed = stateKey === "pantry" ? DEFAULT_PANTRY : stateKey === "recipes" ? DEFAULT_RECIPES : DEFAULT_PEOPLE;
+        for (const item of seed){
+          const {id, ...rest} = item;
+          await db.doc(colName + "/" + id).set(rest).catch(()=>{});
+        }
+      }
+    }catch(e){ /* ignore — will just show local defaults */ }
+  }
+
+  function subscribeWeek(){
+    try{
+      const unsub = db.collection("week").onSnapshot((docs)=>{
+        if (docs && docs.length){
+          const byDate = {};
+          docs.forEach(d => byDate[d.id] = d.data);
+          state.week = state.week.map(day => byDate[day.date] ? {...day, ...byDate[day.date]} : day);
+        }
+        renderAll();
+      });
+      unsubs.push(unsub);
+    }catch(e){ renderAll(); }
+    seedWeekIfEmpty();
+  }
+
+  async function seedWeekIfEmpty(){
+    try{
+      const existing = await db.collection("week").get();
+      if (!existing || existing.length === 0){
+        for (const day of state.week){
+          await db.doc("week/" + day.date).set({day:day.day, breakfast:day.breakfast, lunch:day.lunch, dinner:day.dinner}).catch(()=>{});
+        }
+      }
+    }catch(e){}
+  }
+
+  // ---------- writes ----------
+  async function pantryUpdate(id, patch){
+    const item = state.pantry.find(i=>i.id===id);
+    if (!item) return;
+    Object.assign(item, patch);
+    renderAll();
+    if (db){ const {id:_id, ...rest} = item; await db.doc("pantry/"+id).update(patch).catch(()=>{}); }
+  }
+  async function pantryAdd(item){
+    const id = uid();
+    state.pantry.push({id, ...item});
+    renderAll();
+    if (db){ await db.doc("pantry/"+id).set(item).catch(()=>{}); }
+  }
+  async function pantryRemove(id){
+    state.pantry = state.pantry.filter(i=>i.id!==id);
+    renderAll();
+    if (db){ await db.doc("pantry/"+id).delete().catch(()=>{}); }
+  }
+  async function recipeAdd(recipe){
+    const id = uid();
+    state.recipes.push({id, ...recipe});
+    renderAll();
+    if (db){ await db.doc("recipes/"+id).set(recipe).catch(()=>{}); }
+  }
+  async function weekUpdate(date, patch){
+    const day = state.week.find(d=>d.date===date);
+    if (!day) return;
+    Object.assign(day, patch);
+    renderAll();
+    if (db){ await db.doc("week/"+date).update(patch).catch(()=>{}); }
+  }
+  async function personAdd(){
+    const id = uid();
+    const person = {name:"New person", restrictions:"", likes:"", dislikes:""};
+    state.people.push({id, ...person});
+    renderAll();
+    if (db){ await db.doc("people/"+id).set(person).catch(()=>{}); }
+  }
+  let personSaveTimers = {};
+  function personUpdate(id, patch){
+    const p = state.people.find(x=>x.id===id);
+    if (!p) return;
+    Object.assign(p, patch);
+    if (db){
+      clearTimeout(personSaveTimers[id]);
+      personSaveTimers[id] = setTimeout(()=>{ db.doc("people/"+id).update(patch).catch(()=>{}); }, 500);
+    }
+  }
+
+  // ---------- helpers ----------
+  function statusFor(item){
+    if (item.qty <= 0) return "out";
+    if (item.qty <= 1) return "low";
+    return "ok";
+  }
+  function haveIngredient(name){
+    const p = state.pantry.find(i => i.name.toLowerCase() === name.toLowerCase());
+    return p && p.qty > 0;
+  }
+
+  // ---------- render ----------
+  function renderAll(){
+    renderPantry();
+    renderRecipes();
+    renderWeek();
+    renderPeople();
+  }
+
+  function renderPantry(){
+    const cats = ["All", ...Array.from(new Set(state.pantry.map(i=>i.category)))];
+    const filtersEl = document.getElementById("pantryFilters");
+    filtersEl.innerHTML = cats.map(c =>
+      '<button class="chip-btn' + (c===pantryFilter?' active':'') + '" data-cat="' + c + '">' + c + '</button>'
+    ).join("");
+
+    const list = pantryFilter === "All" ? state.pantry : state.pantry.filter(i=>i.category===pantryFilter);
+    const listEl = document.getElementById("pantryList");
+    document.getElementById("pantryCount").textContent = state.pantry.length + " items";
+
+    if (list.length === 0){
+      listEl.innerHTML = '<div class="empty">Nothing here yet — add your first item below.</div>';
+      return;
+    }
+    listEl.innerHTML = list.map(item => {
+      const st = statusFor(item);
+      const label = st === "out" ? "Out" : st === "low" ? "Low" : "In stock";
+      return '<div class="item-row" data-id="' + item.id + '">' +
+        '<div class="item-main"><div class="item-name">' + escapeHtml(item.name) + '</div>' +
+        '<div class="item-meta">' + item.category + '</div></div>' +
+        '<span class="status-pill ' + st + '">' + label + '</span>' +
+        '<div class="qty-controls">' +
+          '<button class="qty-dec" aria-label="Decrease">−</button>' +
+          '<span>' + item.qty + ' ' + escapeHtml(item.unit||'') + '</span>' +
+          '<button class="qty-inc" aria-label="Increase">+</button>' +
+        '</div>' +
+        '<button class="del-x" aria-label="Remove">✕</button>' +
+      '</div>';
+    }).join("");
+  }
+
+  function renderRecipes(){
+    const grid = document.getElementById("recipeGrid");
+    if (state.recipes.length === 0){
+      grid.innerHTML = '<div class="empty">No recipes yet — add your first one.</div>';
+      return;
+    }
+    grid.innerHTML = state.recipes.map(r => {
+      const total = r.ingredients.length;
+      const have = r.ingredients.filter(ing => haveIngredient(ing.name)).length;
+      const badgeClass = have === total ? "full" : "partial";
+      const badgeText = have === total ? "Have all " + total : have + "/" + total + " on hand";
+      return '<div class="recipe-card" data-id="' + r.id + '">' +
+        '<h3>' + escapeHtml(r.title) + '</h3>' +
+        '<div class="tag-row">' + r.tags.map(t=>'<span class="tag">'+escapeHtml(t)+'</span>').join("") + '</div>' +
+        '<div class="recipe-foot"><span>' + total + ' ingredients</span><span class="have-badge ' + badgeClass + '">' + badgeText + '</span></div>' +
+      '</div>';
+    }).join("");
+  }
+
+  function openRecipeModal(id){
+    const r = state.recipes.find(x=>x.id===id);
+    if (!r) return;
+    const modal = document.getElementById("recipeModal");
+    modal.innerHTML =
+      '<button class="modal-close" id="closeModalBtn">✕</button>' +
+      '<h2>' + escapeHtml(r.title) + '</h2>' +
+      '<div class="tag-row">' + r.tags.map(t=>'<span class="tag">'+escapeHtml(t)+'</span>').join("") + '</div>' +
+      '<h4>Ingredients</h4>' +
+      '<ul class="ing-list">' + r.ingredients.map(ing => {
+        const has = haveIngredient(ing.name);
+        return '<li><span class="ing-dot ' + (has?'have':'missing') + '"></span>' + escapeHtml(ing.name) + (ing.qty? ' — ' + escapeHtml(ing.qty) : '') + '</li>';
+      }).join("") + '</ul>' +
+      '<h4>Steps</h4>' +
+      '<ol class="step-list">' + r.steps.map(s => '<li>' + escapeHtml(s) + '</li>').join("") + '</ol>';
+    document.getElementById("recipeModalBackdrop").classList.add("open");
+    document.getElementById("closeModalBtn").addEventListener("click", closeRecipeModal);
+  }
+  function closeRecipeModal(){ document.getElementById("recipeModalBackdrop").classList.remove("open"); }
+
+  function renderWeek(){
+    const grid = document.getElementById("weekGrid");
+    if (state.week.length){
+      const first = state.week[0].date, last = state.week[state.week.length-1].date;
+      document.getElementById("weekRange").textContent = first + " – " + last;
+    }
+    const recipeOptions = '<option value="">—</option>' + state.recipes.map(r=>'<option value="'+r.id+'">'+escapeHtml(r.title)+'</option>').join("");
+    grid.innerHTML = state.week.map(day => {
+      return '<div class="day-card" data-date="' + day.date + '">' +
+        '<div class="day-head"><span class="dname">' + day.day + '</span><span class="ddate">' + day.date + '</span></div>' +
+        '<div class="meal-slots">' +
+          '<label>Breakfast</label><select data-meal="breakfast">' + recipeOptionsWithSelected(recipeOptions, day.breakfast) + '</select>' +
+          '<label>Lunch</label><select data-meal="lunch">' + recipeOptionsWithSelected(recipeOptions, day.lunch) + '</select>' +
+          '<label>Dinner</label><select data-meal="dinner">' + recipeOptionsWithSelected(recipeOptions, day.dinner) + '</select>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+  }
+  function recipeOptionsWithSelected(optsHtml, selectedId){
+    if (!selectedId) return optsHtml;
+    return optsHtml.replace('value="'+selectedId+'"', 'value="'+selectedId+'" selected');
+  }
+
+  function renderPeople(){
+    const list = document.getElementById("peopleList");
+    if (state.people.length === 0){
+      list.innerHTML = '<div class="empty">Add family members to track dietary preferences.</div>';
+      return;
+    }
+    list.innerHTML = state.people.map(p => {
+      return '<div class="person-card" data-id="' + p.id + '">' +
+        '<div class="person-head"><input class="pname" data-field="name" value="' + escapeAttr(p.name) + '"></div>' +
+        '<div class="pref-row"><span class="lbl">Restrictions</span><textarea data-field="restrictions" placeholder="e.g. gluten-free, nut allergy">' + escapeHtml(p.restrictions) + '</textarea></div>' +
+        '<div class="pref-row"><span class="lbl">Likes</span><textarea data-field="likes" placeholder="e.g. spicy food, pasta">' + escapeHtml(p.likes) + '</textarea></div>' +
+        '<div class="pref-row"><span class="lbl">Dislikes</span><textarea data-field="dislikes" placeholder="e.g. mushrooms, cilantro">' + escapeHtml(p.dislikes) + '</textarea></div>' +
+      '</div>';
+    }).join("");
+  }
+
+  function escapeHtml(s){ return String(s??"").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function escapeAttr(s){ return escapeHtml(s); }
+
+  // ---------- events ----------
+  document.getElementById("tabs").addEventListener("click", (e)=>{
+    const btn = e.target.closest("button[data-tab]");
+    if (!btn) return;
+    document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("active", b===btn));
+    document.querySelectorAll("section.panel").forEach(p=>p.classList.toggle("active", p.id === "panel-"+btn.dataset.tab));
+  });
+
+  document.getElementById("pantryFilters").addEventListener("click",(e)=>{
+    const btn = e.target.closest("button[data-cat]");
+    if (!btn) return;
+    pantryFilter = btn.dataset.cat;
+    renderPantry();
+  });
+
+  document.getElementById("pantryList").addEventListener("click",(e)=>{
+    const row = e.target.closest(".item-row");
+    if (!row) return;
+    const id = row.dataset.id;
+    const item = state.pantry.find(i=>i.id===id);
+    if (!item) return;
+    if (e.target.closest(".qty-inc")) pantryUpdate(id, {qty: item.qty + 1});
+    else if (e.target.closest(".qty-dec")) pantryUpdate(id, {qty: Math.max(0, item.qty - 1)});
+    else if (e.target.closest(".del-x")) pantryRemove(id);
+  });
+
+  document.getElementById("addItemForm").addEventListener("submit",(e)=>{
+    e.preventDefault();
+    const f = e.target;
+    const name = f.name.value.trim();
+    if (!name) return;
+    pantryAdd({name, category: f.category.value, qty: Number(f.qty.value)||0, unit: f.unit.value.trim()||"ct"});
+    f.reset();
+    f.name.focus();
+  });
+
+  document.getElementById("recipeGrid").addEventListener("click",(e)=>{
+    const card = e.target.closest(".recipe-card");
+    if (!card) return;
+    openRecipeModal(card.dataset.id);
+  });
+
+  document.getElementById("recipeModalBackdrop").addEventListener("click",(e)=>{
+    if (e.target.id === "recipeModalBackdrop") closeRecipeModal();
+  });
+
+  document.getElementById("newRecipeBtn").addEventListener("click", ()=>{
+    const title = prompt("Recipe title:");
+    if (!title) return;
+    const ingRaw = prompt("Ingredients, comma-separated (e.g. Rice, Eggs, Garlic):") || "";
+    const stepsRaw = prompt("Steps, one per line (separate with ' | '):") || "";
+    const tagsRaw = prompt("Tags, comma-separated (e.g. dinner, 30 min):") || "";
+    recipeAdd({
+      title,
+      ingredients: ingRaw.split(",").map(s=>s.trim()).filter(Boolean).map(n=>({name:n, qty:""})),
+      steps: stepsRaw.split("|").map(s=>s.trim()).filter(Boolean),
+      tags: tagsRaw.split(",").map(s=>s.trim()).filter(Boolean),
+    });
+  });
+
+  document.getElementById("weekGrid").addEventListener("change",(e)=>{
+    const sel = e.target.closest("select[data-meal]");
+    if (!sel) return;
+    const date = sel.closest(".day-card").dataset.date;
+    weekUpdate(date, {[sel.dataset.meal]: sel.value});
+  });
+
+  document.getElementById("addPersonBtn").addEventListener("click", personAdd);
+
+  document.getElementById("peopleList").addEventListener("input",(e)=>{
+    const card = e.target.closest(".person-card");
+    if (!card) return;
+    const field = e.target.dataset.field;
+    if (!field) return;
+    personUpdate(card.dataset.id, {[field]: e.target.value});
+  });
+
+  boot();
+})();
+</script>
+
+</body></html>
