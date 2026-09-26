@@ -99,5 +99,9 @@
   "hardware-inventory-reconciler": {"role": "R", "headless": "needs-local-keys", "readonly": "instruction", "dormant": false},
   "vps-patch-checker": {"role": "R", "headless": "yes", "readonly": "tools", "dormant": false},
   "cert-tls-watcher": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
-  "ovh-config-preparer": {"role": "D", "headless": "needs-local-keys", "readonly": "instruction", "dormant": false}
+  "ovh-config-preparer": {"role": "D", "headless": "needs-local-keys", "readonly": "instruction", "dormant": false},
+  "insurance-document-explainer": {"role": "R", "headless": "yes", "readonly": "tools", "dormant": false},
+  "coverage-gap-reviewer": {"role": "A", "headless": "yes", "readonly": "tools", "dormant": false},
+  "renewal-comparison-drafter": {"role": "D", "headless": "yes", "readonly": "tools", "dormant": false},
+  "coi-requirement-checker": {"role": "A", "headless": "yes", "readonly": "tools", "dormant": false}
 }

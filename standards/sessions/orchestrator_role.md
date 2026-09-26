@@ -14,6 +14,20 @@ hands it to a one-off **Opus 5 / high** reviewer instead of upgrading itself:
 - a merge review of a live-production, credential, or death-path PR
 - a design call it can't settle
 
+### Model selection: PM default Sonnet, escalate to Opus only for live/credential/money (2026-09-26)
+
+**2026-09-26 owner decision** (Decision Queue card
+`cost-monitor-pm-default-sonnet-escalate-opus-2026-09-26`, option 0, approved): the PM session — and
+orchestrator sessions generally — **run on Sonnet 5 by default** for routine coordination: intake,
+status reads, workstream register updates, dispatch, review-before-merge triage, handoff writing.
+Escalate to **Opus 5** only for a genuine live-system, credential, or money-affecting judgment call —
+the same shape already carried in row 1 of the "Assigning model and effort" table below (live
+production, credentials/secrets, money/QuickBooks, or the death/damage path) and in the "Orchestrator
+session setting" bullets above. This decision formalizes that the PM role itself defaults to Sonnet
+rather than running Opus continuously "to be safe"; it does not loosen row 1 of the model table or
+change when a one-off Opus reviewer gets summoned — it confirms the PM's own baseline matches the
+orchestrator's.
+
 ## Cost rule: keep spend near zero
 
 - **All work runs on Jeremy's Claude subscription** (`CLAUDE_CODE_OAUTH_TOKEN` in CI). Never use
@@ -158,6 +172,26 @@ Friction hit on the first live (owner-initiated) run, worth avoiding on the next
   can be sitting dirty on a stale, unrelated session's branch, and that diff looks like real content
   until it's checked against `origin/main`.
 
+### Target architecture: single machine-wide usage poller (not yet built, 2026-09-26)
+
+**2026-09-26 owner decision** (Decision Queue card `cost-monitor-single-usage-poller-2026-09-26`,
+option 0, approved): the target end-state replaces every orchestrator/PM running and re-arming its
+own `usage-watch.ps1` Monitor loop with **one scheduled poller process** for the whole machine. That
+poller polls the subscription's real usage on its own schedule and writes a single state file
+(`%APPDATA%\AEGIS\claude-usage-state.json`); sessions **read or tail a tier-change log from that
+poller** instead of each starting and re-arming their own watcher Monitor.
+
+**This is target architecture, not yet built.** As of 2026-09-26 the single-poller script does not
+exist — every section above (per-session `usage-watch.ps1`, the `%APPDATA%\AEGIS\orchestrators\`
+registry, the aggregator-among-peers model) is still the live mechanism and remains in force until
+the poller ships and this section is updated to point at it. Do not treat this note as authorization
+to stop watching usage the current way; it records where the mechanism is headed so the next PR that
+builds the poller has a landing spot, and so a session isn't surprised to find two competing
+descriptions once it does exist. When the poller lands, this whole "Usage watcher and PM handoff"
+section needs a follow-up rewrite: the per-session Monitor loop, the registry-based aggregator, and
+the "one aggregator from 80%" peer-coordination model all become unnecessary once a single
+machine-wide source of truth exists.
+
 ### Fallback: self-watch when no PM exists
 
 Run `tools/usage-monitor/usage-watch.ps1` for the whole of the round. It polls the subscription's
@@ -294,6 +328,14 @@ How to apply it:
    - **Design/plan the workload** — break the requirement into discrete, sized units (see step 3
      below for sizing/priority), each with an explicit sequence or dependency order. A
      `lane-card-writer` card is the right unit for this, not a paragraph in chat.
+     **Sub-tasks with no dependency order between them default to concurrent dispatch — parallel
+     Agent calls in one message, or parallel lanes — not one session working them in series.**
+     (Owner feedback 2026-09-26, relayed via github-42: a workstream ran a PR review and a
+     long-running fetch/backfill job back-to-back in one session when neither one's input or
+     output depended on the other, and could have run at the same time.) A PR review, a
+     long-running fetch/backfill job, and an owner-card wait are a typical independent set — check
+     each pair for a real data/output dependency before defaulting to series; series is for
+     dependency, not habit.
    - **Implementation** — dispatch against the fixed plan. If scope changes mid-round, that is a
      new requirements pass (repeat the bullet above), never a silent scope-graft onto agents
      already running against the old scope.
