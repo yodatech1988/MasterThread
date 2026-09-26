@@ -215,6 +215,23 @@ below.
 | `ovh-vps-usage-reporter` | haiku | R | needs-local-keys | Wraps `OvhApiKey.ps1 GET /vps` (scope `/vps/*`, no `DELETE`), fact-only |
 | `workshop-mod-inventory` | haiku | R | yes | Lists real `module.json` files across `aegis-mods`/`aegis-poi`; found `aegis-poi` has no real modules yet, only test fixtures |
 
+## OVH hardware-management agents (`~/.claude/agents/`)
+
+Extends `ovh-vps-usage-reporter`'s single-endpoint scope to the fuller Tier-A/B hardware-management
+charter (`PM_INBOX/ovh-admin-agent/DESIGN_2026-09-25.md`). AEGIS-enclave only; the GWS mail host
+(40.160.39.222) is excluded from every one of these agents, credential-level first. All four reporters
+below reach `ops-ca` through the same US `read` IAM profile on `api.us.ovhcloud.com` as the other two
+AEGIS boxes — it is a member of the `aegis-hardware` resource group, not a separate CA-platform
+account.
+
+| Agent | Model | Role | Headless | Purpose | Grounded in |
+|---|---|---|---|---|---|
+| `ovh-hardware-reporter` | haiku | R | needs-local-keys | Full Tier-A OVH hardware/edge-firewall/mitigation state for the AEGIS fleet, billing/services/renewal dropped from scope | `DESIGN_2026-09-25.md` §5/§6; gatekeeper PASS |
+| `ovh-edge-firewall-auditor` | haiku | R | needs-local-keys | Diffs OVH edge-firewall state + externally observed open ports against `EXPECTED_PORTS.md`; CPG 3.S | `DESIGN_2026-09-25.md` §4a; gatekeeper PASS, no changes |
+| `hardware-inventory-reconciler` | haiku | R | needs-local-keys | Reconciles OVH API inventory vs `ops-infra` `hosts.yml` (origin only) vs design-doc host list; CPG 2.A | `DESIGN_2026-09-25.md` §2a/§4a; gatekeeper PASS, no changes |
+| `vps-patch-checker` | sonnet | R | yes | Mode A: infers AEGIS host patch state from `vuln-scan-passive` banners cross-referenced against USN/NVD; Mode B (SSH allowlist) described, not enabled; CPG 2.B | `DESIGN_2026-09-25.md` §1; gatekeeper PASS-WITH-CHANGES, applied |
+| `cert-tls-watcher` | haiku | R | yes | TLS cert expiry (30/14/7-day)/chain/protocol/cipher checks for AEGIS public endpoints; kept separate from `vuln-scan-passive` (recurring fixed-list watch vs ad hoc breadth recon); CPG 3.S/3.K | `DESIGN_2026-09-25.md` §1/§4a; gatekeeper PASS-WITH-CHANGES, applied |
+
 ## Adding a new one
 
 1. Ground it in a real standard, policy, or script — never invent process the agent then improvises.

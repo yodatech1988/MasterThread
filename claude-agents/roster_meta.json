@@ -93,5 +93,10 @@
   "session-plan-advisor": {"role": "A", "headless": "yes", "readonly": "tools", "dormant": false},
   "click-file-builder": {"role": "D", "headless": "yes", "readonly": "instruction", "dormant": false, "group": "other"},
   "worktree-prune-executor": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false},
-  "ci-fixer": {"role": "D", "headless": "yes", "readonly": "n/a", "dormant": false, "group": "other", "allowedTools": ["Bash(gh run view:*)", "Bash(gh run list:*)", "Bash(gh pr view:*)", "Bash(gh pr list:*)", "Bash(gh pr diff:*)", "Bash(gh pr checks:*)", "Bash(gh pr create:*)", "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)", "Bash(git add:*)", "Bash(git commit:*)", "Bash(git push:*)"]}
+  "ci-fixer": {"role": "D", "headless": "yes", "readonly": "n/a", "dormant": false, "group": "other", "allowedTools": ["Bash(gh run view:*)", "Bash(gh run list:*)", "Bash(gh pr view:*)", "Bash(gh pr list:*)", "Bash(gh pr diff:*)", "Bash(gh pr checks:*)", "Bash(gh pr create:*)", "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)", "Bash(git add:*)", "Bash(git commit:*)", "Bash(git push:*)"]},
+  "ovh-hardware-reporter": {"role": "R", "headless": "needs-local-keys", "readonly": "instruction", "dormant": false},
+  "ovh-edge-firewall-auditor": {"role": "R", "headless": "needs-local-keys", "readonly": "instruction", "dormant": false},
+  "hardware-inventory-reconciler": {"role": "R", "headless": "needs-local-keys", "readonly": "instruction", "dormant": false},
+  "vps-patch-checker": {"role": "R", "headless": "yes", "readonly": "tools", "dormant": false},
+  "cert-tls-watcher": {"role": "R", "headless": "yes", "readonly": "instruction", "dormant": false}
 }
