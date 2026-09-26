@@ -237,10 +237,13 @@ below.
 
 Extends `ovh-vps-usage-reporter`'s single-endpoint scope to the fuller Tier-A/B hardware-management
 charter (`PM_INBOX/ovh-admin-agent/DESIGN_2026-09-25.md`). AEGIS-enclave only; the GWS mail host
-(40.160.39.222) is excluded from every one of these agents, credential-level first. All four reporters
-below reach `ops-ca` through the same US `read` IAM profile on `api.us.ovhcloud.com` as the other two
-AEGIS boxes — it is a member of the `aegis-hardware` resource group, not a separate CA-platform
-account.
+(40.160.39.222) is excluded from every one of these agents, credential-level first (the
+`aegis-hw-reader`/`aegis-hw-writer` IAM policies grant access only to the `aegis-hardware` resource
+group, which the mail host is never a member of) — the Never-block line naming it explicitly is a
+second layer, not the primary control. The four reporters below reach `ops-ca` through the same US
+`read` IAM profile on `api.us.ovhcloud.com` as the other two AEGIS boxes; `ovh-config-preparer`
+reaches it through the same US `read`/`write` profile pair (using only `read`) — in both cases it
+is a member of the `aegis-hardware` resource group, not a separate CA-platform account.
 
 | Agent | Model | Role | Headless | Purpose | Grounded in |
 |---|---|---|---|---|---|
@@ -249,6 +252,7 @@ account.
 | `hardware-inventory-reconciler` | haiku | R | needs-local-keys | Reconciles OVH API inventory vs `ops-infra` `hosts.yml` (origin only) vs design-doc host list; CPG 2.A | `DESIGN_2026-09-25.md` §2a/§4a; gatekeeper PASS, no changes |
 | `vps-patch-checker` | sonnet | R | yes | Mode A: infers AEGIS host patch state from `vuln-scan-passive` banners cross-referenced against USN/NVD; Mode B (SSH allowlist) described, not enabled; CPG 2.B | `DESIGN_2026-09-25.md` §1; gatekeeper PASS-WITH-CHANGES, applied |
 | `cert-tls-watcher` | haiku | R | yes | TLS cert expiry (30/14/7-day)/chain/protocol/cipher checks for AEGIS public endpoints; kept separate from `vuln-scan-passive` (recurring fixed-list watch vs ad hoc breadth recon); CPG 3.S/3.K | `DESIGN_2026-09-25.md` §1/§4a; gatekeeper PASS-WITH-CHANGES, applied |
+| `ovh-config-preparer` | sonnet | **D** | needs-local-keys | Prepares (never executes) Tier-B OVH writes — DNS record, VPS property, conditional edge-firewall rule — as a `click-file-builder` click-file, `live-reviewer`-reviewed, owner-run only. No `write`-profile credential reachable at all | `DESIGN_2026-09-25.md` §3/§4/§5/§6; `GATEKEEPER_REVIEW.md`; gatekeeper PASS-WITH-CHANGES, applied |
 
 ## Adding a new one
 
