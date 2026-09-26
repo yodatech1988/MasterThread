@@ -17,6 +17,7 @@ last published it.
 | `click-harness.js` | Runs the real page script in jsdom with a fake database and real click events. Covers the write paths: what gets written, and that nothing is written when it should not be. |
 | `render-harness.js` | Calls the page's card builders and checks the HTML strings: escaping of database text, the scannable-card layout, the collapsed Background section. |
 | `dq_monitor.py` | Report-only audit of an exported `decisions` collection (see "Audit the board" below). Not part of the page; it never writes to the queue. |
+| `dq-headless-watch.ps1` | Headless, low-context check of specific card doc ids via a `claude -p` subprocess (see "Headless card watch" below). Not scheduled by anything yet -- see that section. |
 
 ## Run the tests
 
@@ -56,6 +57,59 @@ that a resolution matching `options[recommendedOption]` is not evidence of a def
 `resolvedAt` with milliseconds was written by the page and one without was composed by a session
 (`PAGE_WRITTEN_STAMP` in the script); if the page's stamping ever changes, change that constant and
 the standard together.
+
+## Headless card watch (`dq-headless-watch.ps1`)
+
+Built for Decision Queue card `cost-monitor-card-watcher-headless-2026-09-26` (option 0, resolved
+2026-09-26): move the 5-minute "did the owner answer?" check out of an interactive PM session's own
+context into a headless `claude -p` run a scheduler can fire on a timer, per
+`PM_INBOX\cost-monitor\SELF_IMPROVEMENT_PLAN_2026-09-26.md` section R2.
+
+**Verified before this was built (2026-09-26):** the plan flagged as unverified whether a headless
+`claude -p` process can call the `ArtifactData` tool at all -- subagents cannot, so it had to be
+tested by actually invoking `claude -p` as a subprocess and inspecting the real
+`tool_use`/`tool_result` blocks (`--output-format stream-json`), not by asking the CLI to describe
+itself (a model can hallucinate a tool call). It can: a `get` against the live artifact returned the
+real stored document, confirmed against `--output-format stream-json` output showing the actual
+`db_read` result, not just the model's prose summary.
+
+**Cost finding that revises the plan's own $0.01/tick estimate:** even with `-AllowedTools` limited
+to exactly `ArtifactData` and a single doc id, a run costs about **$0.08-0.19** (Haiku), not $0.01 --
+the fixed per-invocation baseline (system prompt, connected MCP servers, skills listing) loads
+regardless of `--allowedTools`, and `--bare` (which would strip it) breaks the OAuth/keychain auth
+this machine's subscription billing relies on, so `--bare` is not usable here without a paid API
+key. At a 5-minute cadence that is roughly $1-2/hour if run around the clock -- still far cheaper
+than the plan's own $4-14/hour estimate for an idle interactive PM running the same check, but not
+the plan's "$3/day" figure. Re-check this against real `cost-monitor` data after a day of real runs
+before relying on either number.
+
+```powershell
+tools\decision-queue\dq-headless-watch.ps1 -DocIds "some-card-doc-id","another-card-doc-id"
+```
+
+- Reads last-seen `{version, status}` per doc id from `-StateFile` (default
+  `%APPDATA%\AEGIS\dq-watch-state.json`).
+- Makes one `claude -p` call (Haiku by default), `-AllowedTools "ArtifactData"` only,
+  `--permission-mode dontAsk --permission-prompts none` (nothing waits on an unanswerable prompt),
+  and a `--json-schema` that forces the reply to be only `{"docs":[{doc_id, found, version,
+  status}, ...]}` -- no card body ever reaches this script's parsing or its log.
+- Appends **one line per doc that is new, or whose version or status changed** to `-LogFile`
+  (default `%APPDATA%\AEGIS\dq-changes.log`) -- doc_id plus old/new version and status only.
+- Rewrites `-StateFile` with the latest values.
+
+Tested (this PR) against the real, already-resolved card `cost-monitor-card-watcher-headless-2026-09-26`:
+a first run logged `NEW ... version=2 status=resolved`; an immediate second run with the same doc id
+logged nothing (no change).
+
+**Not done here, on purpose:** nothing schedules this. Turning it into a real Windows Task Scheduler
+job, and deciding the doc-id list and cadence, is a follow-up for the owner or PM after reviewing
+this PR -- this task's scope was building and testing the script, not enabling it. It also is not
+wired into `tools/headless/Invoke-ReadOnlyAgent.ps1`'s roster/`-Restricted` machinery:
+`ArtifactData` is not a `Bash` sub-command that harness's three-layer model was built to fence in,
+it is a first-class tool granted directly by name (`--allowedTools "ArtifactData"` was verified here
+to be the whole grant needed). Wiring this into that heavier harness (a `roster_meta.json` entry,
+an `agent-automation-gatekeeper` pass, a `schemas/*.json` file) is left for whoever promotes this
+into a standing roster agent.
 
 ## Changing the page
 
