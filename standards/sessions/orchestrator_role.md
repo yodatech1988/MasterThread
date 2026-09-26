@@ -294,6 +294,14 @@ How to apply it:
    - **Design/plan the workload** — break the requirement into discrete, sized units (see step 3
      below for sizing/priority), each with an explicit sequence or dependency order. A
      `lane-card-writer` card is the right unit for this, not a paragraph in chat.
+     **Sub-tasks with no dependency order between them default to concurrent dispatch — parallel
+     Agent calls in one message, or parallel lanes — not one session working them in series.**
+     (Owner feedback 2026-09-26, relayed via github-42: a workstream ran a PR review and a
+     long-running fetch/backfill job back-to-back in one session when neither one's input or
+     output depended on the other, and could have run at the same time.) A PR review, a
+     long-running fetch/backfill job, and an owner-card wait are a typical independent set — check
+     each pair for a real data/output dependency before defaulting to series; series is for
+     dependency, not habit.
    - **Implementation** — dispatch against the fixed plan. If scope changes mid-round, that is a
      new requirements pass (repeat the bullet above), never a silent scope-graft onto agents
      already running against the old scope.
