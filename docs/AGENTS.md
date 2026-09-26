@@ -101,6 +101,23 @@ running in a different lane; this PR only adds the files and their rows.
 (`docs/REPOS.md`); the definition exists for when that's lifted, and creating the file triggers
 nothing on its own.
 
+## Insurance ecosystem (global, `~/.claude/agents/`)
+
+Specs from ops-household `docs/INSURANCE-AGENTS.md`. All four are read-only (`Read`, `Grep` only),
+take owner-named input only for that session (never search for a document or register on their
+own), never persist output anywhere outside the session, and never recommend a specific product or
+carrier — a risk-transfer call is handed to `legal-risk-assessor`'s risk-transfer path instead.
+Inputs and outputs are C3 `financial` per `policies/data/classification.md`, and health-plan
+documents are C3 `health` (same file); both live only in the personal/financial enclave. Passed `agent-automation-gatekeeper` review (see the PR that added
+this section for the per-rule table).
+
+| Agent | Model | Role | Headless | Purpose | Grounded in |
+|---|---|---|---|---|---|
+| `insurance-document-explainer` | sonnet | R | yes | Explains one owner-named policy document in plain language, quoting the passage each answer comes from; never states a claim will be paid | ops-household `docs/INSURANCE-AGENTS.md` |
+| `coverage-gap-reviewer` | sonnet | **A** | yes | Reviews owner-named register rows for gaps/overlaps/lapses/renewals-within-60-days, each marked verified-from-row or inferred; hands risk calls to `legal-risk-assessor` | ops-household `docs/INSURANCE-AGENTS.md` |
+| `renewal-comparison-drafter` | sonnet | **D** | yes | Builds a side-by-side table of two owner-named documents (renewal vs. prior, or two quotes), showing only what changed and flagging what got worse; never ranks them | ops-household `docs/INSURANCE-AGENTS.md` |
+| `coi-requirement-checker` | sonnet | **A** | yes | Business-line only: checks a certificate of insurance against an owner-named requirements document, PASS/FAIL per requirement plus what to ask the broker for | ops-household `docs/INSURANCE-AGENTS.md` |
+
 ## `MasterThread/.claude/agents/`
 
 | Agent | Model | Headless | Purpose |
@@ -203,6 +220,7 @@ below.
 | `policy-coverage-reporter` | sonnet | R | yes | Cross-refs this file against every real standard/policy doc with no agent yet |
 | `session-plan-advisor` | sonnet | **A** | yes | Verdict against `PLAN_template.md` and `session_plan_standard.md`'s real shape and 12 rules; defers Status-table drift to `plan-status-check` |
 | `session-plan-drafter` | sonnet | **D** | yes | Drafts a multi-session plan in the real `PLAN_template.md` shape; `TODO: needs input` for anything not given |
+| `renewal-comparison-drafter` | sonnet | **D** | yes | Use when a renewal notice and the prior policy, or two competing quotes, arrive and need a side-by-side comparison |
 
 ## More global mechanical reporters (`~/.claude/agents/`)
 
