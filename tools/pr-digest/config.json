@@ -1,0 +1,33 @@
+{
+  "_readme": "Config for tools/pr-digest. repos is the watch list for Get-PrDigest.ps1 (owner/repo, default owner yodatech1988 if bare name given). owner_only_repos starts from OWNER_ONLY_REPOS in core/.github/workflows/claude-review.yml (2026-09-26 read, that list is hard-coded there on purpose so a caller cannot opt out) plus ops-household and family-hub, which are personal-scoped by name but not yet wired into claude-review.yml -- see aegis-automerge-policy memory. Update-BehindPrs.ps1 refuses to touch any repo in this list regardless of what a PR looks like.",
+  "repos": [
+    "yodatech1988/MasterThread",
+    "yodatech1988/core",
+    "yodatech1988/services",
+    "yodatech1988/site-chernarus",
+    "yodatech1988/aegis-mods",
+    "yodatech1988/aegis-poi",
+    "yodatech1988/claude-agents",
+    "yodatech1988/be-rcon",
+    "yodatech1988/ops-infra",
+    "yodatech1988/ops-platform",
+    "yodatech1988/ops-business",
+    "yodatech1988/ops-policies"
+  ],
+  "owner_only_repos": [
+    "jarvis",
+    "handymansfield",
+    "quickbooks-business",
+    "quickbooks-family",
+    "family-support",
+    "personal-growth",
+    "get-wired-solutions",
+    "business-finance",
+    "personal-finance",
+    "business-development",
+    "jeremybergerai",
+    "ops-household",
+    "family-hub"
+  ],
+  "stuck_hours": 2
+}
